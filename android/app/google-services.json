@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "757948771348",
+    "project_id": "parkinson-b5e7a",
+    "storage_bucket": "parkinson-b5e7a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:757948771348:android:a336e3b2686562128bcb01",
+        "android_client_info": {
+          "package_name": "com.example.parkinson"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdU8iZ8baEV82YBSRfNo0DQuyHWyt0BgA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,19 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+lib/firebase_options.dart/
+lib/Firebase/firebase_options.dart/
+build/dd704641fca0f13458e044aee43be5d8.cache.dill.track.dill/
+macos/Runner/GoogleService-Info.plist/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/docs/deployment/android#reference-the-keystore-from-the-app
+key.properties
+**/*.keystore
+**/*.jks
+
+

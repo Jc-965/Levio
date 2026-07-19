@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:parkiwell/motion_coach/motion_analysis.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
+import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/singleton.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -38,20 +39,27 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
   VideoPlayerController? _recordingController;
   WebViewController? _webViewController;
   String? _videoId;
+  MotionExerciseDefinition? _motionExercise;
   bool _isVideoLoading = true;
+  bool _isShowingMotionDemo = false;
 
   String? _recordedVideoPath;
   bool _isRecordingVideo = false;
   bool _isMotionCoachOpening = false;
 
   bool get _hasRecording => _recordedVideoPath != null;
-  String get _youtubeUrl =>
-      'https://www.youtube.com/watch?v=${_videoId ?? singleton.currentURL}';
+  String get _youtubeUrl {
+    final String videoId = _videoId ?? singleton.currentURL;
+    return Uri.https('www.youtube.com', '/watch', <String, String>{
+      'v': videoId,
+    }).toString();
+  }
 
   @override
   void initState() {
     super.initState();
     _videoId = singleton.normalizeYouTubeVideoId(singleton.currentURL);
+    _motionExercise = motionExerciseForVideo(_videoId);
     if (_videoId != null && !kIsWeb) {
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -65,15 +73,64 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
               if (!mounted) return;
               setState(() => _isVideoLoading = false);
             },
-            onWebResourceError: (_) {
+            onWebResourceError: (WebResourceError error) {
+              if (error.isForMainFrame != true) return;
               if (!mounted) return;
               setState(() => _webViewController = null);
             },
           ),
         )
-        ..loadRequest(Uri.parse('https://m.youtube.com/watch?v=$_videoId'));
+        ..loadRequest(
+          _fullSessionEmbedUri(_videoId!),
+          headers: youTubeEmbeddedPlayerHeaders,
+        );
     } else {
       _isVideoLoading = false;
+    }
+  }
+
+  Uri _fullSessionEmbedUri(String videoId) {
+    return Uri.https('www.youtube.com', '/embed/$videoId', <String, String>{
+      'playsinline': '1',
+      'controls': '1',
+      'rel': '0',
+    });
+  }
+
+  Future<void> _loadGuidedVideo({required bool demoOnly}) async {
+    final String? videoId = _videoId;
+    if (videoId == null) return;
+    final MotionExerciseDefinition? exercise = _motionExercise;
+    if (demoOnly && exercise == null) return;
+    HapticUtils.lightImpact();
+    final WebViewController? controller = _webViewController;
+    if (controller == null) {
+      if (!demoOnly) return;
+      await launchUrl(
+        exercise!.youtubeWatchUri(demoOnly: true),
+        mode: LaunchMode.inAppBrowserView,
+      );
+      return;
+    }
+
+    setState(() {
+      _isShowingMotionDemo = demoOnly;
+      _isVideoLoading = true;
+    });
+    final Uri uri = demoOnly
+        ? exercise!.youtubeEmbedUri(demoOnly: true)
+        : _fullSessionEmbedUri(videoId);
+    await controller.loadRequest(uri, headers: youTubeEmbeddedPlayerHeaders);
+    if (!mounted) return;
+    final BuildContext? playerContext =
+        TutorialTargets.exerciseVideoPlayerKey.currentContext;
+    if (playerContext != null && playerContext.mounted) {
+      await Scrollable.ensureVisible(
+        playerContext,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
     }
   }
 
@@ -226,13 +283,15 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
 
   Future<void> _openMotionCoach() async {
     if (_isMotionCoachOpening || kIsWeb) return;
+    final MotionExerciseDefinition? exercise = _motionExercise;
+    if (exercise == null) return;
     HapticUtils.mediumImpact();
     setState(() => _isMotionCoachOpening = true);
     try {
       if (!await _ensureMotionCoachConsent() || !mounted) return;
       final outcome = await Navigator.of(context).push<MotionCoachOutcome>(
         MaterialPageRoute<MotionCoachOutcome>(
-          builder: (_) => const MotionCoachScreen(),
+          builder: (_) => MotionCoachScreen(exercise: exercise),
         ),
       );
       if (outcome == null || !mounted) return;
@@ -395,6 +454,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     }
 
     final source = exerciseData.length > 3 ? exerciseData[3] : '';
+    final MotionExerciseDefinition? motionExercise = _motionExercise;
     final sessionCount = singleton.exerciseSessionCountForVideo(
       singleton.currentURL,
     );
@@ -502,7 +562,9 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Guided movement session',
+                      _isShowingMotionDemo && motionExercise != null
+                          ? 'Short demo · ${motionExercise.demoTimeRangeLabel}'
+                          : 'Guided movement session',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: colors.textSecondary,
                         fontWeight: FontWeight.w700,
@@ -617,13 +679,37 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                           ],
                         ),
                       ),
+                if (_isShowingMotionDemo && motionExercise != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${motionExercise.title} · '
+                          '${motionExercise.demonstrationRepetitions} guided '
+                          'repetitions',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colors.textSecondary),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () =>
+                            unawaited(_loadGuidedVideo(demoOnly: false)),
+                        icon: const Icon(Icons.replay_rounded, size: 18),
+                        label: const Text('Full session'),
+                      ),
+                    ],
+                  ),
+                ],
                 if (!kIsWeb) ...[
                   const SizedBox(height: 24),
-                  if (motionCoachEnabled && _videoId == 'AZV3_NfcpVs') ...[
-                    const SectionHeading(
+                  if (motionCoachEnabled && motionExercise != null) ...[
+                    SectionHeading(
                       title: 'Motion check',
                       description:
-                          'Try a short seated arm raise with private, on-device movement observations.',
+                          'Watch the ${motionExercise.demoDurationSeconds}-second '
+                          'example, then try the movement with private, '
+                          'on-device observations.',
                     ),
                     const SizedBox(height: 12),
                     ModernCard(
@@ -660,7 +746,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Seated bilateral arm raise',
+                                      motionExercise.title,
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleSmall
@@ -670,9 +756,10 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Record 3–5 comfortable raises. Your '
-                                      'video and pose landmarks stay on this '
-                                      'device.',
+                                      'Record '
+                                      '${motionExercise.recordingRepetitionLabel} '
+                                      'comfortable raises. Your video and pose '
+                                      'landmarks stay on this device.',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -687,6 +774,19 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                             ],
                           ),
                           const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ModernButton(
+                              text: _isShowingMotionDemo
+                                  ? 'Replay short demo'
+                                  : 'Watch short demo',
+                              icon: Icons.play_circle_outline_rounded,
+                              isOutlined: true,
+                              onPressed: () =>
+                                  unawaited(_loadGuidedVideo(demoOnly: true)),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: ModernButton(

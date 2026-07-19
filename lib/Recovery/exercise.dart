@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:parkiwell/motion_coach/motion_analysis.dart';
+import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/singleton.dart';
 
 import '../services/tutorial_targets.dart';
@@ -178,6 +180,11 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                                 thumbnailUrl:
                                     'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
                                 typeLabel: 'Physical exercise',
+                                badgeLabel:
+                                    motionCoachEnabled &&
+                                        motionExerciseForVideo(videoId) != null
+                                    ? 'Motion check'
+                                    : null,
                                 typeIcon: Icons.fitness_center_rounded,
                                 accent: colors.secondary,
                                 sessionCount: singleton

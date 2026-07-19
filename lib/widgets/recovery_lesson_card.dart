@@ -11,6 +11,7 @@ class RecoveryLessonCard extends StatefulWidget {
   final String source;
   final String thumbnailUrl;
   final String typeLabel;
+  final String? badgeLabel;
   final IconData typeIcon;
   final Color accent;
   final int sessionCount;
@@ -25,6 +26,7 @@ class RecoveryLessonCard extends StatefulWidget {
     required this.source,
     required this.thumbnailUrl,
     required this.typeLabel,
+    this.badgeLabel,
     required this.typeIcon,
     required this.accent,
     required this.sessionCount,
@@ -131,9 +133,43 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
                                       ?.copyWith(
                                         color: widget.accent,
                                         fontWeight: FontWeight.w700,
-                                      ),
+                                  ),
                                 ),
                               ),
+                              if (widget.badgeLabel != null) ...[
+                                const SizedBox(width: 8),
+                                Semantics(
+                                  label: widget.badgeLabel,
+                                  excludeSemantics: true,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: widget.accent.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: widget.accent.withValues(
+                                          alpha: 0.24,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      widget.badgeLabel!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: widget.accent,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 5),

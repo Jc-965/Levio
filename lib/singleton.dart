@@ -150,7 +150,7 @@ class Singleton extends ChangeNotifier {
     "AZV3_NfcpVs": [
       "Sit 'n' Fit Workout",
       "Chair-based aerobic routine designed for safe daily movement and endurance.",
-      "12:00",
+      "14:05",
       "Source: Parkinson's Foundation (YouTube)"
     ],
     "HHtgtNmBivo": [

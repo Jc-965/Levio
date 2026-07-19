@@ -63,6 +63,19 @@ void main() {
       },
     );
 
+    test('does not analyze frames containing multiple people', () {
+      final MotionCoachSession session = MotionCoachSession();
+      addTearDown(session.dispose);
+
+      session.beginRecording();
+      session.handleSample(_sample(timestampMs: 60, poseCount: 2));
+
+      final List<PoseFrame> frames = session.finishAndDrain();
+      expect(frames, hasLength(1));
+      expect(frames.single.landmarks, isNull);
+      expect(session.framingStatus, MotionFramingStatus.multiplePeople);
+    });
+
     test('distinguishes missing, cropped, and distant framing', () {
       expect(
         assessFraming(MotionPoseDetection.empty(timestampMs: 0)),
@@ -242,10 +255,15 @@ MotionPoseSample _sample({
   required int timestampMs,
   bool visible = true,
   bool hasPose = true,
+  int poseCount = 1,
 }) {
   return MotionPoseSample(
     detection: hasPose
-        ? _detection(timestampMs: timestampMs, visible: visible)
+        ? _detection(
+            timestampMs: timestampMs,
+            visible: visible,
+            poseCount: poseCount,
+          )
         : MotionPoseDetection.empty(timestampMs: timestampMs),
     frameWidth: 480,
     frameHeight: 640,
@@ -256,6 +274,7 @@ MotionPoseDetection _detection({
   required int timestampMs,
   bool visible = true,
   bool closeEnough = true,
+  int poseCount = 1,
 }) {
   final List<MotionPoseLandmark> normalized = List<MotionPoseLandmark>.generate(
     33,
@@ -289,6 +308,7 @@ MotionPoseDetection _detection({
     normalizedLandmarks: normalized,
     worldLandmarks: world,
     inferenceMs: 8,
+    poseCount: poseCount,
   );
 }
 

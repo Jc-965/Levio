@@ -98,7 +98,7 @@ class MotionCoachSession extends ChangeNotifier {
   }
 
   PoseFrame _toPoseFrame(MotionPoseDetection detection) {
-    if (!detection.hasCompletePose) {
+    if (detection.poseCount != 1 || !detection.hasCompletePose) {
       return PoseFrame(timestampMs: detection.timestampMs, landmarks: null);
     }
     final List<MotionPoseLandmark> normalized = detection.normalizedLandmarks!;

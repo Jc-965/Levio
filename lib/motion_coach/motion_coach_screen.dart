@@ -13,6 +13,7 @@ import 'motion_analysis.dart';
 import 'motion_capture_driver.dart';
 import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
+import 'motion_exercise_catalog.dart';
 
 typedef MotionCaptureDriverFactory = MotionCaptureDriver Function();
 
@@ -37,10 +38,12 @@ class MotionCoachScreen extends StatefulWidget {
     super.key,
     this.driverFactory,
     this.analyzer = const MotionCoachAnalyzer(),
+    this.exercise = seatedArmRaiseExercise,
   });
 
   final MotionCaptureDriverFactory? driverFactory;
   final MotionCoachAnalyzer analyzer;
+  final MotionExerciseDefinition exercise;
 
   @override
   State<MotionCoachScreen> createState() => _MotionCoachScreenState();
@@ -238,6 +241,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         frames: frames,
         width: width,
         height: height,
+        exercise: widget.exercise,
       );
       if (!mounted) {
         await _deleteVideo(videoPath);
@@ -374,14 +378,13 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Seated arm raise',
+                        widget.exercise.title,
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Sit facing the phone and move both arms out to the '
-                        'sides through a comfortable range.',
+                        widget.exercise.instructions,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: colors.textSecondary,
                           height: 1.4,
@@ -568,7 +571,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         'Move the phone a little closer and keep it steady.',
       MotionFramingStatus.ready =>
         _phase == _CapturePhase.recording
-            ? 'Complete 3–5 comfortable raises, then finish.'
+            ? 'Complete ${widget.exercise.recordingRepetitionLabel} '
+                  'comfortable raises, then finish.'
             : 'You’re in frame. Start when you feel ready.',
     };
     return ModernCard(

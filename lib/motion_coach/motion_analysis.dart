@@ -3,12 +3,10 @@ import 'dart:isolate';
 
 import 'package:motion_engine/motion_engine.dart';
 
+import 'motion_exercise_catalog.dart';
 import 'motion_pose_bridge.dart';
 
-const String motionCoachExerciseId = 'seated_bilateral_lateral_arm_raise';
 const String motionCoachEngineVersion = '0.2.0';
-const double motionCoachReferenceRomDeg = 68;
-const double motionCoachReferenceTempoS = 0.964;
 const bool motionCoachEnabled = bool.fromEnvironment(
   'PARKIWELL_MOTION_COACH',
   defaultValue: true,
@@ -24,35 +22,43 @@ String get motionPoseRuntime {
   return 'mediapipe_tasks_test';
 }
 
-ExerciseTemplate get motionCoachTemplate => ExerciseTemplate(
-  schemaVersion: 'exercise-template.v1',
-  templateVersion: 1,
-  exerciseId: motionCoachExerciseId,
-  poseContract: const PoseModelContract(
-    runtime: 'mediapipe_tasks',
-    model: motionPoseModelName,
-    version: motionPoseModelVersion,
-    coordinateSpace: 'mediapipe_world_3d',
-  ),
-  allowedOrientations: const <String>{'portrait'},
-  primarySignal: 'arm_elevation_mean',
-  requiredLandmarks: const <String>[
-    'left_shoulder',
-    'right_shoulder',
-    'left_wrist',
-    'right_wrist',
-    'left_hip',
-    'right_hip',
-  ],
-  referenceRomDeg: motionCoachReferenceRomDeg,
-  referenceTempoS: motionCoachReferenceTempoS,
-  confidencePolicy: const ConfidencePolicy(
-    visibilityThreshold: 0.6,
-    minimumSessionCoverage: 0.8,
-    minimumSamplingHz: 15,
-    maximumInterpolatedGapFrames: 3,
-  ),
-);
+ExerciseTemplate motionCoachTemplateFor(MotionExerciseDefinition exercise) =>
+    ExerciseTemplate(
+      schemaVersion: 'exercise-template.v1',
+      templateVersion: exercise.templateVersion,
+      exerciseId: exercise.exerciseId,
+      poseContract: const PoseModelContract(
+        runtime: 'mediapipe_tasks',
+        model: motionPoseModelName,
+        version: motionPoseModelVersion,
+        coordinateSpace: 'mediapipe_world_3d',
+      ),
+      allowedOrientations: const <String>{'portrait'},
+      primarySignal: switch (exercise.analysisKind) {
+        MotionAnalysisKind.bilateralLateralArmRaise => 'arm_elevation_mean',
+      },
+      requiredLandmarks: switch (exercise.analysisKind) {
+        MotionAnalysisKind.bilateralLateralArmRaise => const <String>[
+          'left_shoulder',
+          'right_shoulder',
+          'left_wrist',
+          'right_wrist',
+          'left_hip',
+          'right_hip',
+        ],
+      },
+      referenceRomDeg: exercise.referenceRomDegrees,
+      referenceTempoS: exercise.referenceTempoSeconds,
+      confidencePolicy: const ConfidencePolicy(
+        visibilityThreshold: 0.6,
+        minimumSessionCoverage: 0.8,
+        minimumSamplingHz: 15,
+        maximumInterpolatedGapFrames: 3,
+      ),
+    );
+
+ExerciseTemplate get motionCoachTemplate =>
+    motionCoachTemplateFor(seatedArmRaiseExercise);
 
 class MotionCoachAnalyzer {
   const MotionCoachAnalyzer();
@@ -62,12 +68,14 @@ class MotionCoachAnalyzer {
     required int width,
     required int height,
     String? runtime,
+    MotionExerciseDefinition exercise = seatedArmRaiseExercise,
   }) {
     final _AnalysisRequest request = _AnalysisRequest(
       frames: frames,
       width: width,
       height: height,
       runtime: runtime ?? motionPoseRuntime,
+      exercise: exercise,
     );
     return Isolate.run(() => _analyze(request));
   }
@@ -94,9 +102,10 @@ MotionAnalysisResult _analyze(_AnalysisRequest request) {
   return MotionAnalysisResult.fromDocument(
     analyzePoseStream(
       stream,
-      motionCoachTemplate,
+      motionCoachTemplateFor(request.exercise),
       engineVersion: motionCoachEngineVersion,
     ),
+    referenceRomDegrees: request.exercise.referenceRomDegrees,
   );
 }
 
@@ -106,12 +115,14 @@ class _AnalysisRequest {
     required this.width,
     required this.height,
     required this.runtime,
+    required this.exercise,
   });
 
   final List<PoseFrame> frames;
   final int width;
   final int height;
   final String runtime;
+  final MotionExerciseDefinition exercise;
 }
 
 class MotionAnalysisResult {
@@ -128,7 +139,10 @@ class MotionAnalysisResult {
     required this.sideRangeRatio,
   });
 
-  factory MotionAnalysisResult.fromDocument(AnalysisDocument document) {
+  factory MotionAnalysisResult.fromDocument(
+    AnalysisDocument document, {
+    required double referenceRomDegrees,
+  }) {
     final Map<String, Object?> session =
         document['session']! as Map<String, Object?>;
     final Map<String, Object?> metrics =
@@ -153,7 +167,7 @@ class MotionAnalysisResult {
       repCount: (repetitions['value'] as num?)?.toInt(),
       rangeDegrees: rangePercent == null
           ? null
-          : rangePercent * motionCoachReferenceRomDeg / 100,
+          : rangePercent * referenceRomDegrees / 100,
       tempoSeconds: (tempo['median'] as num?)?.toDouble(),
       sideRangeRatio: (side['value'] as num?)?.toDouble(),
     );

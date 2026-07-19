@@ -47,7 +47,7 @@
 		<false/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>ParkiWell needs access to your camera to take profile photos and record exercise videos.</string>
+	<string>ParkiWell uses your camera to take profile photos, record exercises, and provide optional on-device motion observations.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ParkiWell needs access to your microphone to record speech therapy exercises.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

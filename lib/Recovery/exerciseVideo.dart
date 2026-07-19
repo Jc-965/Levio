@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:parkiwell/motion_coach/motion_analysis.dart';
+import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/singleton.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -25,6 +29,9 @@ class ExerciseVideo extends StatefulWidget {
 }
 
 class _ExerciseVideoState extends State<ExerciseVideo> {
+  static const String _motionCoachConsentKey =
+      'motion_coach_mediapipe_consent_v1';
+
   final singleton = Singleton();
   final ImagePicker _picker = ImagePicker();
 
@@ -35,6 +42,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
 
   String? _recordedVideoPath;
   bool _isRecordingVideo = false;
+  bool _isMotionCoachOpening = false;
 
   bool get _hasRecording => _recordedVideoPath != null;
   String get _youtubeUrl =>
@@ -72,6 +80,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
   @override
   void dispose() {
     _recordingController?.dispose();
+    unawaited(_deleteRecordingFile(_recordedVideoPath));
     super.dispose();
   }
 
@@ -113,16 +122,28 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
 
   Future<void> _setRecording(String path) async {
     final previous = _recordingController;
+    final previousPath = _recordedVideoPath;
     final next = VideoPlayerController.file(File(path));
     await next.initialize();
     await next.setLooping(true);
 
     if (!mounted) {
       await next.dispose();
+      if (previousPath != path) {
+        await _deleteRecordingFile(path);
+      }
       return;
     }
 
     await previous?.dispose();
+    if (previousPath != path) {
+      await _deleteRecordingFile(previousPath);
+    }
+    if (!mounted) {
+      await next.dispose();
+      await _deleteRecordingFile(path);
+      return;
+    }
     setState(() {
       _recordedVideoPath = path;
       _recordingController = next;
@@ -183,14 +204,96 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     }
   }
 
-  void _clearRecording() {
+  Future<void> _clearRecording() async {
     HapticUtils.lightImpact();
     final controller = _recordingController;
+    final path = _recordedVideoPath;
     setState(() {
       _recordingController = null;
       _recordedVideoPath = null;
     });
-    controller?.dispose();
+    await controller?.dispose();
+    await _deleteRecordingFile(path);
+  }
+
+  Future<void> _deleteRecordingFile(String? path) async {
+    if (path == null) return;
+    final file = File(path);
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Future<void> _openMotionCoach() async {
+    if (_isMotionCoachOpening || kIsWeb) return;
+    HapticUtils.mediumImpact();
+    setState(() => _isMotionCoachOpening = true);
+    try {
+      if (!await _ensureMotionCoachConsent() || !mounted) return;
+      final outcome = await Navigator.of(context).push<MotionCoachOutcome>(
+        MaterialPageRoute<MotionCoachOutcome>(
+          builder: (_) => const MotionCoachScreen(),
+        ),
+      );
+      if (outcome == null || !mounted) return;
+      await _setRecording(outcome.videoPath);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Motion check added to your private recording.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: context.colors.success,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      HapticUtils.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Motion check could not open. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: context.colors.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isMotionCoachOpening = false);
+      }
+    }
+  }
+
+  Future<bool> _ensureMotionCoachConsent() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(_motionCoachConsentKey) == true) return true;
+    if (!mounted) return false;
+
+    final bool? accepted = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Motion check privacy'),
+        content: const Text(
+          'Your camera images, recording, and pose landmarks are processed '
+          'on this device. Google MediaPipe may receive performance and usage '
+          'metrics about its on-device API, but not your images, video, or '
+          'pose landmarks.\n\n'
+          'Motion check offers general movement observations. It is not a '
+          'diagnosis or medical assessment.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return false;
+    await preferences.setBool(_motionCoachConsentKey, true);
+    return true;
   }
 
   Future<int> _recordSession(DateTime completedAt) async {
@@ -221,17 +324,17 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
             children: [
               Text(
                 'Review your recording',
-                style: Theme.of(c).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  c,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
                 'Use the preview as a private self-check. ParkiWell does not score or diagnose your movement.',
                 style: Theme.of(c).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                      height: 1.45,
-                    ),
+                  color: colors.textSecondary,
+                  height: 1.45,
+                ),
               ),
               const SizedBox(height: 18),
               const _ReviewCue(
@@ -276,19 +379,25 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
           backgroundColor: colors.background,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          title: Text('Exercise',
-              style: TextStyle(
-                  color: colors.textPrimary, fontWeight: FontWeight.w600)),
+          title: Text(
+            'Exercise',
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         body: Container(
-            color: colors.background,
-            child: const Center(child: Text('Video not found'))),
+          color: colors.background,
+          child: const Center(child: Text('Video not found')),
+        ),
       );
     }
 
     final source = exerciseData.length > 3 ? exerciseData[3] : '';
-    final sessionCount =
-        singleton.exerciseSessionCountForVideo(singleton.currentURL);
+    final sessionCount = singleton.exerciseSessionCountForVideo(
+      singleton.currentURL,
+    );
 
     return TutorialOverlay(
       steps: const [],
@@ -309,9 +418,13 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
               }
             },
           ),
-          title: Text('Exercise',
-              style: TextStyle(
-                  color: colors.textPrimary, fontWeight: FontWeight.w600)),
+          title: Text(
+            'Exercise',
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           actions: [
             IconButton(
               tooltip: 'Open in YouTube',
@@ -338,8 +451,8 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                 Text(
                   exerciseData[0],
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ModernCard(
@@ -350,29 +463,29 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                     children: [
                       Text(
                         'Session focus',
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: colors.textTertiary,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: colors.textTertiary,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         exerciseData[1],
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: colors.textSecondary,
-                              height: 1.4,
-                            ),
+                          color: colors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                       if (source.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Text(
                           source,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colors.textTertiary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: colors.textTertiary,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                       ],
                     ],
@@ -391,9 +504,9 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                     Text(
                       'Guided movement session',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: colors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: colors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -415,8 +528,9 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                                 if (_isVideoLoading)
                                   Positioned.fill(
                                     child: ColoredBox(
-                                      color: colors.surface
-                                          .withValues(alpha: 0.92),
+                                      color: colors.surface.withValues(
+                                        alpha: 0.92,
+                                      ),
                                       child: Center(
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
@@ -458,22 +572,16 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                               kIsWeb
                                   ? 'Continue in YouTube'
                                   : 'Unable to load video in-app',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               kIsWeb
                                   ? 'Guided videos open in YouTube on the web. Your completion control stays here when you return.'
                                   : 'Open this exercise directly in YouTube.',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: colors.textSecondary),
                             ),
                             const SizedBox(height: 12),
                             if (kIsWeb)
@@ -511,6 +619,88 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                       ),
                 if (!kIsWeb) ...[
                   const SizedBox(height: 24),
+                  if (motionCoachEnabled && _videoId == 'AZV3_NfcpVs') ...[
+                    const SectionHeading(
+                      title: 'Motion check',
+                      description:
+                          'Try a short seated arm raise with private, on-device movement observations.',
+                    ),
+                    const SizedBox(height: 12),
+                    ModernCard(
+                      margin: EdgeInsets.zero,
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: colors.secondary.withValues(alpha: 0.08),
+                      border: Border.all(
+                        color: colors.secondary.withValues(alpha: 0.24),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: colors.secondary.withValues(
+                                    alpha: 0.14,
+                                  ),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: Icon(
+                                  Icons.accessibility_new_rounded,
+                                  color: colors.secondary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Seated bilateral arm raise',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Record 3–5 comfortable raises. Your '
+                                      'video and pose landmarks stay on this '
+                                      'device.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: colors.textSecondary,
+                                            height: 1.4,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ModernButton(
+                              text: 'Try motion check',
+                              icon: Icons.camera_alt_rounded,
+                              isLoading: _isMotionCoachOpening,
+                              onPressed: _openMotionCoach,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   const SectionHeading(
                     title: 'Practice recording',
                     description:
@@ -532,7 +722,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                         ModernIconButton(
                           icon: Icons.delete_outline_rounded,
                           backgroundColor: colors.error,
-                          onPressed: _clearRecording,
+                          onPressed: () => unawaited(_clearRecording()),
                         ),
                       ],
                     ],
@@ -547,12 +737,8 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                         children: [
                           Text(
                             'Your Recording',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 10),
                           ClipRRect(
@@ -644,9 +830,9 @@ class _ReviewCue extends StatelessWidget {
           child: Text(
             text,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textPrimary,
-                  height: 1.4,
-                ),
+              color: colors.textPrimary,
+              height: 1.4,
+            ),
           ),
         ),
       ],

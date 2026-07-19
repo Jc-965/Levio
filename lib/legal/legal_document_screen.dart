@@ -2,18 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-enum LegalDocumentType {
-  termsOfService,
-  privacyPolicy,
-}
+enum LegalDocumentType { termsOfService, privacyPolicy }
 
 class LegalDocumentScreen extends StatelessWidget {
   final LegalDocumentType type;
 
-  const LegalDocumentScreen({
-    super.key,
-    required this.type,
-  });
+  const LegalDocumentScreen({super.key, required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +24,10 @@ class LegalDocumentScreen extends StatelessWidget {
           type == LegalDocumentType.termsOfService
               ? 'Terms of Service'
               : 'Privacy Policy',
-          style:
-              TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Container(
@@ -45,17 +41,17 @@ class LegalDocumentScreen extends StatelessWidget {
               children: [
                 Text(
                   section.title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   section.body,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                        height: 1.55,
-                      ),
+                    color: colors.textSecondary,
+                    height: 1.55,
+                  ),
                 ),
               ],
             );
@@ -70,10 +66,7 @@ class LegalDocumentScreen extends StatelessWidget {
   List<_LegalSection> _sectionsFor(LegalDocumentType type) {
     if (type == LegalDocumentType.termsOfService) {
       return const [
-        _LegalSection(
-          title: 'Effective Date',
-          body: 'July 16, 2026',
-        ),
+        _LegalSection(title: 'Effective Date', body: 'July 18, 2026'),
         _LegalSection(
           title: 'Agreement to These Terms',
           body:
@@ -82,7 +75,7 @@ class LegalDocumentScreen extends StatelessWidget {
         _LegalSection(
           title: 'Medical Disclaimer',
           body:
-              'ParkiWell is an organizational and educational tool. It is not a medical device and does not provide medical advice, diagnosis, monitoring, or treatment. Trends, insights, charts, and guided videos are for general information only and are not a substitute for the judgment of a qualified healthcare professional. Never disregard, delay, or change medical care because of anything recorded in or shown by the app. Decisions about medications, therapy, and exercise belong with you and your care team.',
+              'ParkiWell is an organizational and educational tool. It is not a medical device and does not provide medical advice, diagnosis, monitoring, or treatment. Trends, insights, charts, guided videos, and optional camera-based movement observations are for general information only and are not a substitute for the judgment of a qualified healthcare professional. Never disregard, delay, or change medical care because of anything recorded in or shown by the app. Decisions about medications, therapy, and exercise belong with you and your care team.',
         ),
         _LegalSection(
           title: 'Emergencies',
@@ -153,14 +146,11 @@ class LegalDocumentScreen extends StatelessWidget {
     }
 
     return const [
-      _LegalSection(
-        title: 'Effective Date',
-        body: 'July 16, 2026',
-      ),
+      _LegalSection(title: 'Effective Date', body: 'July 18, 2026'),
       _LegalSection(
         title: 'Summary',
         body:
-            'ParkiWell works local-first: your records live in private storage on your device and remain usable offline. Cloud sync is optional and happens only when you sign in. We do not sell personal data, show ads, track you across apps, or run remote analytics or crash reporting. Practice recordings never leave your device, and you can delete your account and synced data in-app at any time.',
+            'ParkiWell works local-first: your records live in private storage on your device and remain usable offline. Cloud sync is optional and happens only when you sign in. We do not sell personal data, show ads, track you across apps, or operate remote analytics or crash reporting. The optional motion check uses Google MediaPipe, which sends API performance and utilization metrics to Google but does not send your camera input. Practice recordings never leave your device, and you can delete your account and synced data in-app at any time.',
       ),
       _LegalSection(
         title: 'Information You Provide',
@@ -170,17 +160,17 @@ class LegalDocumentScreen extends StatelessWidget {
       _LegalSection(
         title: 'What Stays on Your Device',
         body:
-            'Practice videos you record (up to three minutes, using the camera and microphone) are stored only on your device and are never uploaded. Trends, streaks, and pattern insights are computed locally from your own records. Routine diagnostic logs stay on the device and are not sent to any remote service.',
+            'Practice videos you record (up to three minutes, using the camera and microphone) are stored only on your device and are never uploaded. During an optional motion check, camera images and pose landmarks are processed on-device; the temporary landmark stream is discarded after analysis and is not uploaded or stored. Trends, streaks, pattern insights, and motion observations are computed locally from your own records. Routine diagnostic logs stay on the device and are not sent to any remote service.',
       ),
       _LegalSection(
         title: 'What We Do Not Collect',
         body:
-            'No location data, contacts, files, or browsing history. No advertising identifiers and no cross-app tracking. No biometric identifiers. No data from HealthKit, Health Connect, or wearables. No background recording of any kind.',
+            'No location data, contacts, files, or browsing history. No advertising identifiers and no cross-app tracking. We do not use camera images or pose landmarks to identify you. No data from HealthKit, Health Connect, or wearables. No background recording of any kind.',
       ),
       _LegalSection(
         title: 'How We Use Data',
         body:
-            'Only to provide app features (tracking, schedules, charts, streaks, community), sync your records across devices when you use an account, authenticate you and process email verification and password resets, moderate the community for safety, and respond to support requests. Your data is not used for advertising, marketing profiles, or model training, and it is never sold.',
+            'Only to provide app features (tracking, schedules, charts, streaks, community, and optional on-device motion observations), sync your records across devices when you use an account, authenticate you and process email verification and password resets, moderate the community for safety, and respond to support requests. Your content and health records are not used for advertising, marketing profiles, or model training, and they are never sold.',
       ),
       _LegalSection(
         title: 'Where Data Is Stored',
@@ -190,7 +180,7 @@ class LegalDocumentScreen extends StatelessWidget {
       _LegalSection(
         title: 'Sharing',
         body:
-            'We do not sell personal data or share it with advertisers or data brokers. Service providers (Supabase for hosting and authentication; Google if you choose Google sign-in) process data only to provide the service. Recovery videos are embedded from YouTube, which may collect data under its own policy when a video loads. We may disclose information if required by law.',
+            'We do not sell personal data or share it with advertisers or data brokers. Service providers include Supabase for hosting and authentication and Google when you choose Google sign-in or use MediaPipe motion check. MediaPipe processes camera input on-device and sends Google API performance and utilization metrics, not images, video, or pose landmarks. Recovery videos are embedded from YouTube, which may collect data under its own policy when a video loads. We may disclose information if required by law.',
       ),
       _LegalSection(
         title: 'Community Visibility',
@@ -225,7 +215,7 @@ class LegalDocumentScreen extends StatelessWidget {
       _LegalSection(
         title: 'Device Permissions',
         body:
-            'Camera (practice recordings and profile photos), microphone (audio in practice recordings), and photo library (profile picture) are all optional — denying a permission disables only that feature. The app works fully offline; network access is used only for optional sync, community, and embedded videos.',
+            'Camera (practice recordings, optional on-device motion check, and profile photos), microphone (audio in practice recordings), and photo library (profile picture) are all optional — denying a permission disables only that feature. Core local features work offline. Network access is used for optional sync, community, embedded videos, and MediaPipe API performance and utilization metrics after you choose to use motion check.',
       ),
       _LegalSection(
         title: 'Changes and Contact',
@@ -240,8 +230,5 @@ class _LegalSection {
   final String title;
   final String body;
 
-  const _LegalSection({
-    required this.title,
-    required this.body,
-  });
+  const _LegalSection({required this.title, required this.body});
 }

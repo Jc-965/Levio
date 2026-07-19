@@ -49,7 +49,7 @@ android {
 
     defaultConfig {
         applicationId "com.parkiwell.app"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 24
         targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -91,6 +91,7 @@ flutter {
 
 dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'com.google.mediapipe:tasks-vision:0.10.35'
     // Flutter's PlayStoreDeferredComponentManager still links against the
     // monolithic Play Core task types in the current stable engine.
     implementation 'com.google.android.play:core:1.10.3'

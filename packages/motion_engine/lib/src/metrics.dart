@@ -80,6 +80,7 @@ Map<String, Object?> analyzeArmRaiseSession({
   base['metrics'] = _summarizeMetrics(
     left,
     right,
+    timestampsMs,
     repetitions,
     referenceRomDeg: referenceRomDeg,
     sessionCoverage: coverage.coverage,
@@ -141,6 +142,7 @@ List<RepBoundary> selectBilateralArmRaiseReps({
 Map<String, Object?> _summarizeMetrics(
   List<double> left,
   List<double> right,
+  List<num> timestampsMs,
   List<RepBoundary> repetitions, {
   required double referenceRomDeg,
   required double sessionCoverage,
@@ -165,6 +167,9 @@ Map<String, Object?> _summarizeMetrics(
           _emptyAggregate(<String>[ReasonCode.noCompleteReps.serialized]),
       'symmetry_lr_rom_ratio':
           _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]),
+      'amplitude_sequence_last_first_ratio':
+          _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]),
+      'repetitions': <Map<String, Object?>>[],
     };
   }
 
@@ -191,11 +196,13 @@ Map<String, Object?> _summarizeMetrics(
   final Map<String, Object?> rom = _aggregate(romPercent, count);
   final Map<String, Object?> tempo = _aggregate(tempos, count);
   final Map<String, Object?> symmetry = _numberSummary(sideRatios, count);
+  final Map<String, Object?> sequence = _amplitudeSequenceSummary(repetitions);
   if (!completeTracking) {
     for (final Map<String, Object?> metric in <Map<String, Object?>>[
       rom,
       tempo,
-      symmetry
+      symmetry,
+      sequence,
     ]) {
       _downgradeForIncompleteTracking(metric);
     }
@@ -205,6 +212,108 @@ Map<String, Object?> _summarizeMetrics(
     'arm_elevation_rom_pct': rom,
     'tempo_s': tempo,
     'symmetry_lr_rom_ratio': symmetry,
+    'amplitude_sequence_last_first_ratio': sequence,
+    'repetitions': _serializeRepetitions(
+      left,
+      right,
+      timestampsMs,
+      repetitions,
+      referenceRomDeg: referenceRomDeg,
+      completeTracking: completeTracking,
+    ),
+  };
+}
+
+Map<String, Object?> _amplitudeSequenceSummary(
+  List<RepBoundary> repetitions,
+) {
+  if (repetitions.length < 3) {
+    return _emptyNumber(
+      <String>[ReasonCode.insufficientRepsForSequence.serialized],
+    );
+  }
+  final double first = repetitions.first.amplitudeDeg;
+  if (first <= 0) {
+    return _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]);
+  }
+  return <String, Object?>{
+    'value': repetitions.last.amplitudeDeg / first,
+    'confidence': ConfidenceLevel.high.serialized,
+    'reason_codes': <String>[],
+  };
+}
+
+List<Map<String, Object?>> _serializeRepetitions(
+  List<double> left,
+  List<double> right,
+  List<num> timestampsMs,
+  List<RepBoundary> repetitions, {
+  required double referenceRomDeg,
+  required bool completeTracking,
+}) {
+  if (repetitions.isEmpty) {
+    return <Map<String, Object?>>[];
+  }
+  final double originMs = timestampsMs.first.toDouble();
+  final String confidence = completeTracking
+      ? ConfidenceLevel.high.serialized
+      : ConfidenceLevel.partial.serialized;
+  final List<String> reasons = completeTracking
+      ? <String>[]
+      : <String>[ReasonCode.incompleteSessionTracking.serialized];
+  return <Map<String, Object?>>[
+    for (int index = 0; index < repetitions.length; index += 1)
+      _serializeRepetition(
+        index + 1,
+        repetitions[index],
+        left,
+        right,
+        timestampsMs,
+        originMs: originMs,
+        referenceRomDeg: referenceRomDeg,
+        confidence: confidence,
+        reasons: reasons,
+      ),
+  ];
+}
+
+Map<String, Object?> _serializeRepetition(
+  int index,
+  RepBoundary repetition,
+  List<double> left,
+  List<double> right,
+  List<num> timestampsMs, {
+  required double originMs,
+  required double referenceRomDeg,
+  required String confidence,
+  required List<String> reasons,
+}) {
+  final List<double> leftSegment = left.sublist(
+    repetition.startIndex,
+    repetition.endIndex + 1,
+  );
+  final List<double> rightSegment = right.sublist(
+    repetition.startIndex,
+    repetition.endIndex + 1,
+  );
+  final double leftRom = _range(leftSegment);
+  final double rightRom = _range(rightSegment);
+  final double larger = leftRom > rightRom ? leftRom : rightRom;
+  return <String, Object?>{
+    'index': index,
+    'start_s':
+        (timestampsMs[repetition.startIndex].toDouble() - originMs) / 1000,
+    'peak_s': (timestampsMs[repetition.peakIndex].toDouble() - originMs) / 1000,
+    'end_s': (timestampsMs[repetition.endIndex].toDouble() - originMs) / 1000,
+    'rom_deg': repetition.amplitudeDeg,
+    'rom_pct_of_reference': 100 * repetition.amplitudeDeg / referenceRomDeg,
+    'tempo_s': repetition.durationS,
+    'left_rom_deg': leftRom,
+    'right_rom_deg': rightRom,
+    'symmetry_lr_rom_ratio':
+        larger > 0 ? (leftRom < rightRom ? leftRom : rightRom) / larger : null,
+    'confidence': confidence,
+    'reason_codes': List<String>.from(reasons),
   };
 }
 
@@ -281,6 +390,12 @@ Map<String, Object?> _abstainedMetrics(List<String> reasons) =>
         'confidence': ConfidenceLevel.insufficient.serialized,
         'reason_codes': reasons,
       },
+      'amplitude_sequence_last_first_ratio': <String, Object?>{
+        'value': null,
+        'confidence': ConfidenceLevel.insufficient.serialized,
+        'reason_codes': reasons,
+      },
+      'repetitions': <Map<String, Object?>>[],
     };
 
 Map<String, Object?> _emptyAggregate(List<String> reasons) => <String, Object?>{

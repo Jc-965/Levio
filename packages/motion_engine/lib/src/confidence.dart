@@ -17,6 +17,7 @@ enum ReasonCode {
   noFrames('no_frames'),
   noCompleteReps('no_complete_reps'),
   singleRep('single_rep'),
+  insufficientRepsForSequence('insufficient_reps_for_sequence'),
   partialSideFeatureCoverage('partial_side_feature_coverage'),
   noValidSideFeatures('no_valid_side_features'),
   lowSamplingRate('low_sampling_rate'),

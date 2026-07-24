@@ -85,6 +85,8 @@ class MotionCoachResultsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 if (!setupHelp) ...[
+                  _EvidenceReportCard(result: result),
+                  const SizedBox(height: 14),
                   _ObservationCard(
                     icon: Icons.repeat_rounded,
                     title: 'Complete raises',
@@ -98,7 +100,10 @@ class MotionCoachResultsScreen extends StatelessWidget {
                       title: 'Observed arm range',
                       value: '${result.rangeDegrees!.round()}°',
                       detail:
-                          'Median change in arm elevation during complete raises.',
+                          'Median change in arm elevation during complete raises'
+                          '${result.rangePercentOfReference == null ? '.' : ' — '
+                                    '${result.rangePercentOfReference!.round()}% of '
+                                    'this exercise reference.'}',
                     ),
                   if (result.rangeDegrees != null) const SizedBox(height: 10),
                   if (result.tempoSeconds != null)
@@ -117,6 +122,20 @@ class MotionCoachResultsScreen extends StatelessWidget {
                       detail:
                           'Smaller observed arm range divided by the larger range.',
                     ),
+                  if (result.sequenceSummary != null) ...[
+                    const SizedBox(height: 10),
+                    _ObservationCard(
+                      icon: Icons.trending_flat_rounded,
+                      title: 'First-to-last range',
+                      value:
+                          '${result.repetitions.first.romDegrees.round()}° → '
+                          '${result.repetitions.last.romDegrees.round()}°',
+                      detail:
+                          '${(result.amplitudeSequenceLastFirstRatio! * 100).round()}% '
+                          'last-to-first. This is a camera observation, not a '
+                          'fatigue score.',
+                    ),
+                  ],
                   const SizedBox(height: 14),
                 ],
                 ModernCard(
@@ -174,6 +193,64 @@ class MotionCoachResultsScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EvidenceReportCard extends StatelessWidget {
+  const _EvidenceReportCard({required this.result});
+
+  final MotionAnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ModernCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.notes_rounded, color: colors.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Practice summary',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            result.evidenceSummary,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          if (result.sequenceSummary case final String sequence) ...[
+            const SizedBox(height: 10),
+            Text(
+              sequence,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            result.measurementLimits,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.textTertiary,
+              height: 1.45,
+            ),
+          ),
+        ],
       ),
     );
   }

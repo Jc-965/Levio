@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:parkiwell/motion_coach/motion_capture_driver.dart';
 import 'package:parkiwell/motion_coach/motion_coach_results_screen.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/motion_coach/motion_coach_session.dart';
+import 'package:parkiwell/motion_coach/motion_cue_speaker.dart';
 import 'package:parkiwell/motion_coach/motion_pose_bridge.dart';
 import 'package:parkiwell/theme/app_theme.dart';
 
@@ -76,6 +79,40 @@ void main() {
       expect(session.framingStatus, MotionFramingStatus.multiplePeople);
     });
 
+    test('counts a live rep and exposes an allowlisted cue', () {
+      final MotionCoachSession session = MotionCoachSession(
+        liveCoach: LiveArmRaiseCoach(
+          const LiveArmRaiseConfig(referenceRomDeg: 80, referenceTempoS: 1),
+        ),
+      );
+      addTearDown(session.dispose);
+      session.beginRecording();
+      const List<double> phase = <double>[
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1,
+        0.75,
+        0.5,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+      ];
+      for (int index = 0; index < phase.length; index += 1) {
+        session.handleSample(
+          _motionSampleForAngle(10 + 40 * phase[index], index * 100),
+        );
+      }
+
+      expect(session.liveRepCount, 1);
+      expect(session.liveCue, LiveCueKind.comfortableRange);
+      expect(session.liveCue!.text, contains('If comfortable'));
+      expect(session.maximumDecisionMicros, lessThan(100000));
+    });
+
     test('distinguishes missing, cropped, and distant framing', () {
       expect(
         assessFraming(MotionPoseDetection.empty(timestampMs: 0)),
@@ -143,6 +180,76 @@ void main() {
     expect(result.repCount, isNull);
   });
 
+  test('parses per-repetition evidence from the vendored engine', () {
+    final List<double> signal = <double>[
+      10,
+      30,
+      50,
+      70,
+      90,
+      70,
+      50,
+      30,
+      10,
+      26,
+      42,
+      58,
+      74,
+      58,
+      42,
+      26,
+      10,
+      22,
+      34,
+      46,
+      58,
+      46,
+      34,
+      22,
+      10,
+    ];
+    final AnalysisDocument document = analyzeArmRaiseSession(
+      features: <String, List<double>>{
+        'arm_elevation_mean': signal,
+        'arm_elevation_l': signal,
+        'arm_elevation_r': signal,
+      },
+      timestampsMs: <int>[
+        for (int index = 0; index < signal.length; index += 1) index * 100,
+      ],
+      coverage: CoverageAssessment(
+        level: ConfidenceLevel.high,
+        coverage: 1,
+        validFrames: signal.length,
+        totalFrames: signal.length,
+        reasons: const <ReasonCode>[],
+      ),
+      exerciseId: 'seated_bilateral_lateral_arm_raise',
+      templateVersion: 1,
+      referenceRomDeg: 80,
+      referenceTempoS: 0.8,
+      engineVersion: 'test',
+      provenance: const <String, Object?>{},
+    );
+
+    final MotionAnalysisResult result = MotionAnalysisResult.fromDocument(
+      document,
+      referenceRomDegrees: 80,
+      referenceTempoSeconds: 0.8,
+    );
+
+    expect(result.repCount, 3);
+    expect(result.repetitions, hasLength(3));
+    expect(result.repetitions.first.romDegrees, closeTo(80, 1e-9));
+    expect(result.repetitions.last.romDegrees, closeTo(48, 1e-9));
+    expect(result.amplitudeSequenceLastFirstRatio, closeTo(0.6, 1e-9));
+    expect(
+      result.sequenceSummary,
+      contains('first complete raise measured 80°'),
+    );
+    expect(result.sequenceSummary, contains('last measured 48°'));
+  });
+
   group('MotionCoachResultsScreen', () {
     testWidgets('shows setup help without unreliable observations', (
       WidgetTester tester,
@@ -177,8 +284,54 @@ void main() {
             confidence: 'high',
             repCount: 3,
             rangeDegrees: 64.4,
+            rangePercentOfReference: 94.7,
             tempoSeconds: 1.12,
             sideRangeRatio: 0.91,
+            amplitudeSequenceLastFirstRatio: 0.8,
+            repetitions: const <MotionRepObservation>[
+              MotionRepObservation(
+                index: 1,
+                startSeconds: 0,
+                peakSeconds: 0.5,
+                endSeconds: 1,
+                romDegrees: 70,
+                romPercentOfReference: 103,
+                tempoSeconds: 1,
+                leftRomDegrees: 72,
+                rightRomDegrees: 68,
+                sideRangeRatio: 0.94,
+                confidence: 'high',
+                reasonCodes: <String>[],
+              ),
+              MotionRepObservation(
+                index: 2,
+                startSeconds: 1,
+                peakSeconds: 1.5,
+                endSeconds: 2,
+                romDegrees: 64,
+                romPercentOfReference: 94,
+                tempoSeconds: 1,
+                leftRomDegrees: 66,
+                rightRomDegrees: 62,
+                sideRangeRatio: 0.94,
+                confidence: 'high',
+                reasonCodes: <String>[],
+              ),
+              MotionRepObservation(
+                index: 3,
+                startSeconds: 2,
+                peakSeconds: 2.5,
+                endSeconds: 3,
+                romDegrees: 56,
+                romPercentOfReference: 82,
+                tempoSeconds: 1,
+                leftRomDegrees: 58,
+                rightRomDegrees: 54,
+                sideRangeRatio: 0.93,
+                confidence: 'high',
+                reasonCodes: <String>[],
+              ),
+            ],
           ),
         ),
       );
@@ -189,6 +342,14 @@ void main() {
       expect(find.text('64°'), findsOneWidget);
       expect(find.text('1.1 sec'), findsOneWidget);
       expect(find.text('91%'), findsOneWidget);
+      expect(find.text('Practice summary'), findsOneWidget);
+      expect(
+        find.textContaining('95% of this exercise reference'),
+        findsWidgets,
+      );
+      expect(find.text('70° → 56°'), findsOneWidget);
+      expect(find.textContaining('not a fatigue score'), findsOneWidget);
+      expect(find.textContaining('stop if you feel pain'), findsOneWidget);
       expect(find.text('Use this result'), findsOneWidget);
     });
   });
@@ -210,6 +371,58 @@ void main() {
       expect(find.textContaining('allow Camera access'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
       expect(driver.disposeCalls, 1);
+    });
+
+    testWidgets('shows a large live cue and completed-rep count', (
+      WidgetTester tester,
+    ) async {
+      final _FakeMotionCaptureDriver driver = _FakeMotionCaptureDriver();
+      final _FakeMotionCueSpeaker speaker = _FakeMotionCueSpeaker();
+      await _pumpApp(
+        tester,
+        MotionCoachScreen(driverFactory: () => driver, cueSpeaker: speaker),
+      );
+      await tester.pumpAndSettle();
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(_sample(timestampMs: index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start movement'));
+      await tester.tap(find.text('Start movement'));
+      await tester.pumpAndSettle();
+
+      const List<double> phase = <double>[
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1,
+        0.75,
+        0.5,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+      ];
+      for (int index = 0; index < phase.length; index += 1) {
+        driver.emit(
+          _motionSampleForAngle(10 + 32 * phase[index], 400 + index * 100),
+        );
+      }
+      await tester.pump();
+
+      expect(find.text('1 complete'), findsOneWidget);
+      expect(
+        find.text('If comfortable, make the next raise a little larger.'),
+        findsWidgets,
+      );
+      expect(speaker.spoken, <String>[
+        'If comfortable, make the next raise a little larger.',
+      ]);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(speaker.disposed, isTrue);
     });
 
     testWidgets(
@@ -265,6 +478,71 @@ MotionPoseSample _sample({
             poseCount: poseCount,
           )
         : MotionPoseDetection.empty(timestampMs: timestampMs),
+    frameWidth: 480,
+    frameHeight: 640,
+  );
+}
+
+MotionPoseSample _motionSampleForAngle(double angleDegrees, int timestampMs) {
+  final MotionPoseDetection base = _detection(timestampMs: timestampMs);
+  final List<MotionPoseLandmark> world = List<MotionPoseLandmark>.generate(
+    33,
+    (_) =>
+        const MotionPoseLandmark(x: 0, y: 0, z: 0, visibility: 1, presence: 1),
+  );
+  const MotionPoseLandmark leftShoulder = MotionPoseLandmark(
+    x: -0.2,
+    y: -0.5,
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  const MotionPoseLandmark rightShoulder = MotionPoseLandmark(
+    x: 0.2,
+    y: -0.5,
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  final double radians = angleDegrees * math.pi / 180;
+  world[11] = leftShoulder;
+  world[12] = rightShoulder;
+  world[15] = MotionPoseLandmark(
+    x: leftShoulder.x - math.sin(radians),
+    y: leftShoulder.y + math.cos(radians),
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  world[16] = MotionPoseLandmark(
+    x: rightShoulder.x + math.sin(radians),
+    y: rightShoulder.y + math.cos(radians),
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  world[23] = const MotionPoseLandmark(
+    x: -0.2,
+    y: 0,
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  world[24] = const MotionPoseLandmark(
+    x: 0.2,
+    y: 0,
+    z: 0,
+    visibility: 1,
+    presence: 1,
+  );
+  return MotionPoseSample(
+    detection: MotionPoseDetection(
+      timestampMs: timestampMs,
+      normalizedLandmarks: base.normalizedLandmarks,
+      worldLandmarks: world,
+      inferenceMs: 8,
+      poseCount: 1,
+    ),
     frameWidth: 480,
     frameHeight: 640,
   );
@@ -327,8 +605,11 @@ MotionAnalysisResult _result({
   List<String> reasons = const <String>[],
   int? repCount,
   double? rangeDegrees,
+  double? rangePercentOfReference,
   double? tempoSeconds,
   double? sideRangeRatio,
+  double? amplitudeSequenceLastFirstRatio,
+  List<MotionRepObservation> repetitions = const <MotionRepObservation>[],
 }) {
   return MotionAnalysisResult(
     document: const <String, Object?>{},
@@ -339,8 +620,13 @@ MotionAnalysisResult _result({
     durationSeconds: 4,
     repCount: repCount,
     rangeDegrees: rangeDegrees,
+    rangePercentOfReference: rangePercentOfReference,
     tempoSeconds: tempoSeconds,
     sideRangeRatio: sideRangeRatio,
+    amplitudeSequenceLastFirstRatio: amplitudeSequenceLastFirstRatio,
+    repetitions: repetitions,
+    referenceRomDegrees: 68,
+    referenceTempoSeconds: 0.964,
   );
 }
 
@@ -396,5 +682,26 @@ class _FakeMotionCaptureDriver implements MotionCaptureDriver {
   Future<void> dispose() async {
     disposeCalls += 1;
     _initialized = false;
+  }
+}
+
+class _FakeMotionCueSpeaker implements MotionCueSpeaker {
+  final List<String> spoken = <String>[];
+  bool disposed = false;
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> speak(String text) async {
+    spoken.add(text);
+  }
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
   }
 }

@@ -26,14 +26,14 @@ boundary.
 final result = analyzePoseStream(
   PoseStream.fromJson(poseStreamJson),
   ExerciseTemplate.fromJson(exerciseTemplateJson),
-  engineVersion: '0.2.0',
+  engineVersion: '0.3.0',
 );
 
 // A convenience boundary is also available when both inputs are JSON maps.
 final jsonResult = analyzePoseDocuments(
   poseStreamJson,
   exerciseTemplateJson,
-  engineVersion: '0.2.0',
+  engineVersion: '0.3.0',
 );
 ```
 

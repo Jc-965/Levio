@@ -28,6 +28,17 @@ class MotionPoseSample {
 }
 
 class MotionCoachSession extends ChangeNotifier {
+  MotionCoachSession({LiveArmRaiseCoach? liveCoach})
+    : _liveCoach =
+          liveCoach ??
+          LiveArmRaiseCoach(
+            const LiveArmRaiseConfig(
+              referenceRomDeg: 68,
+              referenceTempoS: 0.964,
+            ),
+          );
+
+  final LiveArmRaiseCoach _liveCoach;
   final List<PoseFrame> _frames = <PoseFrame>[];
   int _goodFramingFrames = 0;
   int _badFramingFrames = 0;
@@ -37,6 +48,13 @@ class MotionCoachSession extends ChangeNotifier {
   int _frameWidth = 1;
   int _frameHeight = 1;
   MotionFramingStatus _framingStatus = MotionFramingStatus.lookingForPerson;
+  LiveCueKind? _liveCue;
+  int? _liveCueTimestampMs;
+  int _liveRepCount = 0;
+  int _liveRepSerial = 0;
+  int _liveCueSerial = 0;
+  int _lastDecisionMicros = 0;
+  int _maximumDecisionMicros = 0;
 
   bool get isRecording => _recording;
   bool get isReady => _ready;
@@ -44,6 +62,12 @@ class MotionCoachSession extends ChangeNotifier {
   int get frameWidth => _frameWidth;
   int get frameHeight => _frameHeight;
   MotionFramingStatus get framingStatus => _framingStatus;
+  LiveCueKind? get liveCue => _liveCue;
+  int get liveRepCount => _liveRepCount;
+  int get liveRepSerial => _liveRepSerial;
+  int get liveCueSerial => _liveCueSerial;
+  int get lastDecisionMicros => _lastDecisionMicros;
+  int get maximumDecisionMicros => _maximumDecisionMicros;
 
   void handleSample(MotionPoseSample sample) {
     _frameWidth = math.max(1, sample.frameWidth);
@@ -65,7 +89,36 @@ class MotionCoachSession extends ChangeNotifier {
 
     if (_recording && sample.detection.timestampMs > _lastTimestampMs) {
       _lastTimestampMs = sample.detection.timestampMs;
-      _frames.add(_toPoseFrame(sample.detection));
+      final PoseFrame frame = _toPoseFrame(sample.detection);
+      _frames.add(frame);
+      final Stopwatch decisionClock = Stopwatch()..start();
+      final LiveCoachDecision? decision = _liveCoach.addFrame(frame);
+      decisionClock.stop();
+      _lastDecisionMicros = decisionClock.elapsedMicroseconds;
+      _maximumDecisionMicros = math.max(
+        _maximumDecisionMicros,
+        _lastDecisionMicros,
+      );
+      if (decision != null) {
+        _liveRepCount = decision.repetition.index;
+        _liveRepSerial += 1;
+        if (decision.cue case final LiveCueKind cue) {
+          _liveCue = cue;
+          _liveCueTimestampMs = sample.detection.timestampMs;
+          _liveCueSerial += 1;
+        }
+      }
+      if (frame.landmarks == null ||
+          _liveCoach.phase != LiveArmRaisePhase.idle) {
+        _liveCue = null;
+        _liveCueTimestampMs = null;
+      }
+      final int? cueTimestamp = _liveCueTimestampMs;
+      if (cueTimestamp != null &&
+          sample.detection.timestampMs - cueTimestamp >= 4000) {
+        _liveCue = null;
+        _liveCueTimestampMs = null;
+      }
     }
     notifyListeners();
   }
@@ -73,6 +126,7 @@ class MotionCoachSession extends ChangeNotifier {
   void beginRecording() {
     _frames.clear();
     _lastTimestampMs = -1;
+    _resetLiveCoach();
     _recording = true;
     notifyListeners();
   }
@@ -82,6 +136,8 @@ class MotionCoachSession extends ChangeNotifier {
     final List<PoseFrame> result = List<PoseFrame>.unmodifiable(_frames);
     _frames.clear();
     _lastTimestampMs = -1;
+    _liveCue = null;
+    _liveCueTimestampMs = null;
     notifyListeners();
     return result;
   }
@@ -94,7 +150,19 @@ class MotionCoachSession extends ChangeNotifier {
     _badFramingFrames = 0;
     _lastTimestampMs = -1;
     _framingStatus = MotionFramingStatus.lookingForPerson;
+    _resetLiveCoach();
     notifyListeners();
+  }
+
+  void _resetLiveCoach() {
+    _liveCoach.reset();
+    _liveCue = null;
+    _liveCueTimestampMs = null;
+    _liveRepCount = 0;
+    _liveRepSerial = 0;
+    _liveCueSerial = 0;
+    _lastDecisionMicros = 0;
+    _maximumDecisionMicros = 0;
   }
 
   PoseFrame _toPoseFrame(MotionPoseDetection detection) {

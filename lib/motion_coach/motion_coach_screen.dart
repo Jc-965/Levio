@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:motion_engine/motion_engine.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
@@ -13,6 +14,7 @@ import 'motion_analysis.dart';
 import 'motion_capture_driver.dart';
 import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
+import 'motion_cue_speaker.dart';
 import 'motion_exercise_catalog.dart';
 
 typedef MotionCaptureDriverFactory = MotionCaptureDriver Function();
@@ -39,11 +41,13 @@ class MotionCoachScreen extends StatefulWidget {
     this.driverFactory,
     this.analyzer = const MotionCoachAnalyzer(),
     this.exercise = seatedArmRaiseExercise,
+    this.cueSpeaker,
   });
 
   final MotionCaptureDriverFactory? driverFactory;
   final MotionCoachAnalyzer analyzer;
   final MotionExerciseDefinition exercise;
+  final MotionCueSpeaker? cueSpeaker;
 
   @override
   State<MotionCoachScreen> createState() => _MotionCoachScreenState();
@@ -53,7 +57,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     with WidgetsBindingObserver {
   static const Duration _maximumDuration = Duration(minutes: 3);
 
-  final MotionCoachSession _session = MotionCoachSession();
+  late final MotionCoachSession _session;
+  late final MotionCueSpeaker _cueSpeaker;
   final Stopwatch _recordingClock = Stopwatch();
   MotionCaptureDriver? _driver;
   Timer? _timer;
@@ -62,6 +67,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   String _errorTitle = 'Motion check is unavailable';
   String _errorBody = 'Please try again.';
   int _generation = 0;
+  int _handledLiveRepSerial = 0;
+  int _handledLiveCueSerial = 0;
+  LiveCueKind? _spokenCue;
 
   bool get _isBusy =>
       _phase == _CapturePhase.recording || _phase == _CapturePhase.analyzing;
@@ -69,8 +77,18 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   @override
   void initState() {
     super.initState();
+    _session = MotionCoachSession(
+      liveCoach: LiveArmRaiseCoach(
+        LiveArmRaiseConfig(
+          referenceRomDeg: widget.exercise.referenceRomDegrees,
+          referenceTempoS: widget.exercise.referenceTempoSeconds,
+        ),
+      ),
+    );
+    _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_onSessionChanged);
+    unawaited(_cueSpeaker.initialize());
     unawaited(_initialize());
   }
 
@@ -81,6 +99,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     _session
       ..removeListener(_onSessionChanged)
       ..dispose();
+    unawaited(_cueSpeaker.dispose());
     unawaited(_driver?.dispose());
     super.dispose();
   }
@@ -102,7 +121,21 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   }
 
   void _onSessionChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final LiveCueKind? liveCue = _session.liveCue;
+    if (_session.liveRepSerial > _handledLiveRepSerial) {
+      _handledLiveRepSerial = _session.liveRepSerial;
+      HapticUtils.selectionClick();
+    }
+    if (_session.liveCueSerial > _handledLiveCueSerial && liveCue != null) {
+      _handledLiveCueSerial = _session.liveCueSerial;
+      _spokenCue = liveCue;
+      unawaited(_cueSpeaker.speak(liveCue.text));
+    } else if (liveCue == null && _spokenCue != null) {
+      _spokenCue = null;
+      unawaited(_cueSpeaker.stop());
+    }
+    setState(() {});
   }
 
   Future<void> _initialize() async {
@@ -197,6 +230,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       return;
     }
     HapticUtils.mediumImpact();
+    _handledLiveRepSerial = 0;
+    _handledLiveCueSerial = 0;
+    _spokenCue = null;
     _session.beginRecording();
     try {
       await driver.startRecording();
@@ -457,6 +493,28 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
             ),
             if (_phase == _CapturePhase.recording)
               Positioned(
+                left: 12,
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_session.liveRepCount} complete',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            if (_phase == _CapturePhase.recording)
+              Positioned(
                 right: 12,
                 bottom: 12,
                 child: Container(
@@ -491,6 +549,40 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            if (_phase == _CapturePhase.recording && _session.liveCue != null)
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 62,
+                child: Semantics(
+                  liveRegion: true,
+                  label: 'Motion coach: ${_session.liveCue!.text}',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.86),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: colors.primary.withValues(alpha: 0.8),
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      _session.liveCue!.text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -571,8 +663,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         'Move the phone a little closer and keep it steady.',
       MotionFramingStatus.ready =>
         _phase == _CapturePhase.recording
-            ? 'Complete ${widget.exercise.recordingRepetitionLabel} '
-                  'comfortable raises, then finish.'
+            ? (_session.liveCue?.text ??
+                  'Complete ${widget.exercise.recordingRepetitionLabel} '
+                      'comfortable raises, then finish.')
             : 'You’re in frame. Start when you feel ready.',
     };
     return ModernCard(

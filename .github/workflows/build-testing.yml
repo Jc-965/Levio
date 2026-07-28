@@ -106,7 +106,7 @@ jobs:
             "--dart-define=SUPABASE_AUTH_REDIRECT_URL=$SUPABASE_AUTH_REDIRECT_URL"
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: testing-apk-${{ github.run_number }}
           path: build/app/outputs/flutter-apk/app-debug.apk

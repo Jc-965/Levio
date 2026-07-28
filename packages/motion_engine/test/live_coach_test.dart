@@ -76,6 +76,32 @@ void main() {
     expect(coach.phase, LiveArmRaisePhase.idle);
   });
 
+  test('a small false start does not swallow the next repetition', () {
+    final LiveArmRaiseCoach coach = _coach();
+    // A hesitation between the raise-start (20%) and minimum-ROM (25%)
+    // thresholds of the 80-degree reference, then two full repetitions.
+    final List<LiveCoachDecision> falseStart = _feedRepetition(
+      coach,
+      amplitude: 18,
+      startTimestampMs: 0,
+    );
+    final List<LiveCoachDecision> first = _feedRepetition(
+      coach,
+      amplitude: 70,
+      startTimestampMs: 2200,
+    );
+    final List<LiveCoachDecision> second = _feedRepetition(
+      coach,
+      amplitude: 70,
+      startTimestampMs: 4400,
+    );
+
+    expect(falseStart, isEmpty);
+    expect(first, hasLength(1));
+    expect(second, hasLength(1));
+    expect(coach.completedReps, 2);
+  });
+
   test('decision path remains far below the 100 ms budget', () {
     final LiveArmRaiseCoach coach = _coach();
     final Stopwatch stopwatch = Stopwatch()..start();

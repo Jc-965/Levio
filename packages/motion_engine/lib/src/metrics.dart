@@ -288,14 +288,10 @@ Map<String, Object?> _serializeRepetition(
   required String confidence,
   required List<String> reasons,
 }) {
-  final List<double> leftSegment = left.sublist(
-    repetition.startIndex,
-    repetition.endIndex + 1,
-  );
-  final List<double> rightSegment = right.sublist(
-    repetition.startIndex,
-    repetition.endIndex + 1,
-  );
+  final List<double> leftSegment =
+      left.sublist(repetition.startIndex, repetition.endIndex + 1);
+  final List<double> rightSegment =
+      right.sublist(repetition.startIndex, repetition.endIndex + 1);
   final double leftRom = _range(leftSegment);
   final double rightRom = _range(rightSegment);
   final double larger = leftRom > rightRom ? leftRom : rightRom;

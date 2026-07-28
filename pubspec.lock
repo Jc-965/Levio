@@ -645,7 +645,7 @@ packages:
       path: "packages/motion_engine"
       relative: true
     source: path
-    version: "0.2.0"
+    version: "0.3.0"
   nm:
     dependency: transitive
     description:

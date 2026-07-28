@@ -164,14 +164,40 @@ final class LiveArmRaiseCoach {
         if (velocity < -3 &&
             amplitude >= config.minimumRomRatio * config.referenceRomDeg) {
           _phase = LiveArmRaisePhase.lowering;
+        } else if (mean - _baseline! <=
+                config.returnRatio * config.referenceRomDeg &&
+            amplitude < config.minimumRomRatio * config.referenceRomDeg) {
+          // A false start returned to baseline: abandon it quietly so it
+          // cannot swallow the next real repetition.
+          _abandonRepetition();
+        } else if (_repetitionOverdue(frame.timestampMs)) {
+          _abandonRepetition();
         }
       case LiveArmRaisePhase.lowering:
         _updateRepetition(mean, left, right, frame.timestampMs);
         if (mean - _baseline! <= config.returnRatio * config.referenceRomDeg) {
           return _completeRepetition(frame.timestampMs);
+        } else if (_repetitionOverdue(frame.timestampMs)) {
+          _abandonRepetition();
         }
     }
     return null;
+  }
+
+  bool _repetitionOverdue(int timestampMs) {
+    final int? start = _repStartTimestampMs;
+    if (start == null) {
+      return false;
+    }
+    return timestampMs - start > 4 * config.referenceTempoS * 1000;
+  }
+
+  void _abandonRepetition() {
+    _phase = LiveArmRaisePhase.idle;
+    if (_baseline != null && _repMinimum.isFinite) {
+      _baseline = math.min(_baseline!, _repMinimum);
+    }
+    _clearRepetition();
   }
 
   void reset() {

@@ -169,14 +169,14 @@ jobs:
             "--dart-define=SUPABASE_AUTH_REDIRECT_URL=$SUPABASE_AUTH_REDIRECT_URL"
 
       - name: Upload App Bundle
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: production-aab-${{ steps.version.outputs.version }}
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 90
 
       - name: Upload APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: production-apk-${{ steps.version.outputs.version }}
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -324,7 +324,7 @@ jobs:
             --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload iOS build
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: production-ios-${{ steps.version.outputs.version }}
           path: |

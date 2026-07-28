@@ -85,3 +85,13 @@ local.properties
 # Secrets (never commit)
 secrets/
 *.secret
+
+# Internal working documents. Everything committed here is public, so market
+# research, release checklists, and store copy stay out of the repository.
+/store_listing/
+/docs/RELEASE_READINESS.md
+/marketing/APP_STORE_SUBMISSION.md
+/parkinson-*.json
+/competitor*.json
+*.internal.md
+*.internal.json

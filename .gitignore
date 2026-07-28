@@ -95,3 +95,6 @@ secrets/
 /competitor*.json
 *.internal.md
 *.internal.json
+
+# Library package lockfiles (resolved by CI; only the app lockfile is pinned)
+/packages/*/pubspec.lock

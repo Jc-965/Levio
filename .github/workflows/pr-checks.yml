@@ -32,7 +32,9 @@ jobs:
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          dart pub get --directory packages/motion_engine
 
       - name: Check formatting
         run: dart format --set-exit-if-changed lib test

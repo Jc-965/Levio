@@ -40,15 +40,16 @@ class StageTransitionSwitcher extends StatelessWidget {
 
         // Outgoing children play their animation in reverse (1 -> 0), so the
         // tween is written in entrance terms: exiting moves toward `begin`.
-        final slide = Tween<Offset>(
-          begin: Offset((incoming ? 0.04 : -0.04) * direction, 0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: incoming ? Curves.easeOutQuint : Curves.easeInOutSine,
-          ),
-        );
+        final slide =
+            Tween<Offset>(
+              begin: Offset((incoming ? 0.04 : -0.04) * direction, 0),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: incoming ? Curves.easeOutQuint : Curves.easeInOutSine,
+              ),
+            );
         // Fade-through: the outgoing stage (evaluated in reverse) clears
         // within the first ~30% while the incoming stage starts rising at
         // ~22%, so their tails overlap just enough that the screen never

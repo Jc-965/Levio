@@ -121,14 +121,14 @@ class AppTheme {
         ),
       ),
       cardTheme: ThemeData.light().cardTheme.copyWith(
-            color: lightColors.cardBackground,
-            elevation: 0,
-            shadowColor: lightColors.shadow,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(color: lightColors.border),
-            ),
-          ),
+        color: lightColors.cardBackground,
+        elevation: 0,
+        shadowColor: lightColors.shadow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: lightColors.border),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: lightColors.primary,
@@ -150,8 +150,10 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: lightColors.primary,
           foregroundColor: lightColors.textOnPrimary,
-          disabledBackgroundColor:
-              lightColors.surfaceVariant.blend(lightColors.primary, 0.12),
+          disabledBackgroundColor: lightColors.surfaceVariant.blend(
+            lightColors.primary,
+            0.12,
+          ),
           disabledForegroundColor: lightColors.textTertiary,
           elevation: 0,
           minimumSize: const Size(48, 48),
@@ -205,11 +207,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide:
-              BorderSide(color: lightColors.inputFocusBorder, width: 1.7),
+          borderSide: BorderSide(
+            color: lightColors.inputFocusBorder,
+            width: 1.7,
+          ),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         labelStyle: GoogleFonts.plusJakartaSans(
           color: lightColors.textSecondary,
           fontSize: 14,
@@ -238,30 +244,23 @@ class AppTheme {
         backgroundColor: lightColors.primary,
         foregroundColor: lightColors.textOnPrimary,
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dialogTheme: ThemeData.light().dialogTheme.copyWith(
-            backgroundColor: lightColors.surface,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            titleTextStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: lightColors.textPrimary,
-            ),
-            contentTextStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: lightColors.textSecondary,
-            ),
-          ),
-      dividerTheme: DividerThemeData(
-        color: lightColors.divider,
-        thickness: 1,
+        backgroundColor: lightColors.surface,
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: lightColors.textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          color: lightColors.textSecondary,
+        ),
       ),
+      dividerTheme: DividerThemeData(color: lightColors.divider, thickness: 1),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: lightColors.surface,
@@ -312,14 +311,14 @@ class AppTheme {
         ),
       ),
       cardTheme: ThemeData.dark().cardTheme.copyWith(
-            color: darkColors.cardBackground,
-            elevation: 0,
-            shadowColor: darkColors.shadow,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(color: darkColors.border),
-            ),
-          ),
+        color: darkColors.cardBackground,
+        elevation: 0,
+        shadowColor: darkColors.shadow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: darkColors.border),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: darkColors.primary,
@@ -341,8 +340,10 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: darkColors.primary,
           foregroundColor: darkColors.textOnPrimary,
-          disabledBackgroundColor:
-              darkColors.surfaceVariant.blend(darkColors.primary, 0.12),
+          disabledBackgroundColor: darkColors.surfaceVariant.blend(
+            darkColors.primary,
+            0.12,
+          ),
           disabledForegroundColor: darkColors.textTertiary,
           elevation: 0,
           minimumSize: const Size(48, 48),
@@ -396,11 +397,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide:
-              BorderSide(color: darkColors.inputFocusBorder, width: 1.7),
+          borderSide: BorderSide(
+            color: darkColors.inputFocusBorder,
+            width: 1.7,
+          ),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         labelStyle: GoogleFonts.plusJakartaSans(
           color: darkColors.textSecondary,
           fontSize: 14,
@@ -429,30 +434,23 @@ class AppTheme {
         backgroundColor: darkColors.primary,
         foregroundColor: darkColors.textOnPrimary,
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dialogTheme: ThemeData.dark().dialogTheme.copyWith(
-            backgroundColor: darkColors.surface,
-            elevation: 10,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            titleTextStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: darkColors.textPrimary,
-            ),
-            contentTextStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: darkColors.textSecondary,
-            ),
-          ),
-      dividerTheme: DividerThemeData(
-        color: darkColors.divider,
-        thickness: 1,
+        backgroundColor: darkColors.surface,
+        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: darkColors.textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          color: darkColors.textSecondary,
+        ),
       ),
+      dividerTheme: DividerThemeData(color: darkColors.divider, thickness: 1),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: darkColors.surface,
@@ -502,12 +500,24 @@ class AppTheme {
       ),
       titleMedium: _fontStyle(16, FontWeight.w700, colors.textPrimary),
       titleSmall: _fontStyle(14, FontWeight.w700, colors.textPrimary),
-      bodyLarge:
-          _fontStyle(16, FontWeight.w500, colors.textPrimary, height: 1.5),
-      bodyMedium:
-          _fontStyle(14, FontWeight.w500, colors.textSecondary, height: 1.5),
-      bodySmall:
-          _fontStyle(12, FontWeight.w500, colors.textTertiary, height: 1.4),
+      bodyLarge: _fontStyle(
+        16,
+        FontWeight.w500,
+        colors.textPrimary,
+        height: 1.5,
+      ),
+      bodyMedium: _fontStyle(
+        14,
+        FontWeight.w500,
+        colors.textSecondary,
+        height: 1.5,
+      ),
+      bodySmall: _fontStyle(
+        12,
+        FontWeight.w500,
+        colors.textTertiary,
+        height: 1.4,
+      ),
       labelLarge: _fontStyle(14, FontWeight.w700, colors.textPrimary),
       labelMedium: _fontStyle(12, FontWeight.w700, colors.textSecondary),
       labelSmall: _fontStyle(
@@ -615,12 +625,7 @@ extension SolidColorBlend on Color {
 
 // Compatibility for Flutter SDKs that do not expose Color.withValues.
 extension ColorWithValuesCompatibility on Color {
-  Color withValues({
-    double? alpha,
-    double? red,
-    double? green,
-    double? blue,
-  }) {
+  Color withValues({double? alpha, double? red, double? green, double? blue}) {
     int normalizeToChannel(double component) =>
         (component.clamp(0.0, 1.0) * 255).round();
 

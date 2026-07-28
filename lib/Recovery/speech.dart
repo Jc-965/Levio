@@ -30,10 +30,14 @@ class _SpeechScreenState extends State<SpeechScreen>
     singleton.addListener(_onSingletonUpdate);
 
     final reduceMotion = WidgetsBinding
-        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
     _introController = AnimationController(
-      duration:
-          reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
       vsync: this,
     )..forward();
     _fade = CurvedAnimation(
@@ -121,9 +125,7 @@ class _SpeechScreenState extends State<SpeechScreen>
                       children: [
                         Text(
                           'Practice with intention',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 color: colors.textPrimary,
                                 fontWeight: FontWeight.w800,
@@ -133,11 +135,11 @@ class _SpeechScreenState extends State<SpeechScreen>
                         const SizedBox(height: 7),
                         Text(
                           'Choose one guided session. Starting opens the video; logging is a separate action for sessions you have completed.',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: colors.textSecondary,
-                                    height: 1.45,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: colors.textSecondary,
+                                height: 1.45,
+                              ),
                         ),
                         const SizedBox(height: 22),
                         const SectionHeading(
@@ -170,8 +172,9 @@ class _SpeechScreenState extends State<SpeechScreen>
                             typeLabel: 'Speech practice',
                             typeIcon: Icons.record_voice_over_rounded,
                             accent: colors.primary,
-                            sessionCount:
-                                singleton.speechSessionCountForVideo(videoId),
+                            sessionCount: singleton.speechSessionCountForVideo(
+                              videoId,
+                            ),
                             onStart: () {
                               HapticUtils.cardTap();
                               singleton.setCurrentUrl(videoId);
@@ -187,9 +190,9 @@ class _SpeechScreenState extends State<SpeechScreen>
                                 accent: colors.primary,
                                 onSave: (completedAt) =>
                                     singleton.recordSpeechExerciseSession(
-                                  videoId,
-                                  completedAt: completedAt,
-                                ),
+                                      videoId,
+                                      completedAt: completedAt,
+                                    ),
                               );
                               if (count == null) return;
                               if (!mounted) return;

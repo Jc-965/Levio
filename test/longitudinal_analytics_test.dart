@@ -73,16 +73,19 @@ void main() {
         symptom: 'Symptom ${index % 12}',
       );
     });
-    final medications =
-        List<MedicationAdherenceEvent>.generate(medicationCount, (index) {
-      final scheduledAt = start.add(Duration(hours: index * 5));
-      return MedicationAdherenceEvent(
-        medicationName: 'Medication ${index % 4}',
-        scheduledAt: scheduledAt,
-        takenAt:
-            index % 9 == 0 ? null : scheduledAt.add(const Duration(minutes: 8)),
-      );
-    });
+    final medications = List<MedicationAdherenceEvent>.generate(
+      medicationCount,
+      (index) {
+        final scheduledAt = start.add(Duration(hours: index * 5));
+        return MedicationAdherenceEvent(
+          medicationName: 'Medication ${index % 4}',
+          scheduledAt: scheduledAt,
+          takenAt: index % 9 == 0
+              ? null
+              : scheduledAt.add(const Duration(minutes: 8)),
+        );
+      },
+    );
     final therapy = List<TherapyObservation>.generate(therapyCount, (index) {
       return TherapyObservation(
         completedAt: start.add(Duration(hours: index * 7)),

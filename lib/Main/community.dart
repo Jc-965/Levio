@@ -241,8 +241,9 @@ class _CommunityScreenState extends State<CommunityScreen>
       HapticUtils.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(targetState ? 'Joined ${group.name}' : 'Left ${group.name}'),
+          content: Text(
+            targetState ? 'Joined ${group.name}' : 'Left ${group.name}',
+          ),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
@@ -251,7 +252,8 @@ class _CommunityScreenState extends State<CommunityScreen>
     }
 
     setState(() => group.isJoined = !targetState);
-    final error = singleton.consumeLastCommunityError() ??
+    final error =
+        singleton.consumeLastCommunityError() ??
         'Unable to update group right now.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -265,9 +267,7 @@ class _CommunityScreenState extends State<CommunityScreen>
   Future<void> _sharePost(CommunityPost post) async {
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: '${post.content}\n\nShared from ParkiWell Community',
-        ),
+        ShareParams(text: '${post.content}\n\nShared from ParkiWell Community'),
       );
     } catch (_) {
       if (!mounted) return;
@@ -367,9 +367,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         SnackBar(
           content: const Text('Post shared'),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       );
     }
@@ -476,8 +474,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                 Text(
                   'Edit Post',
                   style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -501,8 +499,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color:
-                                  isSelected ? colors.primary : colors.border,
+                              color: isSelected
+                                  ? colors.primary
+                                  : colors.border,
                             ),
                           ),
                           alignment: Alignment.center,
@@ -536,8 +535,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                       borderSide: BorderSide.none,
                     ),
                     counterStyle: Theme.of(ctx).textTheme.labelSmall?.copyWith(
-                          color: colors.textTertiary,
-                        ),
+                      color: colors.textTertiary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -569,7 +568,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                           if (!success) {
                             final error =
                                 singleton.consumeLastCommunityError() ??
-                                    'Unable to update post.';
+                                'Unable to update post.';
                             messenger.showSnackBar(
                               SnackBar(
                                 content: Text(error),
@@ -622,9 +621,9 @@ class _CommunityScreenState extends State<CommunityScreen>
           title: const Text('Delete Post'),
           content: Text(
             'Delete this post permanently?',
-            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              ctx,
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           actions: [
             TextButton(
@@ -641,7 +640,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                 final deleted = await singleton.deleteCommunityPost(post.id);
                 if (!mounted) return;
                 if (!deleted) {
-                  final error = singleton.consumeLastCommunityError() ??
+                  final error =
+                      singleton.consumeLastCommunityError() ??
                       'Unable to delete post.';
                   messenger.showSnackBar(
                     SnackBar(
@@ -699,8 +699,10 @@ class _CommunityScreenState extends State<CommunityScreen>
             indicatorWeight: 2,
             labelColor: colors.textPrimary,
             unselectedLabelColor: colors.textTertiary,
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
             dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'Feed'),
@@ -714,10 +716,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildFeedTab(colors),
-              _buildResourcesTab(colors),
-            ],
+            children: [_buildFeedTab(colors), _buildResourcesTab(colors)],
           ),
         ),
       ],
@@ -848,9 +847,13 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
   Widget _buildPostAuthorAvatar(
-      CommunityPost post, double size, AppColors colors) {
-    final fallback =
-        post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : 'U';
+    CommunityPost post,
+    double size,
+    AppColors colors,
+  ) {
+    final fallback = post.authorName.isNotEmpty
+        ? post.authorName[0].toUpperCase()
+        : 'U';
     return _buildAvatar(
       imagePath: post.authorImage,
       fallbackLabel: fallback,
@@ -861,7 +864,10 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
   Widget _buildCommentAuthorAvatar(
-      PostComment comment, double size, AppColors colors) {
+    PostComment comment,
+    double size,
+    AppColors colors,
+  ) {
     final fallback = comment.authorName.isNotEmpty
         ? comment.authorName[0].toUpperCase()
         : 'U';
@@ -889,22 +895,28 @@ class _CommunityScreenState extends State<CommunityScreen>
                   controller: _feedSearchController,
                   onChanged: (value) {
                     _searchDebounce?.cancel();
-                    _searchDebounce =
-                        Timer(const Duration(milliseconds: 160), () {
-                      if (!mounted) return;
-                      setState(() => _feedSearchQuery = value);
-                    });
+                    _searchDebounce = Timer(
+                      const Duration(milliseconds: 160),
+                      () {
+                        if (!mounted) return;
+                        setState(() => _feedSearchQuery = value);
+                      },
+                    );
                   },
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontSize: 14),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Search',
-                    prefixIcon: Icon(Icons.search_rounded,
-                        color: colors.textTertiary, size: 18),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: colors.textTertiary,
+                      size: 18,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     filled: true,
                     fillColor: colors.surfaceVariant.withValues(alpha: 0.5),
                     border: OutlineInputBorder(
@@ -913,8 +925,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                     ),
                     suffixIcon: _feedSearchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.close_rounded,
-                                size: 18, color: colors.textTertiary),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: colors.textTertiary,
+                            ),
                             onPressed: () {
                               _feedSearchController.clear();
                               setState(() {
@@ -993,12 +1008,12 @@ class _CommunityScreenState extends State<CommunityScreen>
                     child: Text(
                       category,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: selected
-                                ? colors.textOnPrimary
-                                : colors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
+                        color: selected
+                            ? colors.textOnPrimary
+                            : colors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 );
@@ -1027,20 +1042,26 @@ class _CommunityScreenState extends State<CommunityScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.sort_rounded,
-                          size: 16, color: colors.textTertiary),
+                      Icon(
+                        Icons.sort_rounded,
+                        size: 16,
+                        color: colors.textTertiary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _feedSortMode,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textTertiary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
+                          color: colors.textTertiary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.keyboard_arrow_down_rounded,
-                          size: 16, color: colors.textTertiary),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: colors.textTertiary,
+                      ),
                     ],
                   ),
                 ),
@@ -1053,12 +1074,10 @@ class _CommunityScreenState extends State<CommunityScreen>
                 child: Text(
                   _feedOnlyMine ? 'My posts' : 'All posts',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _feedOnlyMine
-                            ? colors.primary
-                            : colors.textTertiary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
+                    color: _feedOnlyMine ? colors.primary : colors.textTertiary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -1074,22 +1093,25 @@ class _CommunityScreenState extends State<CommunityScreen>
         padding: const EdgeInsets.all(30),
         child: Column(
           children: [
-            Icon(Icons.filter_alt_off_rounded,
-                size: 36, color: colors.textTertiary),
+            Icon(
+              Icons.filter_alt_off_rounded,
+              size: 36,
+              color: colors.textTertiary,
+            ),
             const SizedBox(height: 10),
             Text(
               'No posts match your filters',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
               'Try another search, category, or sort option.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textTertiary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
             ),
           ],
         ),
@@ -1104,24 +1126,20 @@ class _CommunityScreenState extends State<CommunityScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 40,
-              color: colors.textTertiary,
-            ),
+            Icon(Icons.forum_outlined, size: 40, color: colors.textTertiary),
             const SizedBox(height: 16),
             Text(
               'No posts yet',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
               'Be the first to share something with the community.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textTertiary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -1154,24 +1172,26 @@ class _CommunityScreenState extends State<CommunityScreen>
                     Text(
                       post.authorName,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _formatTimestamp(post.timestamp),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textTertiary,
-                            fontSize: 13,
-                          ),
+                        color: colors.textTertiary,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
               ),
               if (post.category != null) ...[
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -1206,10 +1226,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                     }
                   },
                   itemBuilder: (_) => const [
-                    PopupMenuItem<String>(
-                      value: 'edit',
-                      child: Text('Edit'),
-                    ),
+                    PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
                     PopupMenuItem<String>(
                       value: 'delete',
                       child: Text('Delete'),
@@ -1224,10 +1241,10 @@ class _CommunityScreenState extends State<CommunityScreen>
           Text(
             post.content,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colors.textPrimary,
-                  height: 1.55,
-                  fontWeight: FontWeight.w500,
-                ),
+              color: colors.textPrimary,
+              height: 1.55,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 22),
 
@@ -1248,7 +1265,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                         content: const Text('You already liked this post.'),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                     );
                     return;
@@ -1263,14 +1281,16 @@ class _CommunityScreenState extends State<CommunityScreen>
                       _postVersion++;
                     });
                   } else {
-                    final error = singleton.consumeLastCommunityError() ??
+                    final error =
+                        singleton.consumeLastCommunityError() ??
                         'Unable to like post.';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(error),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                     );
                   }
@@ -1411,8 +1431,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                 child: Text(
                   'Comments',
                   style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Expanded(
@@ -1421,8 +1441,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.chat_bubble_outline,
-                                size: 48, color: colors.textTertiary),
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 48,
+                              color: colors.textTertiary,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               'No comments yet',
@@ -1432,7 +1455,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                             Text(
                               'Be the first to comment!',
                               style: TextStyle(
-                                  color: colors.textTertiary, fontSize: 12),
+                                color: colors.textTertiary,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -1457,15 +1482,17 @@ class _CommunityScreenState extends State<CommunityScreen>
                                         Text(
                                           comment.authorName,
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           _formatTimestamp(comment.timestamp),
                                           style: TextStyle(
-                                              color: colors.textTertiary,
-                                              fontSize: 12),
+                                            color: colors.textTertiary,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1473,8 +1500,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                                     Text(
                                       comment.content,
                                       style: TextStyle(
-                                          color: colors.textSecondary,
-                                          height: 1.4),
+                                        color: colors.textSecondary,
+                                        height: 1.4,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1511,7 +1539,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ),
@@ -1530,13 +1560,14 @@ class _CommunityScreenState extends State<CommunityScreen>
                         if (!success) {
                           final errorMessage =
                               singleton.consumeLastCommunityError() ??
-                                  'Unable to add comment.';
+                              'Unable to add comment.';
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(errorMessage),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6)),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
                             ),
                           );
                           return;
@@ -1553,8 +1584,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                           color: colors.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.send_rounded,
-                            color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -1607,39 +1641,43 @@ class _CommunityScreenState extends State<CommunityScreen>
               child: Text(
                 'Group membership is saved on this device when offline.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textTertiary,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: colors.textTertiary,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           if (joinedGroups.isNotEmpty) ...[
             Text(
               'Your Groups',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 12),
-            ...joinedGroups.map((group) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildGroupCard(group, colors),
-                )),
+            ...joinedGroups.map(
+              (group) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildGroupCard(group, colors),
+              ),
+            ),
             const SizedBox(height: 16),
           ],
           if (availableGroups.isNotEmpty) ...[
             Text(
               'Discover',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 12),
-            ...availableGroups.map((group) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildGroupCard(group, colors),
-                )),
+            ...availableGroups.map(
+              (group) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildGroupCard(group, colors),
+              ),
+            ),
           ],
           const SizedBox(height: 20),
         ],
@@ -1654,24 +1692,20 @@ class _CommunityScreenState extends State<CommunityScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.group_outlined,
-              size: 40,
-              color: colors.textTertiary,
-            ),
+            Icon(Icons.group_outlined, size: 40, color: colors.textTertiary),
             const SizedBox(height: 16),
             Text(
               'No groups available',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
               'Support groups will appear here as they become available.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textTertiary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1695,16 +1729,16 @@ class _CommunityScreenState extends State<CommunityScreen>
               children: [
                 Text(
                   group.name,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${_formatMemberCount(displayedMemberCount)} members',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textTertiary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
                 ),
               ],
             ),
@@ -1778,60 +1812,61 @@ class _CommunityScreenState extends State<CommunityScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
-        ...resources.map((resource) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ModernCard(
-                onTap: () async {
-                  HapticUtils.lightImpact();
-                  final action = resource['action'] as String?;
-                  if (action == 'helpline') {
-                    await _openHelplineResource();
-                    return;
-                  }
-                  final url = resource['url'] as String?;
-                  if (url == null || url.isEmpty) return;
-                  await _openExternalResource(
-                    title: resource['title'] as String,
-                    url: url,
-                  );
-                },
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Icon(resource['icon'] as IconData,
-                        color: colors.textSecondary, size: 20),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            resource['title'] as String,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            resource['subtitle'] as String,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colors.textTertiary,
-                                    ),
-                          ),
-                        ],
-                      ),
+        ...resources.map(
+          (resource) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ModernCard(
+              onTap: () async {
+                HapticUtils.lightImpact();
+                final action = resource['action'] as String?;
+                if (action == 'helpline') {
+                  await _openHelplineResource();
+                  return;
+                }
+                final url = resource['url'] as String?;
+                if (url == null || url.isEmpty) return;
+                await _openExternalResource(
+                  title: resource['title'] as String,
+                  url: url,
+                );
+              },
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    resource['icon'] as IconData,
+                    color: colors.textSecondary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          resource['title'] as String,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          resource['subtitle'] as String,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colors.textTertiary),
+                        ),
+                      ],
                     ),
-                    Icon(Icons.chevron_right,
-                        size: 20, color: colors.textTertiary),
-                  ],
-                ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: colors.textTertiary,
+                  ),
+                ],
               ),
-            )),
+            ),
+          ),
+        ),
         const SizedBox(height: 20),
       ],
     );
@@ -1901,9 +1936,7 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
         SnackBar(
           content: Text(errorMessage),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       );
     }
@@ -1941,8 +1974,10 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
                 backgroundColor: colors.primary,
                 disabledBackgroundColor: colors.primary.withValues(alpha: 0.35),
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -1973,9 +2008,9 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
               Text(
                 'Category',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1991,7 +2026,9 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected ? colors.primary : colors.surface,
                         borderRadius: BorderRadius.circular(999),
@@ -2002,8 +2039,9 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
                       child: Text(
                         category,
                         style: TextStyle(
-                          color:
-                              isSelected ? Colors.white : colors.textSecondary,
+                          color: isSelected
+                              ? Colors.white
+                              : colors.textSecondary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -2042,10 +2080,8 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: colors.primary),
                     ),
-                    counterStyle:
-                        Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: colors.textTertiary,
-                            ),
+                    counterStyle: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: colors.textTertiary),
                   ),
                 ),
               ),

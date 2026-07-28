@@ -51,12 +51,13 @@ class _ManageScreenState extends State<ManageScreen> {
   int _currentLogStreak() {
     if (singleton.log.isEmpty) return 0;
 
-    final dateKeys = singleton.log
-        .map((entry) => entry.isNotEmpty ? _extractDateKey(entry[0]) : null)
-        .whereType<String>()
-        .toSet()
-        .toList()
-      ..sort();
+    final dateKeys =
+        singleton.log
+            .map((entry) => entry.isNotEmpty ? _extractDateKey(entry[0]) : null)
+            .whereType<String>()
+            .toSet()
+            .toList()
+          ..sort();
 
     if (dateKeys.isEmpty) return 0;
 
@@ -137,9 +138,9 @@ class _ManageScreenState extends State<ManageScreen> {
                 Text(
                   'Your overview',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: colors.textSecondary,
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -201,9 +202,9 @@ class _ManageScreenState extends State<ManageScreen> {
             const SizedBox(height: 20),
             Text(
               'Quick actions',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
             Row(
@@ -238,9 +239,9 @@ class _ManageScreenState extends State<ManageScreen> {
             const SizedBox(height: 20),
             Text(
               'Core tools',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
             _ManageFeatureCard(
@@ -308,9 +309,9 @@ class _QuickAction extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -349,10 +350,10 @@ class _InsightMetric extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                      letterSpacing: -0.4,
-                    ),
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                  letterSpacing: -0.4,
+                ),
               ),
             ],
           ),
@@ -362,10 +363,10 @@ class _InsightMetric extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
           ),
         ],
       ),
@@ -425,16 +426,16 @@ class _ManageFeatureCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
                 ),
               ],
             ),
@@ -443,9 +444,9 @@ class _ManageFeatureCard extends StatelessWidget {
           Text(
             '$statValue $statLabel',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(width: 8),
           Icon(

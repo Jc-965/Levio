@@ -207,7 +207,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   }
 
   Widget _buildOverlay(
-      BuildContext context, TutorialStep step, Rect? targetRect) {
+    BuildContext context,
+    TutorialStep step,
+    Rect? targetRect,
+  ) {
     final colors = context.colors;
     final size = MediaQuery.of(context).size;
     final padding = MediaQuery.of(context).padding;
@@ -221,7 +224,9 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
 
     double left = rect.center.dx - (tooltipWidth / 2);
     left = left.clamp(
-        horizontalInset, size.width - tooltipWidth - horizontalInset);
+      horizontalInset,
+      size.width - tooltipWidth - horizontalInset,
+    );
 
     final showAbove = step.tooltipPosition == TutorialTooltipPosition.above;
     final topIfAbove = rect.top - tooltipHeight - bubbleGap;
@@ -245,8 +250,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         }
       }
     } else {
-      top = (size.height - padding.bottom - tooltipHeight - 24)
-          .clamp(minTop, maxTop);
+      top = (size.height - padding.bottom - tooltipHeight - 24).clamp(
+        minTop,
+        maxTop,
+      );
     }
 
     final isLast = _service.currentStepIndex == _service.totalSteps - 1;
@@ -312,8 +319,10 @@ class _SpotlightPainter extends CustomPainter {
         targetRect.bottom > 0) {
       final overlayPath = Path()
         ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-      final spotlight =
-          RRect.fromRectAndRadius(targetRect, const Radius.circular(18));
+      final spotlight = RRect.fromRectAndRadius(
+        targetRect,
+        const Radius.circular(18),
+      );
       final spotlightPath = Path()..addRRect(spotlight);
       final diffPath = Path.combine(
         PathOperation.difference,

@@ -58,10 +58,14 @@ class _EditLogScreenState extends State<EditLogScreen>
   void initState() {
     super.initState();
     final reduceMotion = WidgetsBinding
-        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
     _introController = AnimationController(
-      duration:
-          reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
       vsync: this,
     )..forward();
     _fade = CurvedAnimation(
@@ -179,8 +183,9 @@ class _EditLogScreenState extends State<EditLogScreen>
     final safeResult = result.isAfter(DateTime.now()) ? DateTime.now() : result;
 
     setState(() {
-      _selectedPreset =
-          _isToday(safeResult) ? _WhenPreset.today : _WhenPreset.custom;
+      _selectedPreset = _isToday(safeResult)
+          ? _WhenPreset.today
+          : _WhenPreset.custom;
       _selectedDateTime = safeResult;
     });
   }
@@ -202,8 +207,9 @@ class _EditLogScreenState extends State<EditLogScreen>
         time.hour,
         time.minute,
       );
-      _selectedPreset =
-          _isToday(_selectedDateTime) ? _WhenPreset.today : _WhenPreset.custom;
+      _selectedPreset = _isToday(_selectedDateTime)
+          ? _WhenPreset.today
+          : _WhenPreset.custom;
     });
   }
 
@@ -217,13 +223,15 @@ class _EditLogScreenState extends State<EditLogScreen>
       );
       return;
     }
-    final selectedDateTime =
-        _selectedPreset == _WhenPreset.now ? DateTime.now() : _selectedDateTime;
+    final selectedDateTime = _selectedPreset == _WhenPreset.now
+        ? DateTime.now()
+        : _selectedDateTime;
     if (selectedDateTime.isAfter(DateTime.now())) {
       HapticUtils.error();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('A symptom cannot be logged in the future.')),
+          content: Text('A symptom cannot be logged in the future.'),
+        ),
       );
       return;
     }
@@ -280,18 +288,18 @@ class _EditLogScreenState extends State<EditLogScreen>
                   Text(
                     'Capture what changed',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 7),
                   Text(
                     'A short, specific note is easier to recognize later. You can backfill entries to any date from 2000 onward.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.45,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 22),
                   const SectionHeading(title: 'What did you notice?'),
@@ -330,17 +338,19 @@ class _EditLogScreenState extends State<EditLogScreen>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _severityOptions.map((severity) {
-                      return _SeverityOption(
-                        label: severity,
-                        color: _severityColor(severity, colors),
-                        selected: _selectedSeverity == severity,
-                        onTap: () {
-                          HapticUtils.selectionClick();
-                          setState(() => _selectedSeverity = severity);
-                        },
-                      );
-                    }).toList(growable: false),
+                    children: _severityOptions
+                        .map((severity) {
+                          return _SeverityOption(
+                            label: severity,
+                            color: _severityColor(severity, colors),
+                            selected: _selectedSeverity == severity,
+                            onTap: () {
+                              HapticUtils.selectionClick();
+                              setState(() => _selectedSeverity = severity);
+                            },
+                          );
+                        })
+                        .toList(growable: false),
                   ),
                   const SizedBox(height: 24),
                   const SectionHeading(
@@ -399,8 +409,8 @@ class _EditLogScreenState extends State<EditLogScreen>
                     Text(
                       'The current time will be captured when you save.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textTertiary,
-                          ),
+                        color: colors.textTertiary,
+                      ),
                     ),
                   ],
                 ],
@@ -523,10 +533,12 @@ class _AnimatedSelectionChipState extends State<_AnimatedSelectionChip> {
     final colors = context.colors;
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final selectionDuration =
-        reduceMotion ? Duration.zero : const Duration(milliseconds: 180);
-    final pressDuration =
-        reduceMotion ? Duration.zero : const Duration(milliseconds: 90);
+    final selectionDuration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
+    final pressDuration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 90);
 
     return Semantics(
       button: true,
@@ -577,12 +589,13 @@ class _AnimatedSelectionChipState extends State<_AnimatedSelectionChip> {
                 duration: selectionDuration,
                 curve: Curves.easeOutCubic,
                 style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                      color: widget.selected
-                          ? widget.accentColor
-                          : colors.textSecondary,
-                      fontWeight:
-                          widget.selected ? FontWeight.w700 : FontWeight.w600,
-                    ),
+                  color: widget.selected
+                      ? widget.accentColor
+                      : colors.textSecondary,
+                  fontWeight: widget.selected
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                ),
                 child: Text(widget.label),
               ),
             ),

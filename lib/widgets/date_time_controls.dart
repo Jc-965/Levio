@@ -51,23 +51,23 @@ class ParkiWellDateTimeField extends StatelessWidget {
                       children: [
                         Text(
                           label,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: colors.textTertiary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: colors.textTertiary,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           value,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: colors.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.2,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: colors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
                         ),
                       ],
                     ),
@@ -90,12 +90,12 @@ Future<TimeOfDay?> showParkiWellTimePicker({
   var pendingTime = initialTime;
 
   DateTime candidateFor(TimeOfDay time) => DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        time.hour,
-        time.minute,
-      );
+    selectedDate.year,
+    selectedDate.month,
+    selectedDate.day,
+    time.hour,
+    time.minute,
+  );
 
   bool isFuture(TimeOfDay time) => candidateFor(time).isAfter(DateTime.now());
 
@@ -116,8 +116,9 @@ Future<TimeOfDay?> showParkiWellTimePicker({
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
             decoration: BoxDecoration(
               color: colors.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
               border: Border(top: BorderSide(color: colors.border)),
             ),
             child: Column(
@@ -140,17 +141,13 @@ Future<TimeOfDay?> showParkiWellTimePicker({
                         children: [
                           Text(
                             'Choose time',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 3),
                           Text(
                             'Scroll to the exact hour and minute.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: colors.textSecondary),
                           ),
                         ],
@@ -196,11 +193,11 @@ Future<TimeOfDay?> showParkiWellTimePicker({
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text(
                             'Choose a time that has already passed.',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colors.error,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: colors.error,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         )
                       : const SizedBox.shrink(),

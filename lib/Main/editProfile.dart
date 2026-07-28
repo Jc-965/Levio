@@ -71,8 +71,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _speechGoal = singleton.weeklySpeechExerciseGoal;
     _physicalGoal = singleton.weeklyPhysicalExerciseGoal;
     if (singleton.isCloudConfigured) {
-      _verifiedSignInSubscription =
-          singleton.cloudVerifiedSignIns.listen(_onVerifiedSignIn);
+      _verifiedSignInSubscription = singleton.cloudVerifiedSignIns.listen(
+        _onVerifiedSignIn,
+      );
     }
   }
 
@@ -99,9 +100,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           content: Text(
             'Email verified! Finishing setup.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
           elevation: 0,
@@ -146,12 +147,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final emailError = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)
         ? null
         : 'Enter a valid email address.';
-    final passwordError =
-        password.length >= 6 ? null : 'Use at least 6 characters.';
+    final passwordError = password.length >= 6
+        ? null
+        : 'Use at least 6 characters.';
     final confirmPasswordError =
         _mode == _AuthMode.signUp && _confirmPasswordController.text != password
-            ? 'Passwords do not match.'
-            : null;
+        ? 'Passwords do not match.'
+        : null;
 
     setState(() {
       _emailError = emailError;
@@ -167,9 +169,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _openLegalDocument(LegalDocumentType type) {
     HapticUtils.selectionClick();
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => LegalDocumentScreen(type: type),
-      ),
+      MaterialPageRoute<void>(builder: (_) => LegalDocumentScreen(type: type)),
     );
   }
 
@@ -215,9 +215,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           content: Text(
             message,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
           elevation: 0,
@@ -242,9 +242,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           content: Text(
             message,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
           elevation: 0,
@@ -272,7 +272,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _showNotice('A new verification link was sent to $email.');
     } else {
       _showError(
-          'We could not resend the link. Check your connection and try again.');
+        'We could not resend the link. Check your connection and try again.',
+      );
     }
   }
 
@@ -337,12 +338,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final resolvedEmail = profile.email?.trim();
       final fallbackName =
           (resolvedEmail != null && resolvedEmail.contains('@'))
-              ? resolvedEmail.split('@').first
-              : 'User';
+          ? resolvedEmail.split('@').first
+          : 'User';
       final resolvedName =
           (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
-              ? profile.fullName!.trim()
-              : fallbackName;
+          ? profile.fullName!.trim()
+          : fallbackName;
 
       if (_mode == _AuthMode.signIn) {
         final synced = await singleton.createOrSyncAuthenticatedUser(
@@ -393,12 +394,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final resolvedEmail = profile.email?.trim();
       final fallbackName =
           (resolvedEmail != null && resolvedEmail.contains('@'))
-              ? resolvedEmail.split('@').first
-              : 'User';
+          ? resolvedEmail.split('@').first
+          : 'User';
       final resolvedName =
           (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
-              ? profile.fullName!.trim()
-              : fallbackName;
+          ? profile.fullName!.trim()
+          : fallbackName;
 
       if (_mode == _AuthMode.signIn) {
         final synced = await singleton.createOrSyncAuthenticatedUser(
@@ -443,7 +444,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (_mode == _AuthMode.signIn) {
         if (!singleton.isCloudConfigured) {
           _showError(
-              'Sign in is not available right now. Please try again later.');
+            'Sign in is not available right now. Please try again later.',
+          );
           return;
         }
         final profile = await singleton.signInWithEmailPassword(
@@ -452,16 +454,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
         if (profile == null) {
           _showError(
-            _friendlyAuthMessage(
-              singleton.lastCloudError ?? 'Sign in failed.',
-            ),
+            _friendlyAuthMessage(singleton.lastCloudError ?? 'Sign in failed.'),
           );
           return;
         }
         final displayName =
             (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
-                ? profile.fullName!.trim()
-                : email.split('@').first;
+            ? profile.fullName!.trim()
+            : email.split('@').first;
         final synced = await singleton.createOrSyncAuthenticatedUser(
           displayName: displayName,
           userEmail: profile.email ?? email,
@@ -483,8 +483,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
         if (profile == null) {
           final error = singleton.lastCloudError ?? 'Sign up failed.';
-          _awaitingEmailVerification =
-              error.toLowerCase().contains('verification link');
+          _awaitingEmailVerification = error.toLowerCase().contains(
+            'verification link',
+          );
           if (_awaitingEmailVerification) {
             if (mounted) setState(() => _stageErrorMessage = null);
             _showNotice(
@@ -607,8 +608,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final first = _firstNameController.text.trim();
     final last = _lastNameController.text.trim();
     final fallback = _emailController.text.trim();
-    final a =
-        first.isNotEmpty ? first[0] : (fallback.isNotEmpty ? fallback[0] : 'U');
+    final a = first.isNotEmpty
+        ? first[0]
+        : (fallback.isNotEmpty ? fallback[0] : 'U');
     final b = last.isNotEmpty ? last[0] : '';
     return '${a.toUpperCase()}${b.toUpperCase()}';
   }
@@ -635,17 +637,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           reverse: _stageReverse,
           child: switch (_stage) {
             _EntryStage.auth => KeyedSubtree(
-                key: const ValueKey<String>('stage-auth'),
-                child: _buildAuthStage(colors),
-              ),
+              key: const ValueKey<String>('stage-auth'),
+              child: _buildAuthStage(colors),
+            ),
             _EntryStage.profileSetup => KeyedSubtree(
-                key: const ValueKey<String>('stage-profile'),
-                child: _buildProfileSetupStage(colors),
-              ),
+              key: const ValueKey<String>('stage-profile'),
+              child: _buildProfileSetupStage(colors),
+            ),
             _EntryStage.goals => KeyedSubtree(
-                key: const ValueKey<String>('stage-goals'),
-                child: _buildGoalsStage(colors),
-              ),
+              key: const ValueKey<String>('stage-goals'),
+              child: _buildGoalsStage(colors),
+            ),
           },
         ),
       ),
@@ -677,10 +679,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Text(
                   'STEP ${step + 1} OF 3',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
             ],
           ),
@@ -730,10 +732,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textPrimary,
-                      height: 1.4,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colors.textPrimary,
+                  height: 1.4,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -763,10 +765,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Text(
               message,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textPrimary,
-                    height: 1.4,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: colors.textPrimary,
+                height: 1.4,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -828,11 +830,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _mode == _AuthMode.signUp
                           ? 'Create your account'
                           : 'Welcome back',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                height: 1.15,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800, height: 1.15),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -840,9 +839,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ? 'Add an email and password to save your profile and therapy goals.'
                           : 'Sign in to continue where you left off.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                            height: 1.4,
-                          ),
+                        color: colors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
@@ -947,8 +946,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed:
-                                  _isLoading ? null : _requestPasswordReset,
+                              onPressed: _isLoading
+                                  ? null
+                                  : _requestPasswordReset,
                               child: const Text('Forgot password?'),
                             ),
                           ),
@@ -1042,24 +1042,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               },
                               transitionBuilder: (child, animation) =>
                                   FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: Offset(
-                                      _modeTransitionDirection * 0.02,
-                                      0,
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: Offset(
+                                          _modeTransitionDirection * 0.02,
+                                          0,
+                                        ),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
                                     ),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
+                                  ),
                               child: Text(
                                 _isLoading
                                     ? 'Please wait...'
                                     : _mode == _AuthMode.signUp
-                                        ? 'Create Account'
-                                        : 'Sign In with Email',
+                                    ? 'Create Account'
+                                    : 'Sign In with Email',
                                 key: ValueKey<String>(
                                   'email-cta-${_mode.name}-$_isLoading',
                                 ),
@@ -1072,13 +1072,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 0.22,
                               ),
                               foregroundColor: colors.textOnPrimary,
-                              disabledBackgroundColor:
-                                  colors.surface.blend(colors.primary, 0.16),
-                              disabledForegroundColor:
-                                  colors.textSecondary.blend(
-                                colors.surface,
-                                0.2,
+                              disabledBackgroundColor: colors.surface.blend(
+                                colors.primary,
+                                0.16,
                               ),
+                              disabledForegroundColor: colors.textSecondary
+                                  .blend(colors.surface, 0.2),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -1171,9 +1170,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -1205,9 +1204,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       autocorrect: autocorrect,
       enableSuggestions: enableSuggestions,
       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
+        color: colors.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         hintText: hintText,
         errorText: errorText,
@@ -1252,9 +1251,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ? 'Sign up with Apple'
                   : 'Sign in with Apple',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: foreground,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),
@@ -1288,9 +1287,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ? 'Create with Google'
                   : 'Sign In with Google',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),
@@ -1317,8 +1316,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(Icons.mark_email_read_outlined,
-                    color: colors.info, size: 21),
+                Icon(
+                  Icons.mark_email_read_outlined,
+                  color: colors.info,
+                  size: 21,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -1327,17 +1329,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       Text(
                         'Check your inbox',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: colors.textPrimary,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         'Open the link sent to $email. ParkiWell will finish setup when you return.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textSecondary,
-                              height: 1.4,
-                            ),
+                          color: colors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -1365,9 +1367,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Text(
           'By continuing, you agree to ParkiWell\'s',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textSecondary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
         ),
         Wrap(
           alignment: WrapAlignment.center,
@@ -1380,9 +1382,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             Text(
               'and',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
             ),
             TextButton(
               onPressed: () =>
@@ -1395,16 +1397,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           'ParkiWell supports tracking and education; it does not replace medical advice.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.textTertiary,
-                height: 1.35,
-              ),
+            color: colors.textTertiary,
+            height: 1.35,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildProfileSetupStage(AppColors colors) {
-    final hasCustomImage = _imagePath.isNotEmpty &&
+    final hasCustomImage =
+        _imagePath.isNotEmpty &&
         !_imagePath.contains('711128') &&
         !_imagePath.startsWith('images/');
     final emailSummary = _pendingAuthProfile?.email?.trim().isNotEmpty == true
@@ -1467,17 +1470,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             children: [
                               Text(
                                 'Set up your profile',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
+                                style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 'Add your name. A profile photo is optional.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
+                                style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: colors.textSecondary),
                               ),
                               if (emailSummary.isNotEmpty) ...[
@@ -1494,9 +1493,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   ),
                                   child: Text(
                                     emailSummary,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: colors.textSecondary,
                                           fontWeight: FontWeight.w700,
@@ -1555,8 +1552,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ModernButton(
                         text: 'Continue to Goals',
                         icon: Icons.arrow_forward_rounded,
-                        backgroundColor:
-                            colors.primaryDark.blend(colors.primary, 0.22),
+                        backgroundColor: colors.primaryDark.blend(
+                          colors.primary,
+                          0.22,
+                        ),
                         onPressed: _continueFromProfileSetup,
                       ),
                     ),
@@ -1608,19 +1607,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     Text(
                       'Set therapy goals',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                height: 1.15,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800, height: 1.15),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Choose a comfortable weekly target for speech and movement. Start small—you can change this anytime.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                            height: 1.4,
-                          ),
+                        color: colors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 22),
                     _GoalSetupRow(
@@ -1631,12 +1627,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       accent: colors.primary,
                       value: _speechGoal,
                       onDecrease: () => setState(
-                        () => _speechGoal =
-                            (_speechGoal - 1).clamp(0, 99).toInt(),
+                        () => _speechGoal = (_speechGoal - 1)
+                            .clamp(0, 99)
+                            .toInt(),
                       ),
                       onIncrease: () => setState(
-                        () => _speechGoal =
-                            (_speechGoal + 1).clamp(0, 99).toInt(),
+                        () => _speechGoal = (_speechGoal + 1)
+                            .clamp(0, 99)
+                            .toInt(),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -1648,12 +1646,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       accent: colors.secondary,
                       value: _physicalGoal,
                       onDecrease: () => setState(
-                        () => _physicalGoal =
-                            (_physicalGoal - 1).clamp(0, 99).toInt(),
+                        () => _physicalGoal = (_physicalGoal - 1)
+                            .clamp(0, 99)
+                            .toInt(),
                       ),
                       onIncrease: () => setState(
-                        () => _physicalGoal =
-                            (_physicalGoal + 1).clamp(0, 99).toInt(),
+                        () => _physicalGoal = (_physicalGoal + 1)
+                            .clamp(0, 99)
+                            .toInt(),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1662,8 +1662,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: ModernButton(
                         text: 'Continue to Account',
                         icon: Icons.arrow_forward_rounded,
-                        backgroundColor:
-                            colors.primaryDark.blend(colors.primary, 0.22),
+                        backgroundColor: colors.primaryDark.blend(
+                          colors.primary,
+                          0.22,
+                        ),
                         onPressed: _continueFromGoals,
                       ),
                     ),
@@ -1712,9 +1714,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Text(
         _initialsPreview(),
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: colors.primary,
-            ),
+          fontWeight: FontWeight.w800,
+          color: colors.primary,
+        ),
       ),
     );
   }
@@ -1765,16 +1767,16 @@ class _GoalSetupRow extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
-                            height: 1.35,
-                          ),
+                        color: colors.textSecondary,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
@@ -1788,9 +1790,9 @@ class _GoalSetupRow extends StatelessWidget {
                 child: Text(
                   'Weekly target',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               _GoalSetupButton(
@@ -1808,8 +1810,8 @@ class _GoalSetupRow extends StatelessWidget {
                     '$value',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -1886,11 +1888,23 @@ class _GoogleGPainter extends CustomPainter {
         ..lineTo(9.00 * s, 10.84 * s)
         ..lineTo(13.84 * s, 10.84 * s)
         ..cubicTo(
-            13.63 * s, 11.97 * s, 13.00 * s, 12.92 * s, 12.04 * s, 13.56 * s)
+          13.63 * s,
+          11.97 * s,
+          13.00 * s,
+          12.92 * s,
+          12.04 * s,
+          13.56 * s,
+        )
         ..lineTo(12.04 * s, 15.82 * s)
         ..lineTo(14.96 * s, 15.82 * s)
         ..cubicTo(
-            16.67 * s, 14.25 * s, 17.64 * s, 11.94 * s, 17.64 * s, 9.20 * s)
+          16.67 * s,
+          14.25 * s,
+          17.64 * s,
+          11.94 * s,
+          17.64 * s,
+          9.20 * s,
+        )
         ..close(),
       Paint()..color = const Color(0xFF4285F4),
     );
@@ -1898,10 +1912,22 @@ class _GoogleGPainter extends CustomPainter {
       Path()
         ..moveTo(9.00 * s, 18.00 * s)
         ..cubicTo(
-            11.43 * s, 18.00 * s, 13.47 * s, 17.20 * s, 14.96 * s, 15.82 * s)
+          11.43 * s,
+          18.00 * s,
+          13.47 * s,
+          17.20 * s,
+          14.96 * s,
+          15.82 * s,
+        )
         ..lineTo(12.04 * s, 13.56 * s)
         ..cubicTo(
-            11.24 * s, 14.10 * s, 10.20 * s, 14.42 * s, 9.00 * s, 14.42 * s)
+          11.24 * s,
+          14.10 * s,
+          10.20 * s,
+          14.42 * s,
+          9.00 * s,
+          14.42 * s,
+        )
         ..cubicTo(6.66 * s, 14.42 * s, 4.68 * s, 12.84 * s, 3.97 * s, 10.72 * s)
         ..lineTo(0.96 * s, 10.72 * s)
         ..lineTo(0.96 * s, 13.05 * s)

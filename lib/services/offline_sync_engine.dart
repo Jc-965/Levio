@@ -2,12 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum SyncEntityType {
-  log,
-  schedule,
-  recoverySession,
-  medicationEvent,
-}
+enum SyncEntityType { log, schedule, recoverySession, medicationEvent }
 
 enum SyncMutationOperation { upsert, delete }
 
@@ -156,9 +151,8 @@ class SharedPreferencesMutationJournalStore implements MutationJournalStore {
   }
 }
 
-typedef MutationBatchExecutor = Future<Set<String>> Function(
-  List<SyncMutation> mutations,
-);
+typedef MutationBatchExecutor =
+    Future<Set<String>> Function(List<SyncMutation> mutations);
 
 class OfflineSyncEngine {
   OfflineSyncEngine(this._store);
@@ -277,8 +271,9 @@ class OfflineSyncEngine {
     return jsonEncode(<String, dynamic>{
       'version': 1,
       'next_sequence': _nextSequence,
-      'mutations':
-          pendingMutations.map((mutation) => mutation.toJson()).toList(),
+      'mutations': pendingMutations
+          .map((mutation) => mutation.toJson())
+          .toList(),
     });
   }
 

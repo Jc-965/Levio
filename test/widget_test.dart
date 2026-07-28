@@ -24,10 +24,7 @@ void main() {
 
   late Singleton singleton;
 
-  Future<void> pumpTestApp(
-    WidgetTester tester, {
-    required Widget home,
-  }) async {
+  Future<void> pumpTestApp(WidgetTester tester, {required Widget home}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme(),
@@ -63,25 +60,23 @@ void main() {
   });
 
   testWidgets('Enhanced splash renders branded UI elements', (tester) async {
-    await pumpTestApp(
-      tester,
-      home: SplashScreen(
-        onComplete: () {},
-      ),
-    );
+    await pumpTestApp(tester, home: SplashScreen(onComplete: () {}));
 
     expect(find.text('ParkiWell'), findsOneWidget);
     expect(find.byType(ParkiWellMark), findsOneWidget);
     expect(find.text('Preparing your care workspace'), findsOneWidget);
-    expect(find.text('Personalized Parkinson\'s care,\norganized every day.'),
-        findsOneWidget);
+    expect(
+      find.text('Personalized Parkinson\'s care,\norganized every day.'),
+      findsOneWidget,
+    );
 
     // Flush the delayed start timer used by splash animation bootstrap.
     await tester.pump(const Duration(milliseconds: 200));
   });
 
-  testWidgets('App boots through splash into landing for first-time users',
-      (tester) async {
+  testWidgets('App boots through splash into landing for first-time users', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     // Splash is shown first.
@@ -99,8 +94,9 @@ void main() {
     expect(find.text('I already have an account'), findsOneWidget);
   });
 
-  testWidgets('Landing buttons lead directly to the auth screen',
-      (tester) async {
+  testWidgets('Landing buttons lead directly to the auth screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     // Through splash.
@@ -121,8 +117,9 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('Sign up walks through name, goals, then account stages',
-      (tester) async {
+  testWidgets('Sign up walks through name, goals, then account stages', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     // Through splash.
@@ -144,7 +141,9 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, 'First name'), 'Ada');
     await tester.enterText(
-        find.widgetWithText(TextField, 'Last name'), 'Lovelace');
+      find.widgetWithText(TextField, 'Last name'),
+      'Lovelace',
+    );
     await tester.tap(find.text('Continue to Goals'));
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -163,14 +162,12 @@ void main() {
     expect(singleton.weeklyPhysicalExerciseGoal, equals(4));
   });
 
-  testWidgets('Sign in validation stays attached to the relevant fields',
-      (tester) async {
+  testWidgets('Sign in validation stays attached to the relevant fields', (
+    tester,
+  ) async {
     await pumpTestApp(
       tester,
-      home: EditProfileScreen(
-        startInSignIn: true,
-        onBack: () {},
-      ),
+      home: EditProfileScreen(startInSignIn: true, onBack: () {}),
     );
 
     await tester.tap(find.text('Sign In with Email'));
@@ -182,14 +179,12 @@ void main() {
     expect(find.text('Privacy Policy'), findsOneWidget);
   });
 
-  testWidgets('Sign in offers password recovery with email validation',
-      (tester) async {
+  testWidgets('Sign in offers password recovery with email validation', (
+    tester,
+  ) async {
     await pumpTestApp(
       tester,
-      home: EditProfileScreen(
-        startInSignIn: true,
-        onBack: () {},
-      ),
+      home: EditProfileScreen(startInSignIn: true, onBack: () {}),
     );
 
     expect(find.text('Forgot password?'), findsOneWidget);
@@ -202,8 +197,9 @@ void main() {
     );
   });
 
-  testWidgets('Password update dialog validates the new password',
-      (tester) async {
+  testWidgets('Password update dialog validates the new password', (
+    tester,
+  ) async {
     await pumpTestApp(
       tester,
       home: Builder(
@@ -230,12 +226,10 @@ void main() {
     expect(find.text('Use at least 6 characters.'), findsOneWidget);
   });
 
-  testWidgets('Dashboard icons are not wrapped in decorative tiles',
-      (tester) async {
-    await pumpTestApp(
-      tester,
-      home: const Scaffold(body: LineChartSample1()),
-    );
+  testWidgets('Dashboard icons are not wrapped in decorative tiles', (
+    tester,
+  ) async {
+    await pumpTestApp(tester, home: const Scaffold(body: LineChartSample1()));
     await tester.pump(const Duration(milliseconds: 700));
 
     for (final icon in <IconData>[
@@ -258,9 +252,9 @@ void main() {
     }
 
     Widget? dropdownImmediateAncestor;
-    tester
-        .element(find.byType(DropdownButton<String>))
-        .visitAncestorElements((element) {
+    tester.element(find.byType(DropdownButton<String>)).visitAncestorElements((
+      element,
+    ) {
       dropdownImmediateAncestor = element.widget;
       return false;
     });
@@ -271,8 +265,9 @@ void main() {
     );
   });
 
-  testWidgets('Onboarding remains usable with larger text on a small phone',
-      (tester) async {
+  testWidgets('Onboarding remains usable with larger text on a small phone', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(375, 812));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -280,9 +275,9 @@ void main() {
       MaterialApp(
         theme: AppTheme.lightTheme(),
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: const TextScaler.linear(1.3),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.3)),
           child: child!,
         ),
         home: OnboardingFlowScreen(onComplete: () {}),
@@ -290,7 +285,9 @@ void main() {
     );
 
     expect(
-        find.text('A calmer way to manage Parkinson\'s care'), findsOneWidget);
+      find.text('A calmer way to manage Parkinson\'s care'),
+      findsOneWidget,
+    );
     expect(find.text('Create my care plan'), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
     expect(find.byType(Scrollable), findsNothing);
@@ -311,8 +308,11 @@ void main() {
   test('Recovery catalog keeps valid YouTube IDs', () {
     final idPattern = RegExp(r'^[A-Za-z0-9_-]{11}$');
     for (final id in singleton.exercises.keys) {
-      expect(idPattern.hasMatch(id), isTrue,
-          reason: 'Invalid exercise ID: $id');
+      expect(
+        idPattern.hasMatch(id),
+        isTrue,
+        reason: 'Invalid exercise ID: $id',
+      );
     }
     for (final id in singleton.speeches.keys) {
       expect(idPattern.hasMatch(id), isTrue, reason: 'Invalid speech ID: $id');
@@ -422,8 +422,9 @@ void main() {
     expect(singleton.lastSyncStatus.toLowerCase(), contains('pending'));
   });
 
-  testWidgets('Medication action exposes and records an adherence event',
-      (tester) async {
+  testWidgets('Medication action exposes and records an adherence event', (
+    tester,
+  ) async {
     singleton.schedule.add(<String>['Levodopa', '100mg', 'Everyday']);
     singleton.scheduleIDs.add('schedule-1');
 
@@ -435,8 +436,9 @@ void main() {
     final takenButton = find.widgetWithText(ModernButton, 'Mark as Taken');
     await tester.ensureVisible(takenButton);
     await tester.pumpAndSettle();
-    final saved =
-        await tester.runAsync(() => singleton.recordMedicationTaken(0));
+    final saved = await tester.runAsync(
+      () => singleton.recordMedicationTaken(0),
+    );
 
     expect(saved, isTrue);
     expect(singleton.medicationEvents, hasLength(1));
@@ -496,10 +498,7 @@ void main() {
   ) async {
     await pumpTestApp(tester, home: const RecoveryScreen());
 
-    await tester.drag(
-      find.byType(CustomScrollView),
-      const Offset(0, -560),
-    );
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -560));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Log a completed session'));
     await tester.pumpAndSettle();

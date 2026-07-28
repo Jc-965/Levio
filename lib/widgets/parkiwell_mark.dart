@@ -8,11 +8,7 @@ class ParkiWellMark extends StatelessWidget {
   final double size;
   final Color color;
 
-  const ParkiWellMark({
-    super.key,
-    required this.size,
-    required this.color,
-  });
+  const ParkiWellMark({super.key, required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {

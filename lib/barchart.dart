@@ -79,41 +79,38 @@ class BarChartSample3State extends State<BarChartSample3> {
   }
 
   BarTouchData barTouchData(AppColors colors) => BarTouchData(
-        enabled: true,
-        touchTooltipData: BarTouchTooltipData(
-          getTooltipColor: (group) => colors.surface,
-          tooltipRoundedRadius: 12,
-          tooltipPadding: const EdgeInsets.all(12),
-          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-            final days = [
-              'Monday',
-              'Tuesday',
-              'Wednesday',
-              'Thursday',
-              'Friday',
-              'Saturday',
-              'Sunday'
-            ];
-            return BarTooltipItem(
-              '${days[group.x]}\n',
-              TextStyle(
-                color: colors.textSecondary,
-                fontSize: 12,
+    enabled: true,
+    touchTooltipData: BarTouchTooltipData(
+      getTooltipColor: (group) => colors.surface,
+      tooltipRoundedRadius: 12,
+      tooltipPadding: const EdgeInsets.all(12),
+      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+        final days = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday',
+        ];
+        return BarTooltipItem(
+          '${days[group.x]}\n',
+          TextStyle(color: colors.textSecondary, fontSize: 12),
+          children: [
+            TextSpan(
+              text: '${rod.toY.toInt()} meds',
+              style: TextStyle(
+                color: colors.chartBar,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
-              children: [
-                TextSpan(
-                  text: '${rod.toY.toInt()} meds',
-                  style: TextStyle(
-                    color: colors.chartBar,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
+            ),
+          ],
+        );
+      },
+    ),
+  );
 
   Widget getTitles(double value, TitleMeta meta, AppColors colors) {
     TextStyle style = TextStyle(
@@ -156,48 +153,44 @@ class BarChartSample3State extends State<BarChartSample3> {
   }
 
   FlTitlesData titlesData(AppColors colors) => FlTitlesData(
-        show: true,
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 32,
-            getTitlesWidget: (value, meta) => getTitles(value, meta, colors),
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 32,
-            interval: 1,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                value.toInt().toString(),
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-              );
-            },
-          ),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-      );
+    show: true,
+    bottomTitles: AxisTitles(
+      sideTitles: SideTitles(
+        showTitles: true,
+        reservedSize: 32,
+        getTitlesWidget: (value, meta) => getTitles(value, meta, colors),
+      ),
+    ),
+    leftTitles: AxisTitles(
+      sideTitles: SideTitles(
+        showTitles: true,
+        reservedSize: 32,
+        interval: 1,
+        getTitlesWidget: (value, meta) {
+          return Text(
+            value.toInt().toString(),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          );
+        },
+      ),
+    ),
+    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+  );
 
   FlBorderData borderData(AppColors colors) => FlBorderData(
-        show: true,
-        border: Border(
-          bottom: BorderSide(color: colors.divider, width: 1),
-          left: BorderSide(color: colors.divider, width: 1),
-          right: const BorderSide(color: Colors.transparent),
-          top: const BorderSide(color: Colors.transparent),
-        ),
-      );
+    show: true,
+    border: Border(
+      bottom: BorderSide(color: colors.divider, width: 1),
+      left: BorderSide(color: colors.divider, width: 1),
+      right: const BorderSide(color: Colors.transparent),
+      top: const BorderSide(color: Colors.transparent),
+    ),
+  );
 
   List<BarChartGroupData> barGroups(AppColors colors) {
     final values = singleton.medsPerDay.values.toList();
@@ -208,17 +201,12 @@ class BarChartSample3State extends State<BarChartSample3> {
           BarChartRodData(
             toY: values[index],
             gradient: LinearGradient(
-              colors: [
-                colors.chartBar,
-                colors.chartBar.withValues(alpha: 0.6),
-              ],
+              colors: [colors.chartBar, colors.chartBar.withValues(alpha: 0.6)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
             width: 20,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(6),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
           ),
         ],
       );

@@ -192,9 +192,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
               Text(
                 'Your medication schedule is now active.',
                 textAlign: TextAlign.center,
-                style: Theme.of(c).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                style: Theme.of(
+                  c,
+                ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 18),
               Row(
@@ -284,9 +284,13 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
               Navigator.popAndPushNamed(context, '/scheduleScreen');
             },
           ),
-          title: Text('Medication Log',
-              style: TextStyle(
-                  color: colors.textPrimary, fontWeight: FontWeight.w600)),
+          title: Text(
+            'Medication Log',
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         body: FadeTransition(
           opacity: _animation,
@@ -301,16 +305,16 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                   Text(
                     'Create medication schedule',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Add medication details and assign the days to take it.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.3,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.3,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ModernCard(
@@ -320,10 +324,8 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                       children: [
                         Text(
                           'Medication Name',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
                         Container(
@@ -336,10 +338,8 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                         const SizedBox(height: 12),
                         Text(
                           'Details (optional)',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
                         ModernTextField(
@@ -352,22 +352,22 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                         const SizedBox(height: 12),
                         Text(
                           'Quick templates',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: colors.textPrimary,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
                         ),
                         const SizedBox(height: 8),
                         _buildTemplateSelector(),
                         const SizedBox(height: 14),
                         Text(
                           'Select days',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: colors.textPrimary,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
                         ),
                         const SizedBox(height: 8),
                         _buildDaySelector(),
@@ -378,7 +378,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 11),
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.surfaceVariant,
                       borderRadius: BorderRadius.circular(10),
@@ -395,11 +397,11 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                         Expanded(
                           child: Text(
                             _formatSchedule(),
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: colors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ),
                       ],
@@ -424,8 +426,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                                 ),
                               )
                             : const Icon(Icons.check_rounded, size: 18),
-                        label:
-                            Text(_isLoading ? 'Saving...' : 'Save Medication'),
+                        label: Text(
+                          _isLoading ? 'Saving...' : 'Save Medication',
+                        ),
                       ),
                     ),
                   ),
@@ -482,9 +485,9 @@ class _SelectionChipState extends State<_SelectionChip> {
         child: Text(
           widget.label,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selected ? colors.primary : colors.textSecondary,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              ),
+            color: selected ? colors.primary : colors.textSecondary,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+          ),
         ),
       ),
     );

@@ -67,8 +67,11 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
     final start = (order * 0.11).clamp(0.0, 0.55);
     final curved = CurvedAnimation(
       parent: _introController,
-      curve: Interval(start, (start + 0.45).clamp(0.0, 1.0),
-          curve: Curves.easeOutCubic),
+      curve: Interval(
+        start,
+        (start + 0.45).clamp(0.0, 1.0),
+        curve: Curves.easeOutCubic,
+      ),
     );
     return FadeTransition(
       opacity: curved,
@@ -133,10 +136,7 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
         end: Alignment.bottomRight,
         colors: <Color>[
           colors.background.blend(colors.primaryLight, isDark ? 0.18 : 0.1),
-          colors.background.blend(
-            colors.secondaryLight,
-            isDark ? 0.12 : 0.05,
-          ),
+          colors.background.blend(colors.secondaryLight, isDark ? 0.12 : 0.05),
           colors.background,
         ],
         stops: const <double>[0, 0.46, 1],
@@ -173,8 +173,9 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final textScale =
-                      MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+                  final textScale = MediaQuery.textScalerOf(
+                    context,
+                  ).scale(1).clamp(1.0, 2.0);
                   final compact =
                       constraints.maxHeight < 730 || textScale > 1.15;
 
@@ -221,19 +222,22 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
                                         textAlign: TextAlign.center,
                                         maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
-                                        style: (compact
-                                                ? Theme.of(context)
-                                                    .textTheme
-                                                    .headlineSmall
-                                                : Theme.of(context)
-                                                    .textTheme
-                                                    .headlineMedium)
-                                            ?.copyWith(
-                                          color: colors.textPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1.1,
-                                          letterSpacing: compact ? -0.45 : -0.7,
-                                        ),
+                                        style:
+                                            (compact
+                                                    ? Theme.of(
+                                                        context,
+                                                      ).textTheme.headlineSmall
+                                                    : Theme.of(context)
+                                                          .textTheme
+                                                          .headlineMedium)
+                                                ?.copyWith(
+                                                  color: colors.textPrimary,
+                                                  fontWeight: FontWeight.w800,
+                                                  height: 1.1,
+                                                  letterSpacing: compact
+                                                      ? -0.45
+                                                      : -0.7,
+                                                ),
                                       ),
                                     ),
                                   ),
@@ -245,18 +249,19 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
                                       textAlign: TextAlign.center,
                                       maxLines: compact ? 3 : 4,
                                       overflow: TextOverflow.ellipsis,
-                                      style: (compact
-                                              ? Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium
-                                              : Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge)
-                                          ?.copyWith(
-                                        color: colors.textSecondary,
-                                        height: compact ? 1.35 : 1.42,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                      style:
+                                          (compact
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).textTheme.bodyMedium
+                                                  : Theme.of(
+                                                      context,
+                                                    ).textTheme.bodyLarge)
+                                              ?.copyWith(
+                                                color: colors.textSecondary,
+                                                height: compact ? 1.35 : 1.42,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                     ),
                                   ),
                                   SizedBox(height: compact ? 13 : 20),
@@ -300,17 +305,17 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
               Text(
                 'ParkiWell',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
               ),
               Text(
                 'Your everyday care companion',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -319,10 +324,7 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
     );
   }
 
-  Widget _buildBenefitsCard(
-    AppColors colors, {
-    required bool compact,
-  }) {
+  Widget _buildBenefitsCard(AppColors colors, {required bool compact}) {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -351,8 +353,8 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
           final accent = index == 0
               ? colors.primary
               : index == 2
-                  ? colors.secondary
-                  : colors.primaryDark;
+              ? colors.secondary
+              : colors.primaryDark;
           return _BenefitRow(
             benefit: benefit,
             colors: colors,
@@ -383,8 +385,10 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen>
                     icon: const Icon(Icons.arrow_forward_rounded, size: 20),
                     label: const Text('Create my care plan'),
                     style: FilledButton.styleFrom(
-                      backgroundColor:
-                          colors.primaryDark.blend(colors.primary, 0.18),
+                      backgroundColor: colors.primaryDark.blend(
+                        colors.primary,
+                        0.18,
+                      ),
                       foregroundColor: colors.textOnPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -464,19 +468,19 @@ class _BenefitRow extends StatelessWidget {
                 Text(
                   benefit.title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
                 ),
                 if (!compact) ...[
                   const SizedBox(height: 3),
                   Text(
                     benefit.description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.34,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.34,
+                    ),
                   ),
                 ],
               ],

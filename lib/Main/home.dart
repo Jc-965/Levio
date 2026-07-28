@@ -10,9 +10,7 @@ class HomeScreen extends StatelessWidget {
     return const Column(
       children: [
         SizedBox(height: 12),
-        Expanded(
-          child: LineChartSample1(),
-        ),
+        Expanded(child: LineChartSample1()),
       ],
     );
   }

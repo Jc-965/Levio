@@ -50,10 +50,7 @@ Future<void> showGuideDialog(
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    colors.primaryLight,
-                                    colors.primary,
-                                  ],
+                                  colors: [colors.primaryLight, colors.primary],
                                 ),
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -63,12 +60,8 @@ Future<void> showGuideDialog(
                             Expanded(
                               child: Text(
                                 title,
-                                style: Theme.of(ctx)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                style: Theme.of(ctx).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                             ),
                           ],
@@ -77,18 +70,18 @@ Future<void> showGuideDialog(
                         Text(
                           body,
                           style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                                color: colors.textSecondary,
-                                height: 1.55,
-                              ),
+                            color: colors.textSecondary,
+                            height: 1.55,
+                          ),
                         ),
                         if (footnote != null) ...[
                           const SizedBox(height: 14),
                           Text(
                             footnote,
                             style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                  color: colors.textTertiary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              color: colors.textTertiary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                         const SizedBox(height: 22),
@@ -124,8 +117,10 @@ Future<void> showGuideDialog(
       );
     },
     transitionBuilder: (ctx, animation, _, child) {
-      final curved =
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(

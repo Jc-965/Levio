@@ -49,25 +49,33 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
   final GlobalKey _logSymptomQuickActionKey = GlobalKey();
   final GlobalKey _addMedicationQuickActionKey = GlobalKey();
   final GlobalKey _medicationsToolCardKey = GlobalKey();
-  final List<GlobalKey> _navItemKeys =
-      List<GlobalKey>.generate(5, (_) => GlobalKey());
+  final List<GlobalKey> _navItemKeys = List<GlobalKey>.generate(
+    5,
+    (_) => GlobalKey(),
+  );
 
   final List<_NavItem> navItems = [
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
     _NavItem(
-        icon: Icons.bar_chart_outlined,
-        activeIcon: Icons.bar_chart,
-        label: 'Manage'),
+      icon: Icons.bar_chart_outlined,
+      activeIcon: Icons.bar_chart,
+      label: 'Manage',
+    ),
     _NavItem(
-        icon: Icons.favorite_outline,
-        activeIcon: Icons.favorite,
-        label: 'Recovery'),
+      icon: Icons.favorite_outline,
+      activeIcon: Icons.favorite,
+      label: 'Recovery',
+    ),
     _NavItem(
-        icon: Icons.people_outline,
-        activeIcon: Icons.people,
-        label: 'Community'),
+      icon: Icons.people_outline,
+      activeIcon: Icons.people,
+      label: 'Community',
+    ),
     _NavItem(
-        icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
+      icon: Icons.person_outline,
+      activeIcon: Icons.person,
+      label: 'Profile',
+    ),
   ];
 
   void checkTab() {
@@ -96,10 +104,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
       vsync: this,
     );
     _fabScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fabAnimationController,
-        curve: Curves.easeOut,
-      ),
+      CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut),
     );
     if (button) {
       _fabAnimationController.forward();
@@ -120,10 +125,12 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
     required String rawName,
     required String rawEmail,
   }) async {
-    final updatedName =
-        rawName.trim().isEmpty ? singleton.name : rawName.trim();
-    final updatedEmail =
-        rawEmail.trim().isEmpty ? singleton.email : rawEmail.trim();
+    final updatedName = rawName.trim().isEmpty
+        ? singleton.name
+        : rawName.trim();
+    final updatedEmail = rawEmail.trim().isEmpty
+        ? singleton.email
+        : rawEmail.trim();
 
     singleton.setEmail(updatedEmail);
     singleton.setName(updatedName);
@@ -137,8 +144,9 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         SnackBar(
           content: const Text('Unable to update profile right now'),
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -169,8 +177,9 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
   String _appBarTitle() {
     if (currentIndex != 0) return navItems[currentIndex].label;
     final raw = singleton.name.trim();
-    final firstName =
-        (raw.isEmpty || raw == '[Name]') ? null : raw.split(' ').first;
+    final firstName = (raw.isEmpty || raw == '[Name]')
+        ? null
+        : raw.split(' ').first;
     return _timeGreeting(firstName);
   }
 
@@ -351,9 +360,9 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
           _switchTabForTutorial(1);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            Navigator.of(context).push(
-              buildSubtleFadeRoute(page: const ScheduleScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(buildSubtleFadeRoute(page: const ScheduleScreen()));
           });
         },
       ),
@@ -387,9 +396,9 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
           _switchTabForTutorial(2);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            Navigator.of(context).push(
-              buildSubtleFadeRoute(page: const ExerciseScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(buildSubtleFadeRoute(page: const ExerciseScreen()));
           });
         },
       ),
@@ -536,13 +545,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         resizeToAvoidBottomInset: false,
         backgroundColor: colors.background,
         appBar: _buildAppBar(colors),
-        body: Column(
-          children: [
-            Expanded(
-              child: _buildAnimatedTabBody(),
-            ),
-          ],
-        ),
+        body: Column(children: [Expanded(child: _buildAnimatedTabBody())]),
         bottomNavigationBar: _buildBottomNavBar(colors),
         floatingActionButton: _buildFAB(colors),
       ),
@@ -604,9 +607,9 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
                         _appBarTitle(),
                         maxLines: 1,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                            ),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                        ),
                       ),
                     ),
                   ),
@@ -632,18 +635,13 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
                 width: 1.5,
               ),
             ),
-            child: ClipOval(
-              child: _buildNavbarAvatar(colors),
-            ),
+            child: ClipOval(child: _buildNavbarAvatar(colors)),
           ),
         ),
         IconButton(
           key: _settingsKey,
           iconSize: 19,
-          icon: Icon(
-            Icons.settings_outlined,
-            color: colors.textSecondary,
-          ),
+          icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
           onPressed: () {
             HapticUtils.lightImpact();
             Navigator.pushNamed(context, '/settingsScreen');
@@ -658,9 +656,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
     return Container(
       decoration: BoxDecoration(
         color: colors.background,
-        border: Border(
-          top: BorderSide(color: colors.border, width: 1),
-        ),
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -792,10 +788,14 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
               style:
                   (Theme.of(context).textTheme.labelSmall ?? const TextStyle())
                       .copyWith(
-                color: isSelected ? colors.primary : colors.navUnselected,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 9,
-              ),
+                        color: isSelected
+                            ? colors.primary
+                            : colors.navUnselected,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        fontSize: 9,
+                      ),
               child: Text(item.label),
             ),
           ],
@@ -851,10 +851,12 @@ class _EditProfileSheet extends StatefulWidget {
 }
 
 class _EditProfileSheetState extends State<_EditProfileSheet> {
-  late final TextEditingController _nameController =
-      TextEditingController(text: widget.initialName);
-  late final TextEditingController _emailController =
-      TextEditingController(text: widget.initialEmail);
+  late final TextEditingController _nameController = TextEditingController(
+    text: widget.initialName,
+  );
+  late final TextEditingController _emailController = TextEditingController(
+    text: widget.initialEmail,
+  );
 
   @override
   void dispose() {
@@ -898,9 +900,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             const SizedBox(height: 20),
             Text(
               'Edit Profile',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
             ModernTextField(

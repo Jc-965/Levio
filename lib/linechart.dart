@@ -39,7 +39,7 @@ class LineChartSample1State extends State<LineChartSample1>
     'September',
     'October',
     'November',
-    'December'
+    'December',
   ];
 
   final Map<String, int> monthToIndex = const {
@@ -124,8 +124,9 @@ class LineChartSample1State extends State<LineChartSample1>
       (index) => FlSpot(index.toDouble(), buckets[index]),
     );
 
-    final maxValue =
-        buckets.isEmpty ? 0.0 : buckets.reduce(math.max).toDouble();
+    final maxValue = buckets.isEmpty
+        ? 0.0
+        : buckets.reduce(math.max).toDouble();
     lineBarY = maxValue > 0 ? maxValue : 1;
   }
 
@@ -167,16 +168,16 @@ class LineChartSample1State extends State<LineChartSample1>
   }
 
   LineChartData get sampleData1 => LineChartData(
-        lineTouchData: lineTouchData1,
-        gridData: gridData,
-        titlesData: titlesData1,
-        borderData: borderData,
-        lineBarsData: lineBarsData1,
-        minX: 0,
-        maxX: chosenTime == "Month" ? 11 : (_yearWindow.length - 1).toDouble(),
-        maxY: lineBarY + 1,
-        minY: 0,
-      );
+    lineTouchData: lineTouchData1,
+    gridData: gridData,
+    titlesData: titlesData1,
+    borderData: borderData,
+    lineBarsData: lineBarsData1,
+    minX: 0,
+    maxX: chosenTime == "Month" ? 11 : (_yearWindow.length - 1).toDouble(),
+    maxY: lineBarY + 1,
+    minY: 0,
+  );
 
   LineTouchData get lineTouchData1 {
     final colors = context.colors;
@@ -213,10 +214,7 @@ class LineChartSample1State extends State<LineChartSample1>
           return touchedSpots.map((spot) {
             return LineTooltipItem(
               '${spot.y.toInt()} symptoms',
-              TextStyle(
-                color: colors.primary,
-                fontWeight: FontWeight.w600,
-              ),
+              TextStyle(color: colors.primary, fontWeight: FontWeight.w600),
             );
           }).toList();
         },
@@ -225,23 +223,13 @@ class LineChartSample1State extends State<LineChartSample1>
   }
 
   FlTitlesData get titlesData1 => FlTitlesData(
-        bottomTitles: AxisTitles(
-          sideTitles: bottomTitles,
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: leftTitles(),
-        ),
-      );
+    bottomTitles: AxisTitles(sideTitles: bottomTitles),
+    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    leftTitles: AxisTitles(sideTitles: leftTitles()),
+  );
 
-  List<LineChartBarData> get lineBarsData1 => [
-        lineChartBarData1_3,
-      ];
+  List<LineChartBarData> get lineBarsData1 => [lineChartBarData1_3];
 
   Widget leftTitleWidgets(double value, TitleMeta meta) {
     final colors = context.colors;
@@ -256,11 +244,11 @@ class LineChartSample1State extends State<LineChartSample1>
   }
 
   SideTitles leftTitles() => SideTitles(
-        getTitlesWidget: leftTitleWidgets,
-        showTitles: true,
-        interval: 1,
-        reservedSize: 32,
-      );
+    getTitlesWidget: leftTitleWidgets,
+    showTitles: true,
+    interval: 1,
+    reservedSize: 32,
+  );
 
   Widget bottomTitleWidgets(double value, TitleMeta meta) {
     final colors = context.colors;
@@ -314,19 +302,15 @@ class LineChartSample1State extends State<LineChartSample1>
       }
     }
 
-    return SideTitleWidget(
-      axisSide: meta.axisSide,
-      space: 10,
-      child: text,
-    );
+    return SideTitleWidget(axisSide: meta.axisSide, space: 10, child: text);
   }
 
   SideTitles get bottomTitles => SideTitles(
-        showTitles: true,
-        reservedSize: 32,
-        interval: 1,
-        getTitlesWidget: bottomTitleWidgets,
-      );
+    showTitles: true,
+    reservedSize: 32,
+    interval: 1,
+    getTitlesWidget: bottomTitleWidgets,
+  );
 
   FlGridData get gridData {
     final colors = context.colors;
@@ -437,16 +421,12 @@ class LineChartSample1State extends State<LineChartSample1>
                           children: [
                             Text(
                               'Health patterns',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             Text(
                               '${insights.eventCount} recorded events',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: colors.textTertiary),
                             ),
                           ],
@@ -458,9 +438,9 @@ class LineChartSample1State extends State<LineChartSample1>
                   Text(
                     insights.summary,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.45,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.45,
+                    ),
                   ),
                 ],
               ),
@@ -488,10 +468,8 @@ class LineChartSample1State extends State<LineChartSample1>
                         const SizedBox(width: 12),
                         Text(
                           'Symptoms',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -505,10 +483,8 @@ class LineChartSample1State extends State<LineChartSample1>
                           color: colors.textSecondary,
                           size: 20,
                         ),
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: colors.textPrimary,
-                                ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: colors.textPrimary),
                         dropdownColor: colors.surface,
                         borderRadius: BorderRadius.circular(12),
                         onChanged: (String? newValue) {
@@ -519,8 +495,9 @@ class LineChartSample1State extends State<LineChartSample1>
                             _rebuildChartData();
                           });
                         },
-                        items:
-                            time.map<DropdownMenuItem<String>>((String item) {
+                        items: time.map<DropdownMenuItem<String>>((
+                          String item,
+                        ) {
                           return DropdownMenuItem<String>(
                             value: item,
                             child: Text(item),
@@ -558,12 +535,8 @@ class LineChartSample1State extends State<LineChartSample1>
                             const SizedBox(height: 14),
                             Text(
                               'Log symptoms to see your trend',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: colors.textTertiary,
-                                  ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: colors.textTertiary),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -592,8 +565,8 @@ class LineChartSample1State extends State<LineChartSample1>
                     Text(
                       'Weekly Medications',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -615,12 +588,8 @@ class LineChartSample1State extends State<LineChartSample1>
                             Text(
                               'Add medications to see your weekly schedule',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: colors.textTertiary,
-                                  ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: colors.textTertiary),
                             ),
                           ],
                         ),
@@ -657,9 +626,9 @@ class LineChartSample1State extends State<LineChartSample1>
                 Text(
                   value,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: colors.textPrimary,
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -667,9 +636,9 @@ class LineChartSample1State extends State<LineChartSample1>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

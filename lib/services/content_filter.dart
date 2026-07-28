@@ -17,18 +17,17 @@ class ModerationResult {
     this.rejectionReason,
   });
 
-  factory ModerationResult.approved(String content) => ModerationResult(
-        isApproved: true,
-        sanitizedContent: content,
-      );
+  factory ModerationResult.approved(String content) =>
+      ModerationResult(isApproved: true, sanitizedContent: content);
 
-  factory ModerationResult.rejected(String reason,
-          {List<ModerationViolation>? violations}) =>
-      ModerationResult(
-        isApproved: false,
-        rejectionReason: reason,
-        violations: violations ?? [],
-      );
+  factory ModerationResult.rejected(
+    String reason, {
+    List<ModerationViolation>? violations,
+  }) => ModerationResult(
+    isApproved: false,
+    rejectionReason: reason,
+    violations: violations ?? [],
+  );
 }
 
 /// Types of content violations
@@ -101,8 +100,9 @@ class ContentModerationService {
 
   ContentModerationService._internal() {
     // Initialize with default LDNOOBW word list plus custom additions
-    _profanityFilter =
-        ProfanityFilter.filterAdditionally(_healthcareBlockedTerms);
+    _profanityFilter = ProfanityFilter.filterAdditionally(
+      _healthcareBlockedTerms,
+    );
   }
 
   /// Moderate content with comprehensive checks
@@ -175,11 +175,13 @@ class ContentModerationService {
     }
 
     // Determine final result
-    final hasBlockingViolation = violations.any((v) =>
-        v.type == ViolationType.profanity ||
-        v.type == ViolationType.harassment ||
-        v.type == ViolationType.tooLong ||
-        v.type == ViolationType.emptyContent);
+    final hasBlockingViolation = violations.any(
+      (v) =>
+          v.type == ViolationType.profanity ||
+          v.type == ViolationType.harassment ||
+          v.type == ViolationType.tooLong ||
+          v.type == ViolationType.emptyContent,
+    );
 
     if (hasBlockingViolation) {
       final primaryViolation = violations.first;
@@ -268,8 +270,10 @@ class ContentModerationService {
     return null;
   }
 
-  List<ModerationViolation> _checkSpamPatterns(String content,
-      {bool allowLinks = false}) {
+  List<ModerationViolation> _checkSpamPatterns(
+    String content, {
+    bool allowLinks = false,
+  }) {
     final violations = <ModerationViolation>[];
 
     // URL detection
@@ -278,10 +282,12 @@ class ContentModerationService {
       caseSensitive: false,
     );
     if (!allowLinks && urlPattern.hasMatch(content)) {
-      violations.add(ModerationViolation(
-        type: ViolationType.linkSpam,
-        description: 'Links are not allowed in posts',
-      ));
+      violations.add(
+        ModerationViolation(
+          type: ViolationType.linkSpam,
+          description: 'Links are not allowed in posts',
+        ),
+      );
     }
 
     // Email detection
@@ -289,10 +295,12 @@ class ContentModerationService {
       r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
     );
     if (emailPattern.hasMatch(content)) {
-      violations.add(ModerationViolation(
-        type: ViolationType.personalInfo,
-        description: 'Please do not share email addresses',
-      ));
+      violations.add(
+        ModerationViolation(
+          type: ViolationType.personalInfo,
+          description: 'Please do not share email addresses',
+        ),
+      );
     }
 
     // Phone number detection (various formats)
@@ -300,10 +308,12 @@ class ContentModerationService {
       r'\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b',
     );
     if (phonePattern.hasMatch(content)) {
-      violations.add(ModerationViolation(
-        type: ViolationType.personalInfo,
-        description: 'Please do not share phone numbers',
-      ));
+      violations.add(
+        ModerationViolation(
+          type: ViolationType.personalInfo,
+          description: 'Please do not share phone numbers',
+        ),
+      );
     }
 
     // Spam keywords
@@ -321,10 +331,12 @@ class ContentModerationService {
     final lowerContent = content.toLowerCase();
     for (final keyword in spamKeywords) {
       if (lowerContent.contains(keyword)) {
-        violations.add(ModerationViolation(
-          type: ViolationType.spam,
-          description: 'Content appears to be spam',
-        ));
+        violations.add(
+          ModerationViolation(
+            type: ViolationType.spam,
+            description: 'Content appears to be spam',
+          ),
+        );
         break;
       }
     }

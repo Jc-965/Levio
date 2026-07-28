@@ -4,14 +4,22 @@ import 'package:parkiwell/config/environment.dart';
 
 void main() {
   test('Supabase backend config follows dart defines', () {
-    const provider =
-        String.fromEnvironment('BACKEND_PROVIDER', defaultValue: 'none');
-    const environment =
-        String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
-    const supabaseUrl =
-        String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-    const supabaseAnonKey =
-        String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+    const provider = String.fromEnvironment(
+      'BACKEND_PROVIDER',
+      defaultValue: 'none',
+    );
+    const environment = String.fromEnvironment(
+      'ENVIRONMENT',
+      defaultValue: 'development',
+    );
+    const supabaseUrl = String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: '',
+    );
+    const supabaseAnonKey = String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: '',
+    );
 
     switch (environment) {
       case 'testing':

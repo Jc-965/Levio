@@ -104,9 +104,9 @@ class _SessionCompletionBarState extends State<SessionCompletionBar> {
         Text(
           _isLogged ? 'Added to History' : 'Finished this session?',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: colors.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 2),
         AnimatedSwitcher(
@@ -116,9 +116,9 @@ class _SessionCompletionBarState extends State<SessionCompletionBar> {
                 ? '$_count ${_count == 1 ? 'completion' : 'completions'} total'
                 : 'Add it once when your practice is complete.',
             key: ValueKey<int>(_count),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
         ),
       ],
@@ -131,13 +131,12 @@ class _SessionCompletionBarState extends State<SessionCompletionBar> {
         disabledBackgroundColor: _isLogged
             ? colors.success.withValues(alpha: 0.16)
             : colors.surfaceVariant,
-        disabledForegroundColor:
-            _isLogged ? colors.success : colors.textTertiary,
+        disabledForegroundColor: _isLogged
+            ? colors.success
+            : colors.textTertiary,
         minimumSize: const Size(158, 50),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: _isSaving
           ? SizedBox(
@@ -176,16 +175,13 @@ class _SessionCompletionBarState extends State<SessionCompletionBar> {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final stack = constraints.maxWidth < 330 ||
+                  final stack =
+                      constraints.maxWidth < 330 ||
                       MediaQuery.textScalerOf(context).scale(1) > 1.2;
                   if (stack) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        info,
-                        const SizedBox(height: 10),
-                        action,
-                      ],
+                      children: [info, const SizedBox(height: 10), action],
                     );
                   }
                   return Row(
@@ -202,9 +198,9 @@ class _SessionCompletionBarState extends State<SessionCompletionBar> {
                 Text(
                   _error!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.error,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: colors.error,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ],

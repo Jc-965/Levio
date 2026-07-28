@@ -132,9 +132,9 @@ class _RecoveryLogSheetState extends State<_RecoveryLogSheet> {
             Text(
               'Log completed session',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -149,16 +149,16 @@ class _RecoveryLogSheetState extends State<_RecoveryLogSheet> {
                       Text(
                         widget.title,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: colors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${widget.typeLabel}${widget.duration.isEmpty ? '' : ' · ${widget.duration}'}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textTertiary,
-                            ),
+                          color: colors.textTertiary,
+                        ),
                       ),
                     ],
                   ),
@@ -189,17 +189,13 @@ class _RecoveryLogSheetState extends State<_RecoveryLogSheet> {
                           children: [
                             Text(
                               'Completed',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
+                              style: Theme.of(context).textTheme.labelMedium
                                   ?.copyWith(color: colors.textTertiary),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               formatRecoveryDate(_date),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: colors.textPrimary,
                                     fontWeight: FontWeight.w700,
@@ -210,9 +206,9 @@ class _RecoveryLogSheetState extends State<_RecoveryLogSheet> {
                       ),
                       Text(
                         'Change',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: colors.primary,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelLarge?.copyWith(color: colors.primary),
                       ),
                     ],
                   ),
@@ -224,9 +220,9 @@ class _RecoveryLogSheetState extends State<_RecoveryLogSheet> {
               Text(
                 _error!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.error,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colors.error,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
             const SizedBox(height: 18),

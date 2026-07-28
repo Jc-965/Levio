@@ -109,10 +109,12 @@ class _SpeechAudioState extends State<SpeechAudio> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final speechData = singleton.speeches[singleton.currentURL];
-    final source =
-        speechData != null && speechData.length > 3 ? speechData[3] : '';
-    final sessionCount =
-        singleton.speechSessionCountForVideo(singleton.currentURL);
+    final source = speechData != null && speechData.length > 3
+        ? speechData[3]
+        : '';
+    final sessionCount = singleton.speechSessionCountForVideo(
+      singleton.currentURL,
+    );
 
     if (speechData == null) {
       return Scaffold(
@@ -121,13 +123,18 @@ class _SpeechAudioState extends State<SpeechAudio> {
           backgroundColor: colors.background,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          title: Text('Speech Therapy',
-              style: TextStyle(
-                  color: colors.textPrimary, fontWeight: FontWeight.w600)),
+          title: Text(
+            'Speech Therapy',
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         body: Container(
-            color: colors.background,
-            child: const Center(child: Text('Video not found'))),
+          color: colors.background,
+          child: const Center(child: Text('Video not found')),
+        ),
       );
     }
 
@@ -148,9 +155,13 @@ class _SpeechAudioState extends State<SpeechAudio> {
             }
           },
         ),
-        title: Text('Speech Therapy',
-            style: TextStyle(
-                color: colors.textPrimary, fontWeight: FontWeight.w600)),
+        title: Text(
+          'Speech Therapy',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: 'Open in YouTube',
@@ -177,8 +188,8 @@ class _SpeechAudioState extends State<SpeechAudio> {
               Text(
                 speechData[0],
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               ModernCard(
@@ -190,26 +201,26 @@ class _SpeechAudioState extends State<SpeechAudio> {
                     Text(
                       'Session focus',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: colors.textTertiary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: colors.textTertiary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       speechData[1],
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                            height: 1.4,
-                          ),
+                        color: colors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
                     if (source.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(
                         source,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textTertiary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          color: colors.textTertiary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ],
@@ -228,9 +239,9 @@ class _SpeechAudioState extends State<SpeechAudio> {
                   Text(
                     'Guided speech session',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -297,22 +308,16 @@ class _SpeechAudioState extends State<SpeechAudio> {
                             kIsWeb
                                 ? 'Continue in YouTube'
                                 : 'Unable to load video in-app',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             kIsWeb
                                 ? 'Guided videos open in YouTube on the web. Your completion control stays here when you return.'
                                 : 'Open this speech session directly in YouTube.',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colors.textSecondary),
                           ),
                           const SizedBox(height: 12),
                           if (kIsWeb)
@@ -365,9 +370,9 @@ class _SpeechAudioState extends State<SpeechAudio> {
                       child: Text(
                         'Pause and repeat sections as needed. The completion control stays available below when you finish.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textSecondary,
-                              height: 1.45,
-                            ),
+                          color: colors.textSecondary,
+                          height: 1.45,
+                        ),
                       ),
                     ),
                   ],

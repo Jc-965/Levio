@@ -25,41 +25,40 @@ class SlidePageRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
   final SlideDirection direction;
 
-  SlidePageRoute({
-    required this.page,
-    this.direction = SlideDirection.right,
-  }) : super(
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            Offset begin;
-            switch (direction) {
-              case SlideDirection.right:
-                begin = const Offset(1.0, 0.0);
-                break;
-              case SlideDirection.left:
-                begin = const Offset(-1.0, 0.0);
-                break;
-              case SlideDirection.up:
-                begin = const Offset(0.0, 1.0);
-                break;
-              case SlideDirection.down:
-                begin = const Offset(0.0, -1.0);
-                break;
-            }
-            const end = Offset.zero;
-            const curve = Curves.easeOutCubic;
+  SlidePageRoute({required this.page, this.direction = SlideDirection.right})
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          Offset begin;
+          switch (direction) {
+            case SlideDirection.right:
+              begin = const Offset(1.0, 0.0);
+              break;
+            case SlideDirection.left:
+              begin = const Offset(-1.0, 0.0);
+              break;
+            case SlideDirection.up:
+              begin = const Offset(0.0, 1.0);
+              break;
+            case SlideDirection.down:
+              begin = const Offset(0.0, -1.0);
+              break;
+          }
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
 
-            var tween = Tween(begin: begin, end: end).chain(
-              CurveTween(curve: curve),
-            );
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
 
-            return SlideTransition(
-              position: animation.drive(tween),
-              child: child,
-            );
-          },
-          transitionDuration: AnimationDurations.normal,
-        );
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: AnimationDurations.normal,
+      );
 }
 
 enum SlideDirection { right, left, up, down }
@@ -69,16 +68,13 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
 
   FadePageRoute({required this.page})
-      : super(
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: AnimationDurations.normal,
-        );
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: AnimationDurations.normal,
+      );
 }
 
 /// Scale and fade page transition
@@ -86,24 +82,21 @@ class ScaleFadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
 
   ScaleFadePageRoute({required this.page})
-      : super(
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
-                child: child,
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
               ),
-            );
-          },
-          transitionDuration: AnimationDurations.normal,
-        );
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: AnimationDurations.normal,
+      );
 }
 
 /// Animated list item builder for staggered animations
@@ -171,14 +164,12 @@ class _FadeInWidgetState extends State<FadeInWidget>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
-    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: widget.curve),
-    );
+    _opacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
     _offset = Tween<Offset>(
       begin: const Offset(0, 0.1),
@@ -200,10 +191,7 @@ class _FadeInWidgetState extends State<FadeInWidget>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _opacity,
-      child: SlideTransition(
-        position: _offset,
-        child: widget.child,
-      ),
+      child: SlideTransition(position: _offset, child: widget.child),
     );
   }
 }
@@ -237,18 +225,12 @@ class _ScaleAnimationWidgetState extends State<ScaleAnimationWidget>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     _scale = Tween<double>(
       begin: widget.beginScale,
       end: widget.endScale,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -263,10 +245,7 @@ class _ScaleAnimationWidgetState extends State<ScaleAnimationWidget>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: widget.child,
-    );
+    return ScaleTransition(scale: _scale, child: widget.child);
   }
 }
 
@@ -297,18 +276,13 @@ class _PulseAnimationState extends State<PulseAnimation>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    )..repeat(reverse: true);
+    _controller = AnimationController(duration: widget.duration, vsync: this)
+      ..repeat(reverse: true);
 
     _scale = Tween<double>(
       begin: widget.minScale,
       end: widget.maxScale,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -319,10 +293,7 @@ class _PulseAnimationState extends State<PulseAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: widget.child,
-    );
+    return ScaleTransition(scale: _scale, child: widget.child);
   }
 }
 
@@ -356,9 +327,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
       vsync: this,
     )..repeat();
 
-    _animation = Tween<double>(begin: -2, end: 2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: -2,
+      end: 2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -372,7 +344,8 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor =
         widget.baseColor ?? (isDark ? Colors.grey[800]! : Colors.grey[300]!);
-    final highlightColor = widget.highlightColor ??
+    final highlightColor =
+        widget.highlightColor ??
         (isDark ? Colors.grey[700]! : Colors.grey[100]!);
 
     return AnimatedBuilder(
@@ -418,10 +391,7 @@ class AnimatedCounter extends StatelessWidget {
       tween: IntTween(begin: 0, end: value),
       duration: duration,
       builder: (context, value, child) {
-        return Text(
-          value.toString(),
-          style: style,
-        );
+        return Text(value.toString(), style: style);
       },
     );
   }

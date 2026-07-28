@@ -57,9 +57,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Delete Account'),
           content: Text(
             'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.',
-            style: Theme.of(c).textTheme.bodyMedium?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              c,
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           actions: [
             TextButton(
@@ -96,9 +96,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Sign Out'),
           content: Text(
             'Sign out of your account on this device?',
-            style: Theme.of(c).textTheme.bodyMedium?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              c,
+            ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           actions: [
             TextButton(
@@ -150,9 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isSyncing = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          synced ? 'Sync complete' : 'Unable to sync right now.',
-        ),
+        content: Text(synced ? 'Sync complete' : 'Unable to sync right now.'),
       ),
     );
   }
@@ -161,17 +159,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final payload = singleton.exportBackupJson();
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: payload,
-          subject: 'ParkiWell backup',
-        ),
+        ShareParams(text: payload, subject: 'ParkiWell backup'),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to export backup right now.'),
-        ),
+        const SnackBar(content: Text('Unable to export backup right now.')),
       );
     }
   }
@@ -194,9 +187,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   'Paste backup JSON below to restore local data.',
-                  style: Theme.of(c).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                  style: Theme.of(
+                    c,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -219,8 +212,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final success =
-                    await singleton.importBackupJson(controller.text.trim());
+                final success = await singleton.importBackupJson(
+                  controller.text.trim(),
+                );
                 if (!c.mounted || !mounted) return;
                 Navigator.pop(c);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -266,10 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 16),
-              CircularProgressIndicator(
-                color: colors.primary,
-                strokeWidth: 2,
-              ),
+              CircularProgressIndicator(color: colors.primary, strokeWidth: 2),
               const SizedBox(height: 20),
               Text(
                 'Deleting Account...',
@@ -278,9 +269,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 4),
               Text(
                 'Please wait while we remove your data',
-                style: Theme.of(c).textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                style: Theme.of(
+                  c,
+                ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 16),
             ],
@@ -314,9 +305,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           },
         ),
-        title: Text('Settings',
-            style: TextStyle(
-                color: colors.textPrimary, fontWeight: FontWeight.w600)),
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: Container(
         color: colors.background,
@@ -329,9 +324,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Appearance',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -348,9 +343,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Data & Sync',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -404,9 +399,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'About',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -463,9 +458,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Account',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -489,9 +484,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Danger Zone',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.error,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: colors.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -511,15 +506,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       'ParkiWell',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Parkinson\'s Care Management',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textTertiary,
-                          ),
+                        color: colors.textTertiary,
+                      ),
                     ),
                   ],
                 ),
@@ -594,11 +589,7 @@ class _SettingsTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: iconColor ?? colors.textSecondary,
-            size: 20,
-          ),
+          Icon(icon, color: iconColor ?? colors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -606,17 +597,17 @@ class _SettingsTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textTertiary,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
                   ),
                 ],
               ],

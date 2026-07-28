@@ -29,8 +29,10 @@ class _TopicScreenState extends State<TopicScreen> {
         ),
         title: Text(
           'Topic',
-          style:
-              TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Center(
@@ -43,17 +45,17 @@ class _TopicScreenState extends State<TopicScreen> {
               const SizedBox(height: 16),
               Text(
                 'Topics are coming soon.',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 'Community topics and threaded discussions will appear here in a future update.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textTertiary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
               ),
             ],
           ),

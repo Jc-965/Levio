@@ -74,11 +74,12 @@ class _ModernCardState extends State<ModernCard> {
           color: hasGradient
               ? null
               : (_isPressed
-                  ? Color.lerp(cardColor, colors.surfaceVariant, 0.45)
-                  : cardColor),
+                    ? Color.lerp(cardColor, colors.surfaceVariant, 0.45)
+                    : cardColor),
           gradient: widget.gradient,
           borderRadius: BorderRadius.circular(widget.borderRadius),
-          border: widget.border ??
+          border:
+              widget.border ??
               (widget.showBorder
                   ? Border.all(
                       color: _isPressed
@@ -135,11 +136,7 @@ class FeatureCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: iconColor ?? colors.primary,
-          ),
+          Icon(icon, size: 24, color: iconColor ?? colors.primary),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -147,16 +144,16 @@ class FeatureCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
                 ),
               ],
             ),
@@ -198,33 +195,29 @@ class StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: cardColor,
-          ),
+          Icon(icon, size: 20, color: cardColor),
           const SizedBox(height: 12),
           Text(
             value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
             Text(
               subtitle!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cardColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: cardColor,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ],

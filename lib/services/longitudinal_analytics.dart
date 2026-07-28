@@ -88,11 +88,12 @@ class LongitudinalAnalytics {
     final therapyList = therapySessions.toList()
       ..sort((a, b) => a.completedAt.compareTo(b.completedAt));
 
-    final takenMedicationTimes = medicationList
-        .where((event) => event.wasTaken)
-        .map((event) => event.takenAt!)
-        .toList()
-      ..sort();
+    final takenMedicationTimes =
+        medicationList
+            .where((event) => event.wasTaken)
+            .map((event) => event.takenAt!)
+            .toList()
+          ..sort();
 
     var afterMedicationSeverity = 0.0;
     var afterMedicationCount = 0;
@@ -102,14 +103,17 @@ class LongitudinalAnalytics {
 
     for (final symptom in symptomList) {
       while (medicationIndex + 1 < takenMedicationTimes.length &&
-          !takenMedicationTimes[medicationIndex + 1]
-              .isAfter(symptom.occurredAt)) {
+          !takenMedicationTimes[medicationIndex + 1].isAfter(
+            symptom.occurredAt,
+          )) {
         medicationIndex += 1;
       }
 
-      final isWithinMedicationWindow = medicationIndex >= 0 &&
-          symptom.occurredAt
-                  .difference(takenMedicationTimes[medicationIndex]) <=
+      final isWithinMedicationWindow =
+          medicationIndex >= 0 &&
+          symptom.occurredAt.difference(
+                takenMedicationTimes[medicationIndex],
+              ) <=
               medicationWindow;
       if (isWithinMedicationWindow) {
         afterMedicationSeverity += symptom.severity;
@@ -169,17 +173,18 @@ class LongitudinalAnalytics {
     }
 
     final takenCount = medicationList.where((event) => event.wasTaken).length;
-    final adherenceRate =
-        medicationList.isEmpty ? 0.0 : takenCount / medicationList.length;
+    final adherenceRate = medicationList.isEmpty
+        ? 0.0
+        : takenCount / medicationList.length;
     final medicationTimingDelta =
         baselineCount == 0 || afterMedicationCount == 0
-            ? 0.0
-            : (baselineSeverity / baselineCount) -
-                (afterMedicationSeverity / afterMedicationCount);
+        ? 0.0
+        : (baselineSeverity / baselineCount) -
+              (afterMedicationSeverity / afterMedicationCount);
     final therapyDayDelta = therapyDayCount == 0 || nonTherapyDayCount == 0
         ? 0.0
         : (nonTherapyDaySeverity / nonTherapyDayCount) -
-            (therapyDaySeverity / therapyDayCount);
+              (therapyDaySeverity / therapyDayCount);
     final weeklySignals = <int, _WeeklySignals>{};
     for (final symptom in symptomList) {
       weeklySignals
@@ -188,16 +193,19 @@ class LongitudinalAnalytics {
     }
     for (final therapy in therapyList) {
       weeklySignals
-          .putIfAbsent(_weekKey(therapy.completedAt), _WeeklySignals.new)
-          .therapySessions += 1;
+              .putIfAbsent(_weekKey(therapy.completedAt), _WeeklySignals.new)
+              .therapySessions +=
+          1;
     }
     final therapyAdherenceSamples = <_Pair>[];
     var adherenceTotal = 0.0;
     var adherenceWeekCount = 0;
     if (weeklyTherapyGoal > 0) {
       for (final signals in weeklySignals.values) {
-        final adherence =
-            (signals.therapySessions / weeklyTherapyGoal).clamp(0.0, 1.0);
+        final adherence = (signals.therapySessions / weeklyTherapyGoal).clamp(
+          0.0,
+          1.0,
+        );
         adherenceTotal += adherence;
         adherenceWeekCount += 1;
         if (signals.symptomCount > 0) {
@@ -215,8 +223,9 @@ class LongitudinalAnalytics {
       medicationEventCount: medicationList.length,
       therapySessionCount: therapyList.length,
       medicationAdherenceRate: adherenceRate,
-      therapyAdherenceRate:
-          adherenceWeekCount == 0 ? 0 : adherenceTotal / adherenceWeekCount,
+      therapyAdherenceRate: adherenceWeekCount == 0
+          ? 0
+          : adherenceTotal / adherenceWeekCount,
       medicationTimingSeverityDelta: medicationTimingDelta,
       therapyDaySeverityDelta: therapyDayDelta,
       medicationSeverityCorrelation: _pearson(adherenceSamples),

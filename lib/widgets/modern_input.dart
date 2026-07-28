@@ -124,9 +124,9 @@ class ModernDropdown<T> extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 6),
         ],
@@ -140,11 +140,7 @@ class ModernDropdown<T> extends StatelessWidget {
           child: Row(
             children: [
               if (prefixIcon != null) ...[
-                Icon(
-                  prefixIcon,
-                  color: colors.textTertiary,
-                  size: 18,
-                ),
+                Icon(prefixIcon, color: colors.textTertiary, size: 18),
                 const SizedBox(width: 10),
               ],
               Expanded(
@@ -224,9 +220,9 @@ class ModernChipSelector extends StatelessWidget {
             child: Text(
               option,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isSelected ? colors.primary : colors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: isSelected ? colors.primary : colors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         );

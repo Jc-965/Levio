@@ -84,7 +84,8 @@ class _ModernButtonState extends State<ModernButton> {
           duration: const Duration(milliseconds: 120),
           width: widget.width,
           constraints: const BoxConstraints(minHeight: 48),
-          padding: widget.padding ??
+          padding:
+              widget.padding ??
               const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
           transform: Matrix4.identity()
             ..scaleByDouble(
@@ -96,21 +97,21 @@ class _ModernButtonState extends State<ModernButton> {
           decoration: BoxDecoration(
             color: widget.isOutlined
                 ? (_isPressed
-                    ? colors.surface.blend(colors.primary, 0.08)
-                    : colors.surfaceVariant)
+                      ? colors.surface.blend(colors.primary, 0.08)
+                      : colors.surfaceVariant)
                 : null,
             gradient: widget.isOutlined
                 ? null
                 : (_isPressed
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          pressedBackground,
-                          pressedBackground.blend(colors.primaryLight, 0.18),
-                        ],
-                      )
-                    : gradient),
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            pressedBackground,
+                            pressedBackground.blend(colors.primaryLight, 0.18),
+                          ],
+                        )
+                      : gradient),
             borderRadius: BorderRadius.circular(14),
             border: widget.isOutlined
                 ? Border.all(
@@ -155,11 +156,10 @@ class _ModernButtonState extends State<ModernButton> {
                 Text(
                   widget.text,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color:
-                            widget.isOutlined ? colors.textPrimary : textColor,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                      ),
+                    color: widget.isOutlined ? colors.textPrimary : textColor,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
                 ),
               ],
             ],
@@ -200,7 +200,8 @@ class _ModernIconButtonState extends State<ModernIconButton> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final semanticLabel = widget.semanticLabel ??
+    final semanticLabel =
+        widget.semanticLabel ??
         switch (widget.icon) {
           Icons.edit || Icons.edit_outlined => 'Edit',
           Icons.delete || Icons.delete_outline_rounded => 'Delete',
@@ -231,8 +232,10 @@ class _ModernIconButtonState extends State<ModernIconButton> {
             ),
           decoration: BoxDecoration(
             color: _isPressed
-                ? (widget.backgroundColor ?? colors.primary)
-                    .blend(colors.primaryDark, 0.08)
+                ? (widget.backgroundColor ?? colors.primary).blend(
+                    colors.primaryDark,
+                    0.08,
+                  )
                 : widget.backgroundColor ?? colors.primary,
             shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: widget.isCircle ? null : BorderRadius.circular(12),
@@ -314,11 +317,15 @@ class _ModernFABState extends State<ModernFAB> {
             end: Alignment.bottomRight,
             colors: [
               _isPressed
-                  ? (widget.backgroundColor ?? colors.primary)
-                      .blend(colors.primaryDark, 0.08)
+                  ? (widget.backgroundColor ?? colors.primary).blend(
+                      colors.primaryDark,
+                      0.08,
+                    )
                   : widget.backgroundColor ?? colors.primary,
-              (widget.backgroundColor ?? colors.primary)
-                  .blend(colors.primaryLight, 0.35),
+              (widget.backgroundColor ?? colors.primary).blend(
+                colors.primaryLight,
+                0.35,
+              ),
             ],
           ),
           borderRadius: BorderRadius.circular(14),
@@ -346,9 +353,9 @@ class _ModernFABState extends State<ModernFAB> {
               Text(
                 widget.label!,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: widget.iconColor ?? colors.textOnPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: widget.iconColor ?? colors.textOnPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ],

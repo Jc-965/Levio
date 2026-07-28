@@ -34,7 +34,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _reduceMotion = WidgetsBinding
-        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
     _entryController = AnimationController(
       duration: const Duration(milliseconds: 1700),
       vsync: this,
@@ -189,7 +192,9 @@ class _SplashScreenState extends State<SplashScreen>
                     SafeArea(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 20),
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
                         child: Column(
                           children: [
                             const Spacer(flex: 3),
@@ -199,10 +204,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 offset: Offset(0, _brandLift.value),
                                 child: ScaleTransition(
                                   scale: _logoScale,
-                                  child: _buildHeroLogo(
-                                    colors,
-                                    isDark: isDark,
-                                  ),
+                                  child: _buildHeroLogo(colors, isDark: isDark),
                                 ),
                               ),
                             ),
@@ -284,10 +286,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildHeroLogo(
-    AppColors colors, {
-    required bool isDark,
-  }) {
+  Widget _buildHeroLogo(AppColors colors, {required bool isDark}) {
     return ParkiWellMark(
       size: 128,
       color: isDark

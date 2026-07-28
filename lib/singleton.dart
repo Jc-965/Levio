@@ -75,67 +75,67 @@ class Singleton extends ChangeNotifier {
       "LSVT LOUD Introduction",
       "Official LSVT LOUD introduction from LSVT Global focused on safe voice amplitude training for Parkinson's.",
       "9:55",
-      "Source: LSVTGLOBAL (YouTube)"
+      "Source: LSVTGLOBAL (YouTube)",
     ],
     "fJXCDDZJLDg": [
       "Introduction to LSVT LOUD",
       "Official LSVT LOUD overview session introducing core daily voice exercises and cueing strategies.",
       "YouTube",
-      "Source: LSVTGLOBAL (YouTube)"
+      "Source: LSVTGLOBAL (YouTube)",
     ],
     "dzKy4vKp5_I": [
       "Voice Exercises with Rachel",
       "Guided vocal warmups and speech-strength practice for Parkinson's led by a clinical voice specialist.",
       "25:00",
-      "Source: Power for Parkinsons (YouTube)"
+      "Source: Power for Parkinsons (YouTube)",
     ],
     "0TKUdR5Nisk": [
       "Beatles Sing Along",
       "Singing-based speech session to practice loud, clear voice projection with rhythm and articulation drills.",
       "45:00",
-      "Source: Power for Parkinsons (YouTube)"
+      "Source: Power for Parkinsons (YouTube)",
     ],
     "zO5KQb4mUFA": [
       "Speaking with INTENT",
       "Professional education session covering speaking intent, swallow safety, and communication strategies in Parkinson's care.",
       "53:00",
-      "Source: UT Southwestern Medical Center (YouTube)"
+      "Source: UT Southwestern Medical Center (YouTube)",
     ],
     "RmWOwGvyVZI": [
       "LSVT BIG & LOUD Combined",
       "Complete LSVT program combining voice (LOUD) and movement (BIG) exercises for comprehensive therapy.",
       "15:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "L8bkqvf6TRs": [
       "LSVT LOUD Vocal Therapy",
       "Parkinson's Foundation vocal session focused on loudness, breath support, and speech clarity.",
       "22:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "kGZYg19rYCU": [
       "SPEAK OUT! Program Overview",
       "Official Parkinson Voice Project overview of the SPEAK OUT! method for intentional speech.",
       "8:00",
-      "Source: Parkinson Voice Project (YouTube)"
+      "Source: Parkinson Voice Project (YouTube)",
     ],
     "O0k_3tsrVYA": [
       "SPEAK OUT! Lesson 4",
       "Guided Parkinson speech practice session from Parkinson Voice Project's official lesson series.",
       "30:00",
-      "Source: Parkinson Voice Project (YouTube)"
+      "Source: Parkinson Voice Project (YouTube)",
     ],
     "BNZ3XrGc-aw": [
       "Let's Talk Speech: Part 1",
       "APDA educational session on common speech changes in Parkinson's and practical communication strategies.",
       "35:00",
-      "Source: APDA (YouTube)"
+      "Source: APDA (YouTube)",
     ],
     "WjQRwn8SFZk": [
       "Speech & Swallowing in PD",
       "APDA expert discussion on speech and swallowing care with concrete therapy guidance.",
       "58:00",
-      "Source: APDA (YouTube)"
+      "Source: APDA (YouTube)",
     ],
   };
 
@@ -145,79 +145,79 @@ class Singleton extends ChangeNotifier {
       "Exercise Essentials: Intro",
       "Davis Phinney Foundation introduction to why exercise is essential in Parkinson's care.",
       "10:00",
-      "Source: Davis Phinney Foundation (YouTube)"
+      "Source: Davis Phinney Foundation (YouTube)",
     ],
     "AZV3_NfcpVs": [
       "Sit 'n' Fit Workout",
       "Chair-based aerobic routine designed for safe daily movement and endurance.",
       "14:05",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "HHtgtNmBivo": [
       "Chair Workout for Balance",
       "Power for Parkinson's chair workout to improve gait, balance, cognition, and mobility.",
       "35:00",
-      "Source: Power for Parkinsons (YouTube)"
+      "Source: Power for Parkinsons (YouTube)",
     ],
     "4wB43bbSdm8": [
       "Seated Workout",
       "Seated movement routine focused on coordination and brain-body activation.",
       "12:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "No2EIvShhP0": [
       "Reach Your Peak Chair Class",
       "Parkinson's UK chair workout with mobility and coordination drills.",
       "30:00",
-      "Source: Parkinson's UK (YouTube)"
+      "Source: Parkinson's UK (YouTube)",
     ],
     "RfI_v-HQb5I": [
       "Managing Symptoms Exercises",
       "Seated exercises designed to safely support symptom management at home.",
       "20:00",
-      "Source: Power for Parkinsons (YouTube)"
+      "Source: Power for Parkinsons (YouTube)",
     ],
     "G5OvzAORfuc": [
       "PWR!Moves + Aerobic",
       "Parkinson's Foundation moderate-to-high intensity class for stamina, gait, and movement amplitude.",
       "33:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "4qAbME5b7y0": [
       "PWR!Moves Flow",
       "Official Parkinson's Foundation flow session emphasizing posture, transitions, and full-body control.",
       "20:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "jyOk-2DmVnU": [
       "Move to Improve",
       "Strength and balance training with seated-to-standing progressions from Parkinson's Foundation.",
       "37:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "eFhjqxZ5UkY": [
       "PWR Moves Class",
       "All-level Parkinson's movement class focused on range of motion, agility, and coordination.",
       "44:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "AG4prHkdCjY": [
       "Fitness Friday: PWR! Moves",
       "Foundation-led home routine for safe daily activity and confidence in movement.",
       "24:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "zIFtb-R24Ec": [
       "Strong & Steady",
       "Official Parkinson's Foundation class centered on stability, controlled movement, and fall-risk reduction.",
       "20:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
     "pgtGOgVIhqc": [
       "LSVT BIG Movements",
       "Parkinson's Foundation session introducing LSVT BIG movement principles for larger, clearer motions.",
       "24:00",
-      "Source: Parkinson's Foundation (YouTube)"
+      "Source: Parkinson's Foundation (YouTube)",
     ],
   };
 
@@ -359,13 +359,13 @@ class Singleton extends ChangeNotifier {
   int get totalSpeechExerciseSessions =>
       recoverySessionsForType(recoveryTypeSpeech);
   int get weeklyPhysicalExerciseSessions => recoverySessionsForType(
-        recoveryTypePhysical,
-        from: _startOfWeek(DateTime.now()),
-      );
+    recoveryTypePhysical,
+    from: _startOfWeek(DateTime.now()),
+  );
   int get weeklySpeechExerciseSessions => recoverySessionsForType(
-        recoveryTypeSpeech,
-        from: _startOfWeek(DateTime.now()),
-      );
+    recoveryTypeSpeech,
+    from: _startOfWeek(DateTime.now()),
+  );
 
   double get recoveryProgress {
     final totalGoal = weeklyPhysicalExerciseGoal + weeklySpeechExerciseGoal;
@@ -426,7 +426,8 @@ class Singleton extends ChangeNotifier {
           : _uuid.v4(),
       'type': type,
       'video_id': videoId,
-      'title': entry['title']?.toString() ??
+      'title':
+          entry['title']?.toString() ??
           (type == recoveryTypeSpeech
               ? speeches[videoId]?.first
               : exercises[videoId]?.first) ??
@@ -492,8 +493,9 @@ class Singleton extends ChangeNotifier {
     if (normalized == null) return 0;
 
     final completionTime = (completedAt ?? DateTime.now()).toLocal();
-    if (completionTime
-        .isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
+    if (completionTime.isAfter(
+      DateTime.now().add(const Duration(minutes: 1)),
+    )) {
       return 0;
     }
 
@@ -556,11 +558,7 @@ class Singleton extends ChangeNotifier {
     return true;
   }
 
-  int recoverySessionsForType(
-    String type, {
-    DateTime? from,
-    DateTime? to,
-  }) {
+  int recoverySessionsForType(String type, {DateTime? from, DateTime? to}) {
     final normalizedType = _normalizeRecoveryType(type);
     if (normalizedType == null) return 0;
     return recoverySessions.where((session) {
@@ -594,8 +592,9 @@ class Singleton extends ChangeNotifier {
   List<String> recommendedPhysicalExerciseIds({int limit = 2}) {
     final ids = exercises.keys.toList();
     ids.sort((a, b) {
-      final countCompare = exerciseSessionCountForVideo(a)
-          .compareTo(exerciseSessionCountForVideo(b));
+      final countCompare = exerciseSessionCountForVideo(
+        a,
+      ).compareTo(exerciseSessionCountForVideo(b));
       if (countCompare != 0) return countCompare;
       return exercises[a]!.first.compareTo(exercises[b]!.first);
     });
@@ -605,8 +604,9 @@ class Singleton extends ChangeNotifier {
   List<String> recommendedSpeechExerciseIds({int limit = 1}) {
     final ids = speeches.keys.toList();
     ids.sort((a, b) {
-      final countCompare = speechSessionCountForVideo(a)
-          .compareTo(speechSessionCountForVideo(b));
+      final countCompare = speechSessionCountForVideo(
+        a,
+      ).compareTo(speechSessionCountForVideo(b));
       if (countCompare != 0) return countCompare;
       return speeches[a]!.first.compareTo(speeches[b]!.first);
     });
@@ -625,7 +625,7 @@ class Singleton extends ChangeNotifier {
     'September': "09",
     'October': "10",
     'November': "11",
-    'December': "12"
+    'December': "12",
   };
 
   DateTime? _parseLogTimestamp(String value) {
@@ -733,7 +733,7 @@ class Singleton extends ChangeNotifier {
     'September',
     'October',
     'November',
-    'December'
+    'December',
   ];
 
   List<String> year = ['2023', '2024', '2025', '2026', '2027', '2028'];
@@ -745,7 +745,7 @@ class Singleton extends ChangeNotifier {
     'Thursday': 0,
     'Friday': 0,
     'Saturday': 0,
-    'Sunday': 0
+    'Sunday': 0,
   };
 
   Set<String> medicationNames = {};
@@ -766,7 +766,7 @@ class Singleton extends ChangeNotifier {
       'Thursday': 0,
       'Friday': 0,
       'Saturday': 0,
-      'Sunday': 0
+      'Sunday': 0,
     };
     medicationNames.clear();
 
@@ -846,8 +846,9 @@ class Singleton extends ChangeNotifier {
 
   void _applyConnectivityResults(List<ConnectivityResult> results) {
     final hasConnection = results.any((r) => r != ConnectivityResult.none);
-    final primaryResult =
-        results.isNotEmpty ? results.first : ConnectivityResult.none;
+    final primaryResult = results.isNotEmpty
+        ? results.first
+        : ConnectivityResult.none;
     if (_isOnline == hasConnection && _connectionType == primaryResult) return;
     final wasOnline = _isOnline;
     _isOnline = hasConnection;
@@ -867,7 +868,10 @@ class Singleton extends ChangeNotifier {
       );
     } catch (e, stackTrace) {
       _logger.warning(
-          'Unable to initialize connectivity monitoring', e, stackTrace);
+        'Unable to initialize connectivity monitoring',
+        e,
+        stackTrace,
+      );
     }
   }
 
@@ -877,7 +881,8 @@ class Singleton extends ChangeNotifier {
     if (syncIso != null && syncIso.isNotEmpty) {
       _lastSyncAt = DateTime.tryParse(syncIso);
     }
-    _lastSyncStatus = prefs.getString(_syncStatusKey) ??
+    _lastSyncStatus =
+        prefs.getString(_syncStatusKey) ??
         (_lastSyncAt == null ? 'Not synced yet' : 'Synced');
   }
 
@@ -1059,10 +1064,10 @@ class Singleton extends ChangeNotifier {
       final progressMap = Map<String, dynamic>.from(recoveryProgress);
       weeklySpeechExerciseGoal =
           (progressMap['weekly_speech_goal'] as num?)?.toInt() ??
-              weeklySpeechExerciseGoal;
+          weeklySpeechExerciseGoal;
       weeklyPhysicalExerciseGoal =
           (progressMap['weekly_physical_goal'] as num?)?.toInt() ??
-              weeklyPhysicalExerciseGoal;
+          weeklyPhysicalExerciseGoal;
 
       recoverySessions.clear();
       final sessions = progressMap['sessions'];
@@ -1094,13 +1099,13 @@ class Singleton extends ChangeNotifier {
         (snapshot['logs'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map>()
             .map((entry) {
-          final map = Map<String, dynamic>.from(entry);
-          return <String>[
-            map['time']?.toString() ?? '',
-            map['symptom']?.toString() ?? '',
-            map['severity']?.toString() ?? '',
-          ];
-        }),
+              final map = Map<String, dynamic>.from(entry);
+              return <String>[
+                map['time']?.toString() ?? '',
+                map['symptom']?.toString() ?? '',
+                map['severity']?.toString() ?? '',
+              ];
+            }),
       );
 
     logIDs
@@ -1108,8 +1113,10 @@ class Singleton extends ChangeNotifier {
       ..addAll(
         (snapshot['logs'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map>()
-            .map((entry) =>
-                Map<String, dynamic>.from(entry)['id']?.toString() ?? ''),
+            .map(
+              (entry) =>
+                  Map<String, dynamic>.from(entry)['id']?.toString() ?? '',
+            ),
       );
 
     schedule
@@ -1118,13 +1125,13 @@ class Singleton extends ChangeNotifier {
         (snapshot['schedules'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map>()
             .map((entry) {
-          final map = Map<String, dynamic>.from(entry);
-          return <String>[
-            map['name']?.toString() ?? '',
-            map['details']?.toString() ?? '',
-            map['days']?.toString() ?? '',
-          ];
-        }),
+              final map = Map<String, dynamic>.from(entry);
+              return <String>[
+                map['name']?.toString() ?? '',
+                map['details']?.toString() ?? '',
+                map['days']?.toString() ?? '',
+              ];
+            }),
       );
 
     scheduleIDs
@@ -1132,8 +1139,10 @@ class Singleton extends ChangeNotifier {
       ..addAll(
         (snapshot['schedules'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map>()
-            .map((entry) =>
-                Map<String, dynamic>.from(entry)['id']?.toString() ?? ''),
+            .map(
+              (entry) =>
+                  Map<String, dynamic>.from(entry)['id']?.toString() ?? '',
+            ),
       );
 
     medicationEvents
@@ -1836,19 +1845,21 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Update user data in cloud database
-  Future<bool> updateUser(
-      {String? userName,
-      int? age,
-      String? profileImage,
-      String? userEmail}) async {
+  Future<bool> updateUser({
+    String? userName,
+    int? age,
+    String? profileImage,
+    String? userEmail,
+  }) async {
     try {
       if (!_cloud.isEnabled) return false;
 
       final uid = await _resolveUserId();
       if (uid == null) return false;
 
-      final nextName =
-          userName != null ? _normalizedDisplayName(userName) : name;
+      final nextName = userName != null
+          ? _normalizedDisplayName(userName)
+          : name;
       final nextEmail = userEmail != null
           ? (userEmail.trim().isEmpty ? '[Email]' : userEmail.trim())
           : email;
@@ -1914,7 +1925,11 @@ class Singleton extends ChangeNotifier {
 
   /// Update an existing log entry
   Future<bool> updateLogEntry(
-      int index, String time, String symptom, String severity) async {
+    int index,
+    String time,
+    String symptom,
+    String severity,
+  ) async {
     try {
       if (index < 0 || index >= logIDs.length) return false;
 
@@ -2006,7 +2021,11 @@ class Singleton extends ChangeNotifier {
 
   /// Update an existing schedule entry
   Future<bool> updateScheduleEntry(
-      int index, String medName, String details, String days) async {
+    int index,
+    String medName,
+    String details,
+    String days,
+  ) async {
     try {
       if (index < 0 || index >= scheduleIDs.length) return false;
 
@@ -2074,8 +2093,9 @@ class Singleton extends ChangeNotifier {
       if (scheduleIndex < 0 || scheduleIndex >= schedule.length) return false;
       final now = (takenAt ?? DateTime.now()).toUtc();
       final eventId = _uuid.v4();
-      final scheduleId =
-          scheduleIndex < scheduleIDs.length ? scheduleIDs[scheduleIndex] : '';
+      final scheduleId = scheduleIndex < scheduleIDs.length
+          ? scheduleIDs[scheduleIndex]
+          : '';
       final event = <String, dynamic>{
         'id': eventId,
         'schedule_id': scheduleId,
@@ -2298,7 +2318,8 @@ class Singleton extends ChangeNotifier {
         userId: uid,
       );
       if (!moderation.isApproved) {
-        _lastCommunityError = moderation.rejectionReason ??
+        _lastCommunityError =
+            moderation.rejectionReason ??
             'Post does not meet community safety guidelines.';
         return false;
       }
@@ -2373,7 +2394,8 @@ class Singleton extends ChangeNotifier {
         userId: uid,
       );
       if (!moderation.isApproved) {
-        _lastCommunityError = moderation.rejectionReason ??
+        _lastCommunityError =
+            moderation.rejectionReason ??
             'Post does not meet community safety guidelines.';
         return false;
       }
@@ -2572,7 +2594,8 @@ class Singleton extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> loadCommunityComments(
-      String postId) async {
+    String postId,
+  ) async {
     try {
       if (!_cloud.isEnabled) {
         return communityComments[postId] ?? <Map<String, dynamic>>[];
@@ -2617,7 +2640,8 @@ class Singleton extends ChangeNotifier {
         userId: uid,
       );
       if (!moderation.isApproved) {
-        _lastCommunityError = moderation.rejectionReason ??
+        _lastCommunityError =
+            moderation.rejectionReason ??
             'Comment does not meet community safety guidelines.';
         return false;
       }

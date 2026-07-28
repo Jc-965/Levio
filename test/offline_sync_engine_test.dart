@@ -42,36 +42,38 @@ void main() {
       expect(restored.pendingMutations.single.mutationId, 'second');
     });
 
-    test('serializes overlapping journal writes without stale overwrite',
-        () async {
-      final store = _ReorderingMutationJournalStore();
-      final engine = OfflineSyncEngine(store);
-      await engine.initialize();
-      final timestamp = DateTime.utc(2026, 1, 1);
+    test(
+      'serializes overlapping journal writes without stale overwrite',
+      () async {
+        final store = _ReorderingMutationJournalStore();
+        final engine = OfflineSyncEngine(store);
+        await engine.initialize();
+        final timestamp = DateTime.utc(2026, 1, 1);
 
-      final first = engine.enqueue(
-        mutationId: 'first-write',
-        entityType: SyncEntityType.log,
-        entityId: 'log-1',
-        operation: SyncMutationOperation.upsert,
-        payload: const <String, dynamic>{'severity': 'Mild'},
-        clientUpdatedAt: timestamp,
-      );
-      final second = engine.enqueue(
-        mutationId: 'second-write',
-        entityType: SyncEntityType.log,
-        entityId: 'log-1',
-        operation: SyncMutationOperation.upsert,
-        payload: const <String, dynamic>{'severity': 'Severe'},
-        clientUpdatedAt: timestamp.add(const Duration(microseconds: 1)),
-      );
-      await Future.wait(<Future<SyncMutation>>[first, second]);
+        final first = engine.enqueue(
+          mutationId: 'first-write',
+          entityType: SyncEntityType.log,
+          entityId: 'log-1',
+          operation: SyncMutationOperation.upsert,
+          payload: const <String, dynamic>{'severity': 'Mild'},
+          clientUpdatedAt: timestamp,
+        );
+        final second = engine.enqueue(
+          mutationId: 'second-write',
+          entityType: SyncEntityType.log,
+          entityId: 'log-1',
+          operation: SyncMutationOperation.upsert,
+          payload: const <String, dynamic>{'severity': 'Severe'},
+          clientUpdatedAt: timestamp.add(const Duration(microseconds: 1)),
+        );
+        await Future.wait(<Future<SyncMutation>>[first, second]);
 
-      final restored = OfflineSyncEngine(store);
-      await restored.initialize();
-      expect(restored.pendingMutations.single.mutationId, 'second-write');
-      expect(restored.pendingMutations.single.payload['severity'], 'Severe');
-    });
+        final restored = OfflineSyncEngine(store);
+        await restored.initialize();
+        expect(restored.pendingMutations.single.mutationId, 'second-write');
+        expect(restored.pendingMutations.single.payload['severity'], 'Severe');
+      },
+    );
 
     test(
       'preserves final state across 100k fault-injected writes',
@@ -85,9 +87,11 @@ void main() {
         await engine.initialize();
         final expected = <String, SyncMutation>{};
 
-        for (var checkpoint = 0;
-            checkpoint < mutationCount;
-            checkpoint += checkpointSize) {
+        for (
+          var checkpoint = 0;
+          checkpoint < mutationCount;
+          checkpoint += checkpointSize
+        ) {
           final mutations = <SyncMutation>[];
           for (var offset = 0; offset < checkpointSize; offset += 1) {
             final index = checkpoint + offset;
@@ -178,8 +182,9 @@ void main() {
       final encoded = source.encodeJournal();
 
       for (var warmup = 0; warmup < 5; warmup += 1) {
-        OfflineSyncEngine(_MemoryMutationJournalStore())
-            .restoreEncoded(encoded);
+        OfflineSyncEngine(
+          _MemoryMutationJournalStore(),
+        ).restoreEncoded(encoded);
       }
 
       final samples = <int>[];

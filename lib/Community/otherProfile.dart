@@ -35,22 +35,25 @@ class _OtherProfileScreenState extends State<OtherProfileScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person_outline_rounded,
-                  size: 64, color: colors.textTertiary),
+              Icon(
+                Icons.person_outline_rounded,
+                size: 64,
+                color: colors.textTertiary,
+              ),
               const SizedBox(height: 16),
               Text(
                 'User profiles are coming soon.',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 'Tap other members in the community feed to see their profile once this feature is available.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textTertiary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
               ),
             ],
           ),

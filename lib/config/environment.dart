@@ -6,12 +6,7 @@
 // - Staging: flutter run --dart-define=ENVIRONMENT=staging
 // - Production: flutter run --dart-define=ENVIRONMENT=production
 
-enum Environment {
-  development,
-  testing,
-  staging,
-  production,
-}
+enum Environment { development, testing, staging, production }
 
 class EnvironmentConfig {
   static const String _environment = String.fromEnvironment(
@@ -61,10 +56,8 @@ class EnvironmentConfig {
       isTesting || isStaging || isProduction;
 
   /// Show environment banner in non-production builds
-  static bool get showEnvironmentBanner => const bool.fromEnvironment(
-        'SHOW_ENV_BANNER',
-        defaultValue: false,
-      );
+  static bool get showEnvironmentBanner =>
+      const bool.fromEnvironment('SHOW_ENV_BANNER', defaultValue: false);
 
   /// Log level based on environment
   static LogLevel get logLevel {
@@ -81,9 +74,4 @@ class EnvironmentConfig {
   }
 }
 
-enum LogLevel {
-  debug,
-  info,
-  warning,
-  error,
-}
+enum LogLevel { debug, info, warning, error }

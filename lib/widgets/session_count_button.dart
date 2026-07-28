@@ -72,9 +72,9 @@ class SessionCountChip extends StatelessWidget {
       return Text(
         'Not logged yet',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colors.textTertiary,
-              fontWeight: FontWeight.w600,
-            ),
+          color: colors.textTertiary,
+          fontWeight: FontWeight.w600,
+        ),
       );
     }
 
@@ -101,9 +101,9 @@ class SessionCountChip extends StatelessWidget {
               '${count}x logged',
               key: ValueKey<int>(count),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: accent,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

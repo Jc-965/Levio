@@ -10,10 +10,7 @@ import '../theme/app_theme.dart';
 class LiquidBackground extends StatelessWidget {
   final Widget child;
 
-  const LiquidBackground({
-    super.key,
-    required this.child,
-  });
+  const LiquidBackground({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -160,28 +157,25 @@ class SectionHeading extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
               ),
               if (description != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   description!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                        height: 1.4,
-                      ),
+                    color: colors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ],
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }

@@ -34,10 +34,14 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     singleton.addListener(_onSingletonUpdate);
 
     final reduceMotion = WidgetsBinding
-        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
     _introController = AnimationController(
-      duration:
-          reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
       vsync: this,
     )..forward();
     _fade = CurvedAnimation(
@@ -127,9 +131,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                         children: [
                           Text(
                             'Move with confidence',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
                                   color: colors.textPrimary,
                                   fontWeight: FontWeight.w800,
@@ -139,9 +141,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                           const SizedBox(height: 7),
                           Text(
                             'Choose one guided session. Starting opens the video; logging is a separate action for exercises you have completed.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
+                            style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
                                   color: colors.textSecondary,
                                   height: 1.45,
@@ -207,9 +207,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                                     accent: colors.secondary,
                                     onSave: (completedAt) =>
                                         singleton.recordPhysicalExerciseSession(
-                                      videoId,
-                                      completedAt: completedAt,
-                                    ),
+                                          videoId,
+                                          completedAt: completedAt,
+                                        ),
                                   );
                                   if (count == null) return;
                                   if (!mounted) return;

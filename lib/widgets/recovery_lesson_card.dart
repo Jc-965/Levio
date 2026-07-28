@@ -76,8 +76,9 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
             button: true,
             label: 'Open ${widget.title}',
             child: InkWell(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
               onTap: widget.onStart,
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -95,17 +96,17 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
                           cacheWidth: 360,
                           loadingBuilder: (context, child, progress) =>
                               progress == null
-                                  ? child
-                                  : ColoredBox(color: colors.surfaceVariant),
+                              ? child
+                              : ColoredBox(color: colors.surfaceVariant),
                           errorBuilder: (context, error, stackTrace) =>
                               ColoredBox(
-                            color: colors.surfaceVariant,
-                            child: Icon(
-                              widget.typeIcon,
-                              color: colors.textTertiary,
-                              size: 28,
-                            ),
-                          ),
+                                color: colors.surfaceVariant,
+                                child: Icon(
+                                  widget.typeIcon,
+                                  color: colors.textTertiary,
+                                  size: 28,
+                                ),
+                              ),
                         ),
                       ),
                     ),
@@ -127,13 +128,11 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
                                   widget.typeLabel,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall
+                                  style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(
                                         color: widget.accent,
                                         fontWeight: FontWeight.w700,
-                                  ),
+                                      ),
                                 ),
                               ),
                               if (widget.badgeLabel != null) ...[
@@ -177,9 +176,7 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
                             widget.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
+                            style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(
                                   color: colors.textPrimary,
                                   fontWeight: FontWeight.w800,
@@ -194,10 +191,8 @@ class _RecoveryLessonCardState extends State<RecoveryLessonCard> {
                                   ? 'Not logged'
                                   : '${widget.sessionCount}× completed',
                             ].join(' · '),
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: colors.textTertiary,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colors.textTertiary),
                           ),
                         ],
                       ),

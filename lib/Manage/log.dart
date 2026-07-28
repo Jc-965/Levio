@@ -152,14 +152,16 @@ class _LogScreenState extends State<LogScreen> {
                     child: Text(
                       'Symptom details',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: severityColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(99),
@@ -167,9 +169,9 @@ class _LogScreenState extends State<LogScreen> {
                     child: Text(
                       _severity(index),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: severityColor,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: severityColor,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -177,17 +179,17 @@ class _LogScreenState extends State<LogScreen> {
               const SizedBox(height: 8),
               Text(
                 _formatFullDateTime(date),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
               ),
               const SizedBox(height: 18),
               Text(
                 _symptom(index),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colors.textPrimary,
-                      height: 1.5,
-                    ),
+                  color: colors.textPrimary,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 22),
               Row(
@@ -289,9 +291,7 @@ class _LogScreenState extends State<LogScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.paddingOf(context).top + 24,
-          ),
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 24),
           child: Container(
             padding: EdgeInsets.fromLTRB(
               20,
@@ -301,8 +301,9 @@ class _LogScreenState extends State<LogScreen> {
             ),
             decoration: BoxDecoration(
               color: colors.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
               border: Border(top: BorderSide(color: colors.border)),
             ),
             child: SingleChildScrollView(
@@ -324,8 +325,8 @@ class _LogScreenState extends State<LogScreen> {
                   Text(
                     'Edit symptom',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -461,27 +462,23 @@ class _LogScreenState extends State<LogScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.monitor_heart_outlined,
-              color: colors.primary,
-              size: 42,
-            ),
+            Icon(Icons.monitor_heart_outlined, color: colors.primary, size: 42),
             const SizedBox(height: 18),
             Text(
               'Your history starts here',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 7),
             Text(
               'Log a symptom from today or add an older entry so changes are easier to recognize over time.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.textSecondary,
-                    height: 1.45,
-                  ),
+                color: colors.textSecondary,
+                height: 1.45,
+              ),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
@@ -516,9 +513,7 @@ class _LogScreenState extends State<LogScreen> {
                       children: [
                         Text(
                           '${singleton.log.length}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
+                          style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 color: colors.textPrimary,
                                 fontWeight: FontWeight.w800,
@@ -528,9 +523,7 @@ class _LogScreenState extends State<LogScreen> {
                           singleton.log.length == 1
                               ? 'symptom recorded'
                               : 'symptoms recorded',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colors.textSecondary),
                         ),
                       ],
@@ -540,9 +533,9 @@ class _LogScreenState extends State<LogScreen> {
                     'Latest\n${_groupLabel(latest)}',
                     textAlign: TextAlign.right,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.4,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -561,9 +554,9 @@ class _LogScreenState extends State<LogScreen> {
                 child: Text(
                   _groupLabel(date),
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -633,16 +626,16 @@ class _LogCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$time · $severity',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
                 ),
               ],
             ),

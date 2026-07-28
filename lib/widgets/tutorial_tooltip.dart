@@ -90,7 +90,9 @@ class TutorialTooltip extends StatelessWidget {
                   style: TextButton.styleFrom(
                     foregroundColor: colors.textSecondary,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   child: Text(
                     'Skip tutorial',
@@ -107,7 +109,9 @@ class TutorialTooltip extends StatelessWidget {
                     backgroundColor: colors.primary,
                     foregroundColor: colors.textOnPrimary,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

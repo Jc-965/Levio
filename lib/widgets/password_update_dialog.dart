@@ -40,8 +40,8 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
     final error = password.length < 6
         ? 'Use at least 6 characters.'
         : password != confirmation
-            ? 'Passwords do not match.'
-            : null;
+        ? 'Passwords do not match.'
+        : null;
     if (error != null) {
       HapticUtils.error();
       setState(() => _error = error);
@@ -62,7 +62,8 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
     HapticUtils.error();
     setState(() {
       _saving = false;
-      _error = Singleton().lastCloudError ??
+      _error =
+          Singleton().lastCloudError ??
           'The password could not be updated. Request a new recovery link.';
     });
   }
@@ -80,9 +81,9 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
             Text(
               'Enter a new password for your ParkiWell account.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.textSecondary,
-                    height: 1.4,
-                  ),
+                color: colors.textSecondary,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 18),
             TextField(
@@ -98,8 +99,8 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
                   onPressed: _saving
                       ? null
                       : () => setState(
-                            () => _passwordVisible = !_passwordVisible,
-                          ),
+                          () => _passwordVisible = !_passwordVisible,
+                        ),
                   icon: Icon(
                     _passwordVisible
                         ? Icons.visibility_off_outlined
@@ -131,9 +132,9 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
               Text(
                 _error!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.error,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colors.error,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ],

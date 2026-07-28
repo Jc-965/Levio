@@ -43,20 +43,14 @@ Route<dynamic>? onGenerateAppRoute(RouteSettings settings) {
       ).animate(fadeIn);
 
       final fadeOut = Tween<double>(begin: 1.0, end: 0.94).animate(
-        CurvedAnimation(
-          parent: secondaryAnimation,
-          curve: Curves.easeInCubic,
-        ),
+        CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInCubic),
       );
 
       return FadeTransition(
         opacity: fadeIn,
         child: SlideTransition(
           position: slideUp,
-          child: FadeTransition(
-            opacity: fadeOut,
-            child: child,
-          ),
+          child: FadeTransition(opacity: fadeOut, child: child),
         ),
       );
     },

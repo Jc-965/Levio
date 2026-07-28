@@ -80,19 +80,21 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
         (id: physical[1], type: Singleton.recoveryTypePhysical),
     ];
 
-    return ordered.map((item) {
-      final data = item.type == Singleton.recoveryTypePhysical
-          ? singleton.exercises[item.id]
-          : singleton.speeches[item.id];
-      return _RecoverySession(
-        videoId: item.id,
-        type: item.type,
-        title: data?.elementAtOrNull(0) ?? 'Guided session',
-        description: data?.elementAtOrNull(1) ?? '',
-        duration: data?.elementAtOrNull(2) ?? '',
-        source: data?.elementAtOrNull(3) ?? '',
-      );
-    }).toList(growable: false);
+    return ordered
+        .map((item) {
+          final data = item.type == Singleton.recoveryTypePhysical
+              ? singleton.exercises[item.id]
+              : singleton.speeches[item.id];
+          return _RecoverySession(
+            videoId: item.id,
+            type: item.type,
+            title: data?.elementAtOrNull(0) ?? 'Guided session',
+            description: data?.elementAtOrNull(1) ?? '',
+            duration: data?.elementAtOrNull(2) ?? '',
+            source: data?.elementAtOrNull(3) ?? '',
+          );
+        })
+        .toList(growable: false);
   }
 
   Color _accentFor(_RecoverySession session, AppColors colors) {
@@ -299,25 +301,26 @@ class _RecoveryTabs extends StatelessWidget {
       container: true,
       label: 'Recovery view',
       child: Row(
-        children: _RecoverySection.values.map((item) {
-          final selected = item == section;
-          final label = item == _RecoverySection.plan ? 'Plan' : 'History';
-          return Expanded(
-            child: Semantics(
-              button: true,
-              selected: selected,
-              label: '$label tab',
-              child: InkWell(
-                onTap: () => onChanged(item),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 44,
-                      child: Center(
-                        child: Text(
-                          label,
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
+        children: _RecoverySection.values
+            .map((item) {
+              final selected = item == section;
+              final label = item == _RecoverySection.plan ? 'Plan' : 'History';
+              return Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: selected,
+                  label: '$label tab',
+                  child: InkWell(
+                    onTap: () => onChanged(item),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 44,
+                          child: Center(
+                            child: Text(
+                              label,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
                                     color: selected
                                         ? colors.textPrimary
                                         : colors.textTertiary,
@@ -325,21 +328,22 @@ class _RecoveryTabs extends StatelessWidget {
                                         ? FontWeight.w800
                                         : FontWeight.w600,
                                   ),
+                            ),
+                          ),
                         ),
-                      ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOutCubic,
+                          height: 2,
+                          color: selected ? colors.textPrimary : colors.divider,
+                        ),
+                      ],
                     ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      curve: Curves.easeOutCubic,
-                      height: 2,
-                      color: selected ? colors.textPrimary : colors.divider,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        }).toList(growable: false),
+              );
+            })
+            .toList(growable: false),
       ),
     );
   }
@@ -379,10 +383,7 @@ class _PlanView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 34),
           sliver: SliverList.list(
             children: [
-              _WeeklyPlanPanel(
-                singleton: singleton,
-                onEditGoals: onEditGoals,
-              ),
+              _WeeklyPlanPanel(singleton: singleton, onEditGoals: onEditGoals),
               const SizedBox(height: 28),
               _SectionTitle(
                 title: 'Up next',
@@ -513,10 +514,10 @@ class _WeeklyPlanPanel extends StatelessWidget {
     final progressLabel = goal == 0
         ? 'No weekly goal'
         : done >= goal
-            ? 'Weekly goal complete'
-            : done == 0
-                ? '$goal sessions planned'
-                : '$done complete · $remaining left';
+        ? 'Weekly goal complete'
+        : done == 0
+        ? '$goal sessions planned'
+        : '$done complete · $remaining left';
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return _RecoverySurface(
@@ -531,9 +532,9 @@ class _WeeklyPlanPanel extends StatelessWidget {
                 child: Text(
                   'This week',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               TextButton(
@@ -556,11 +557,11 @@ class _WeeklyPlanPanel extends StatelessWidget {
                     '$percent%',
                     key: ValueKey(percent),
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          height: 0.95,
-                          letterSpacing: -1.8,
-                        ),
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      height: 0.95,
+                      letterSpacing: -1.8,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -569,9 +570,9 @@ class _WeeklyPlanPanel extends StatelessWidget {
                   child: Text(
                     progressLabel,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -656,16 +657,16 @@ class _PracticeCount extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 goal == 0 ? '$completed logged' : '$completed / $goal',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
@@ -732,30 +733,30 @@ class _NextSessionCard extends StatelessWidget {
                     Text(
                       session.typeLabel,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: accent,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     if (session.duration.isNotEmpty) ...[
-                      Text('  ·  ',
-                          style: TextStyle(color: colors.textTertiary)),
+                      Text(
+                        '  ·  ',
+                        style: TextStyle(color: colors.textTertiary),
+                      ),
                       Text(
                         session.duration,
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: colors.textTertiary,
-                                ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: colors.textTertiary),
                       ),
                     ],
                     const Spacer(),
                     Text(
                       sessionCount == 0 ? 'Not logged' : '$sessionCount× done',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: sessionCount == 0
-                                ? colors.textTertiary
-                                : colors.success,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: sessionCount == 0
+                            ? colors.textTertiary
+                            : colors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -763,10 +764,10 @@ class _NextSessionCard extends StatelessWidget {
                 Text(
                   session.title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.35,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.35,
+                  ),
                 ),
                 if (session.description.isNotEmpty) ...[
                   const SizedBox(height: 7),
@@ -775,9 +776,9 @@ class _NextSessionCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.45,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.45,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -851,16 +852,16 @@ class _QueuedSessionRow extends StatelessWidget {
                     Text(
                       session.title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       '${session.typeLabel}${session.duration.isEmpty ? '' : ' · ${session.duration}'}${sessionCount == 0 ? '' : ' · $sessionCount× done'}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textTertiary,
-                          ),
+                        color: colors.textTertiary,
+                      ),
                     ),
                   ],
                 ),
@@ -923,16 +924,16 @@ class _LibraryRow extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       detail,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
-                          ),
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -961,18 +962,20 @@ class _HistoryView extends StatelessWidget {
   });
 
   DateTime _sessionDate(Map<String, dynamic> session) {
-    return DateTime.tryParse(session['completed_at']?.toString() ?? '')
-            ?.toLocal() ??
+    return DateTime.tryParse(
+          session['completed_at']?.toString() ?? '',
+        )?.toLocal() ??
         DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final sessions = singleton.recoverySessions
-        .map((session) => Map<String, dynamic>.from(session))
-        .toList()
-      ..sort((a, b) => _sessionDate(b).compareTo(_sessionDate(a)));
+    final sessions =
+        singleton.recoverySessions
+            .map((session) => Map<String, dynamic>.from(session))
+            .toList()
+          ..sort((a, b) => _sessionDate(b).compareTo(_sessionDate(a)));
 
     return CustomScrollView(
       key: const PageStorageKey('recovery-history-scroll'),
@@ -996,9 +999,9 @@ class _HistoryView extends StatelessWidget {
                   child: Text(
                     'Nothing logged yet. Return to Plan when you are ready to practice.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.textSecondary,
-                          height: 1.45,
-                        ),
+                      color: colors.textSecondary,
+                      height: 1.45,
+                    ),
                   ),
                 ),
             ],
@@ -1057,18 +1060,18 @@ class _WeeklyActivity extends StatelessWidget {
           Text(
             'Activity this week',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             total == 0
                 ? 'No sessions logged yet'
                 : '$total ${total == 1 ? 'session' : 'sessions'} completed',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -1108,12 +1111,13 @@ class _WeeklyActivity extends StatelessWidget {
                       Text(
                         labels[index],
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: isToday
-                                  ? colors.textPrimary
-                                  : colors.textTertiary,
-                              fontWeight:
-                                  isToday ? FontWeight.w800 : FontWeight.w600,
-                            ),
+                          color: isToday
+                              ? colors.textPrimary
+                              : colors.textTertiary,
+                          fontWeight: isToday
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -1139,16 +1143,17 @@ class _HistoryRow extends StatelessWidget {
     final isPhysical =
         session['type']?.toString() == Singleton.recoveryTypePhysical;
     final accent = isPhysical ? colors.secondary : colors.primary;
-    final icon =
-        isPhysical ? Icons.accessibility_new_rounded : Icons.graphic_eq_rounded;
+    final icon = isPhysical
+        ? Icons.accessibility_new_rounded
+        : Icons.graphic_eq_rounded;
     final date = DateTime.tryParse(
       session['completed_at']?.toString() ?? '',
     )?.toLocal();
     final title = session['title']?.toString().trim().isNotEmpty == true
         ? session['title'].toString()
         : isPhysical
-            ? 'Movement session'
-            : 'Speech session';
+        ? 'Movement session'
+        : 'Speech session';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
@@ -1165,16 +1170,16 @@ class _HistoryRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   date == null ? 'Date unavailable' : _formatHistoryDate(date),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.textTertiary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
                 ),
               ],
             ),
@@ -1209,17 +1214,17 @@ class _SectionTitle extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colors.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 3),
         Text(
           detail,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textSecondary,
-                height: 1.4,
-              ),
+            color: colors.textSecondary,
+            height: 1.4,
+          ),
         ),
       ],
     );
@@ -1308,17 +1313,17 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
             Text(
               'Weekly goal',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               'Choose a target that feels realistic. You can change it at any time.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.textSecondary,
-                    height: 1.45,
-                  ),
+                color: colors.textSecondary,
+                height: 1.45,
+              ),
             ),
             const SizedBox(height: 18),
             _GoalEditorRow(
@@ -1410,9 +1415,9 @@ class _GoalEditorRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           IconButton(
@@ -1426,9 +1431,9 @@ class _GoalEditorRow extends StatelessWidget {
               '$value',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           IconButton(

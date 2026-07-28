@@ -42,8 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(
             content: const Text('Could not save profile image'),
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
         return;
@@ -136,9 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       width: 86,
       height: 86,
-      decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-      ),
+      decoration: BoxDecoration(color: colors.surfaceVariant),
       child: Center(
         child: Text(
           initials.isNotEmpty ? initials : 'U',
@@ -178,18 +177,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           'Email not verified',
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Please verify your email before posting in community features.',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colors.textSecondary),
                         ),
                         const SizedBox(height: 6),
                         TextButton(
@@ -218,9 +213,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Text(
               'Activity',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -263,10 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 88,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors.border,
-                    width: 1,
-                  ),
+                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: ClipOval(
                   child: SizedBox(
@@ -284,10 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                     color: colors.surface,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colors.border,
-                      width: 1,
-                    ),
+                    border: Border.all(color: colors.border, width: 1),
                   ),
                   child: Icon(
                     Icons.camera_alt_outlined,
@@ -304,9 +293,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Name
         Text(
           singleton.name == "[Name]" ? "Your Name" : singleton.name,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
@@ -314,9 +303,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Email
         Text(
           singleton.email,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textTertiary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
         ),
       ],
     );
@@ -328,24 +317,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(
-            value: '${singleton.postNum}',
-            label: 'Posts',
-          ),
-          Container(
-            width: 1,
-            height: 32,
-            color: colors.divider,
-          ),
-          _StatItem(
-            value: '${singleton.exerNum}',
-            label: 'Sessions',
-          ),
-          Container(
-            width: 1,
-            height: 32,
-            color: colors.divider,
-          ),
+          _StatItem(value: '${singleton.postNum}', label: 'Posts'),
+          Container(width: 1, height: 32, color: colors.divider),
+          _StatItem(value: '${singleton.exerNum}', label: 'Sessions'),
+          Container(width: 1, height: 32, color: colors.divider),
           _StatItem(
             value: '${singleton.log.length + singleton.schedule.length}',
             label: 'Total Logs',
@@ -360,10 +335,7 @@ class _StatItem extends StatelessWidget {
   final String value;
   final String label;
 
-  const _StatItem({
-    required this.value,
-    required this.label,
-  });
+  const _StatItem({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -373,16 +345,16 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.textTertiary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
         ),
       ],
     );
@@ -411,16 +383,13 @@ class _ActivityItem extends StatelessWidget {
           Icon(icon, color: colors.textSecondary, size: 20),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(title, style: Theme.of(context).textTheme.bodyMedium),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

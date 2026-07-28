@@ -27,9 +27,13 @@ class GamesScreen extends StatelessWidget {
             Navigator.pushNamed(context, '/');
           },
         ),
-        title: Text('Games',
-            style: TextStyle(
-                color: colors.textPrimary, fontWeight: FontWeight.w600)),
+        title: Text(
+          'Games',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: Container(
         color: colors.background,
@@ -48,15 +52,15 @@ class GamesScreen extends StatelessWidget {
                 Text(
                   'Coming Soon',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Fun cognitive games to help keep your mind sharp.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -123,15 +127,15 @@ class _GamePreviewItem extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
               ),
             ],
           ),

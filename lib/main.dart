@@ -25,7 +25,8 @@ void main() async {
   final logger = AppLogger();
   logger.init(isProduction: isProduction);
   logger.info(
-      'App starting in ${isProduction ? "production" : "development"} mode');
+    'App starting in ${isProduction ? "production" : "development"} mode',
+  );
 
   // Initialize restart functionality
   TerminateRestart.instance.initialize();
@@ -118,8 +119,9 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     singleton.addListener(_onSingletonChange);
-    _passwordRecoverySubscription =
-        singleton.passwordRecoveryEvents.listen((_) => _showPasswordRecovery());
+    _passwordRecoverySubscription = singleton.passwordRecoveryEvents.listen(
+      (_) => _showPasswordRecovery(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (singleton.isPasswordRecoveryPending) _showPasswordRecovery();
     });
@@ -170,8 +172,9 @@ class _MyAppState extends State<MyApp> {
   void _onSplashComplete() {
     if (mounted) {
       setState(() {
-        _currentScreen =
-            singleton.firstTime ? AppScreen.onboarding : AppScreen.home;
+        _currentScreen = singleton.firstTime
+            ? AppScreen.onboarding
+            : AppScreen.home;
       });
     }
   }
@@ -187,7 +190,10 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = WidgetsBinding
-        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
     // Update system UI overlay style based on theme
     SystemChrome.setSystemUIOverlayStyle(
       singleton.colorMode == 0
@@ -203,8 +209,9 @@ class _MyAppState extends State<MyApp> {
 
     final Widget home = switch (_currentScreen) {
       AppScreen.splash => SplashScreen(onComplete: _onSplashComplete),
-      AppScreen.onboarding =>
-        OnboardingFlowScreen(onComplete: _onOnboardingComplete),
+      AppScreen.onboarding => OnboardingFlowScreen(
+        onComplete: _onOnboardingComplete,
+      ),
       AppScreen.home => const Navbar(),
     };
 
@@ -214,8 +221,9 @@ class _MyAppState extends State<MyApp> {
       routes: namedRoutes,
       onGenerateRoute: onGenerateAppRoute,
       home: AnimatedSwitcher(
-        duration:
-            reduceMotion ? Duration.zero : const Duration(milliseconds: 500),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 500),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         child: KeyedSubtree(

@@ -18,8 +18,8 @@ movement, all in one supportive place that works even when you're offline.
 <p align="center">
   <img src="marketing/appstore/02-home.png" alt="Home dashboard: your whole day at a glance" width="24%">
   <img src="marketing/appstore/04-recovery.png" alt="Recovery: practice with a plan" width="24%">
-  <img src="marketing/appstore/03-manage.png" alt="Manage: log symptoms in seconds" width="24%">
-  <img src="marketing/appstore/05-dark-mode.png" alt="Full dark mode: gentle by design" width="24%">
+  <img src="marketing/appstore/05-community.png" alt="Community: guidance you can trust" width="24%">
+  <img src="marketing/appstore/07-dark-mode.png" alt="Full dark mode: gentle by design" width="24%">
 </p>
 
 ## Why ParkiWell

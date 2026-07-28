@@ -2,6 +2,9 @@
 """Composes App Store marketing images (1320x2868) from the raw simulator
 screenshots in marketing/raw/, adding a headline and a device frame.
 
+The raw shots are lossless WebP so the sources stay small; the frames written
+to marketing/appstore/ are PNG because App Store Connect only takes PNG/JPEG.
+
 Usage: python3 marketing/generate_frames.py
 Requires Google Chrome (used headless to render each frame).
 """
@@ -17,38 +20,73 @@ OUT = ROOT / "appstore"
 
 SLIDES = [
     {
-        "shot": "01-onboarding.png",
+        "shot": "01-onboarding.webp",
         "out": "01-welcome.png",
         "headline": "Meet ParkiWell",
         "sub": "Your everyday Parkinson’s care companion.",
         "dark": False,
     },
     {
-        "shot": "02-home.png",
+        "shot": "02-home.webp",
         "out": "02-home.png",
         "headline": "Your whole day at a glance",
         "sub": "Symptom trends and medication routines, together.",
         "dark": False,
     },
     {
-        "shot": "03-manage.png",
+        "shot": "03-manage.webp",
         "out": "03-manage.png",
         "headline": "Log symptoms in seconds",
         "sub": "Keep every detail in one clear timeline.",
         "dark": False,
     },
     {
-        "shot": "04-recovery.png",
+        "shot": "04-recovery.webp",
         "out": "04-recovery.png",
         "headline": "Practice with a plan",
         "sub": "Guided speech and movement sessions, at your pace.",
         "dark": False,
     },
     {
-        "shot": "05-home-dark.png",
-        "out": "05-dark-mode.png",
+        "shot": "06-community.webp",
+        "out": "05-community.png",
+        "headline": "Guidance you can trust",
+        "sub": "Research, videos, specialists, and support in one place.",
+        "dark": False,
+    },
+    {
+        "shot": "auth-signin.webp",
+        "out": "06-sync.png",
+        "headline": "Your care, on every device",
+        "sub": "Sign in to sync securely, or keep everything on device.",
+        "dark": False,
+    },
+    {
+        "shot": "05-home-dark.webp",
+        "out": "07-dark-mode.png",
         "headline": "Gentle by design",
         "sub": "Calm colors, large touch targets, and full dark mode.",
+        "dark": True,
+    },
+    {
+        "shot": "07-manage-dark.webp",
+        "out": "08-dark-manage.png",
+        "headline": "Easy on tired eyes",
+        "sub": "The same clear tools, dimmed for evenings and low light.",
+        "dark": True,
+    },
+    {
+        "shot": "08-recovery-dark.webp",
+        "out": "09-dark-recovery.png",
+        "headline": "Practice any time of day",
+        "sub": "Wind-down sessions that stay comfortable after dark.",
+        "dark": True,
+    },
+    {
+        "shot": "09-community-dark.webp",
+        "out": "10-dark-community.png",
+        "headline": "Support whenever you need it",
+        "sub": "Trusted resources and a 24/7 helpline, day or night.",
         "dark": True,
     },
 ]

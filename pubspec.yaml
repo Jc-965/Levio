@@ -38,7 +38,7 @@ dependencies:
   uuid: ^4.6.0
   
   # Cloud Backend
-  supabase_flutter: ^2.14.2
+  supabase_flutter: ^2.16.0
   
   # Content Moderation (Production-grade)
   profanity_filter: ^2.0.0

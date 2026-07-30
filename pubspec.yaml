@@ -54,7 +54,7 @@ dependencies:
   flutter_mediapipe_vision_platform_interface: 0.3.0
   motion_engine:
     path: packages/motion_engine
-  video_player: ^2.9.2
+  video_player: ^2.13.0
   url_launcher: ^6.3.1
   share_plus: ^11.1.0
   

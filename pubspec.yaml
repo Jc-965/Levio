@@ -33,7 +33,7 @@ dependencies:
 
   # Core utilities
   cupertino_icons: ^1.0.9
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
   shared_preferences: ^2.2.2
   uuid: ^4.6.0
   

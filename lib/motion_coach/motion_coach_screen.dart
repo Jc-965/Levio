@@ -16,6 +16,7 @@ import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
 import 'motion_cue_speaker.dart';
 import 'motion_exercise_catalog.dart';
+import 'motion_reference_library.dart';
 
 typedef MotionCaptureDriverFactory = MotionCaptureDriver Function();
 
@@ -36,14 +37,18 @@ enum _CapturePhase {
 }
 
 class MotionCoachScreen extends StatefulWidget {
+  /// [library] must already have this exercise's template loaded — the live
+  /// coach's thresholds come from it and are needed synchronously here.
   const MotionCoachScreen({
     super.key,
+    required this.library,
     this.driverFactory,
     this.analyzer = const MotionCoachAnalyzer(),
     this.exercise = seatedArmRaiseExercise,
     this.cueSpeaker,
   });
 
+  final MotionReferenceLibrary library;
   final MotionCaptureDriverFactory? driverFactory;
   final MotionCoachAnalyzer analyzer;
   final MotionExerciseDefinition exercise;
@@ -69,7 +74,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   int _generation = 0;
   int _handledLiveRepSerial = 0;
   int _handledLiveCueSerial = 0;
-  LiveCueKind? _spokenCue;
+  LiveExerciseCue? _spokenCue;
 
   bool get _isBusy =>
       _phase == _CapturePhase.recording || _phase == _CapturePhase.analyzing;
@@ -78,11 +83,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   void initState() {
     super.initState();
     _session = MotionCoachSession(
-      liveCoach: LiveArmRaiseCoach(
-        LiveArmRaiseConfig(
-          referenceRomDeg: widget.exercise.referenceRomDegrees,
-          referenceTempoS: widget.exercise.referenceTempoSeconds,
-        ),
+      liveCoach: LiveExerciseCoach(
+        widget.exercise.engineSpec,
+        widget.library.configFor(widget.exercise.exerciseId),
       ),
     );
     _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
@@ -122,7 +125,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   void _onSessionChanged() {
     if (!mounted) return;
-    final LiveCueKind? liveCue = _session.liveCue;
+    final LiveExerciseCue? liveCue = _session.liveCue;
     if (_session.liveRepSerial > _handledLiveRepSerial) {
       _handledLiveRepSerial = _session.liveRepSerial;
       HapticUtils.selectionClick();
@@ -158,7 +161,10 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         (widget.driverFactory ?? CameraMotionCaptureDriver.new)();
     _driver = driver;
     try {
-      await driver.initialize(_session.handleSample);
+      await driver.initialize(
+        _session.handleSample,
+        onPersistentFailure: _onDetectorFailure,
+      );
       if (!mounted || generation != _generation) {
         await driver.dispose();
         return;
@@ -179,6 +185,28 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
             'ParkiWell and try again.';
       });
     }
+  }
+
+  /// Pose detection has failed continuously; surface it instead of letting
+  /// the person wait on framing that can never become ready.
+  void _onDetectorFailure() {
+    if (!mounted || _phase == _CapturePhase.error) return;
+    final MotionCaptureDriver? driver = _driver;
+    _driver = null;
+    unawaited(driver?.cancelRecording().catchError((_) {}));
+    unawaited(driver?.dispose());
+    _timer?.cancel();
+    _recordingClock
+      ..stop()
+      ..reset();
+    _session.reset();
+    setState(() {
+      _phase = _CapturePhase.error;
+      _errorTitle = 'Movement tracking stopped working';
+      _errorBody =
+          'The on-device motion model kept failing. Restart ParkiWell and '
+          'try again.';
+    });
   }
 
   void _showCameraError(CameraException error) {

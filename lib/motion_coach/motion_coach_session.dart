@@ -27,19 +27,19 @@ class MotionPoseSample {
   final int frameHeight;
 }
 
+/// Camera-facing state for one capture: framing readiness, the buffered pose
+/// stream for offline analysis, and live coaching output.
+///
+/// Live coaching runs through the engine's spec-driven [LiveExerciseCoach],
+/// so this class is exercise-agnostic — every threshold, cue string, and
+/// score comes from the exercise's template rather than from the app.
 class MotionCoachSession extends ChangeNotifier {
-  MotionCoachSession({LiveArmRaiseCoach? liveCoach})
-    : _liveCoach =
-          liveCoach ??
-          LiveArmRaiseCoach(
-            const LiveArmRaiseConfig(
-              referenceRomDeg: 68,
-              referenceTempoS: 0.964,
-            ),
-          );
+  MotionCoachSession({required LiveExerciseCoach liveCoach})
+    : _liveCoach = liveCoach;
 
-  final LiveArmRaiseCoach _liveCoach;
+  final LiveExerciseCoach _liveCoach;
   final List<PoseFrame> _frames = <PoseFrame>[];
+  bool _disposed = false;
   int _goodFramingFrames = 0;
   int _badFramingFrames = 0;
   int _lastTimestampMs = -1;
@@ -48,28 +48,58 @@ class MotionCoachSession extends ChangeNotifier {
   int _frameWidth = 1;
   int _frameHeight = 1;
   MotionFramingStatus _framingStatus = MotionFramingStatus.lookingForPerson;
-  LiveCueKind? _liveCue;
+  LiveExerciseCue? _liveCue;
   int? _liveCueTimestampMs;
   int _liveRepCount = 0;
   int _liveRepSerial = 0;
   int _liveCueSerial = 0;
+  ExerciseRepScore? _lastRepScore;
   int _lastDecisionMicros = 0;
   int _maximumDecisionMicros = 0;
 
+  ExerciseSpec get exerciseSpec => _liveCoach.spec;
   bool get isRecording => _recording;
   bool get isReady => _ready;
   int get bufferedFrameCount => _frames.length;
   int get frameWidth => _frameWidth;
   int get frameHeight => _frameHeight;
   MotionFramingStatus get framingStatus => _framingStatus;
-  LiveCueKind? get liveCue => _liveCue;
+  LiveExerciseCue? get liveCue => _liveCue;
   int get liveRepCount => _liveRepCount;
   int get liveRepSerial => _liveRepSerial;
   int get liveCueSerial => _liveCueSerial;
   int get lastDecisionMicros => _lastDecisionMicros;
   int get maximumDecisionMicros => _maximumDecisionMicros;
 
+  /// Score for the most recently completed repetition, or null before the
+  /// first one completes.
+  ExerciseRepScore? get lastRepScore => _lastRepScore;
+
+  List<LiveExerciseRepetition> get completedRepetitions =>
+      _liveCoach.completedRepetitions;
+
+  /// Mean overall score across completed repetitions, or null when none has
+  /// completed yet. Deliberately not shown while a rep is mid-flight.
+  double? get averageRepScore {
+    final List<LiveExerciseRepetition> reps = _liveCoach.completedRepetitions;
+    if (reps.isEmpty) return null;
+    double total = 0;
+    for (final LiveExerciseRepetition rep in reps) {
+      total += rep.score.overall;
+    }
+    return total / reps.length;
+  }
+
+  /// Fraction of processed frames the coach could actually measure.
+  double get trackingCoverage => _liveCoach.coverage;
+
+  /// Feed one camera sample.
+  ///
+  /// Listeners are notified only when something they can render changed, so
+  /// the capture screen is not rebuilt at camera rate while nothing moves.
   void handleSample(MotionPoseSample sample) {
+    if (_disposed) return;
+    final Object before = _observableState();
     _frameWidth = math.max(1, sample.frameWidth);
     _frameHeight = math.max(1, sample.frameHeight);
     _framingStatus = assessFraming(sample.detection);
@@ -89,10 +119,10 @@ class MotionCoachSession extends ChangeNotifier {
 
     if (_recording && sample.detection.timestampMs > _lastTimestampMs) {
       _lastTimestampMs = sample.detection.timestampMs;
-      final PoseFrame frame = _toPoseFrame(sample.detection);
+      final PoseFrame frame = poseFrameFromDetection(sample.detection);
       _frames.add(frame);
       final Stopwatch decisionClock = Stopwatch()..start();
-      final LiveCoachDecision? decision = _liveCoach.addFrame(frame);
+      final LiveExerciseDecision? decision = _liveCoach.addFrame(frame);
       decisionClock.stop();
       _lastDecisionMicros = decisionClock.elapsedMicroseconds;
       _maximumDecisionMicros = math.max(
@@ -101,15 +131,18 @@ class MotionCoachSession extends ChangeNotifier {
       );
       if (decision != null) {
         _liveRepCount = decision.repetition.index;
+        _lastRepScore = decision.repetition.score;
         _liveRepSerial += 1;
-        if (decision.cue case final LiveCueKind cue) {
+        if (decision.cue case final LiveExerciseCue cue) {
           _liveCue = cue;
           _liveCueTimestampMs = sample.detection.timestampMs;
           _liveCueSerial += 1;
         }
       }
+      // A cue is only meaningful between repetitions: drop it as soon as the
+      // next rep starts or tracking is lost, so nothing stale is spoken.
       if (frame.landmarks == null ||
-          _liveCoach.phase != LiveArmRaisePhase.idle) {
+          _liveCoach.phase != LiveExercisePhase.idle) {
         _liveCue = null;
         _liveCueTimestampMs = null;
       }
@@ -120,8 +153,24 @@ class MotionCoachSession extends ChangeNotifier {
         _liveCueTimestampMs = null;
       }
     }
-    notifyListeners();
+    if (_observableState() != before) {
+      notifyListeners();
+    }
   }
+
+  /// Everything the capture screen renders from this session, folded into
+  /// one comparable value.
+  Object _observableState() => Object.hash(
+    _framingStatus,
+    _ready,
+    _recording,
+    _liveRepCount,
+    _liveRepSerial,
+    _liveCueSerial,
+    _liveCue,
+    _frameWidth,
+    _frameHeight,
+  );
 
   void beginRecording() {
     _frames.clear();
@@ -154,6 +203,15 @@ class MotionCoachSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Camera teardown is asynchronous, so a straggler frame can arrive after
+  /// the owning State has disposed this session. The flag turns that into a
+  /// no-op instead of a notify-after-dispose error.
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   void _resetLiveCoach() {
     _liveCoach.reset();
     _liveCue = null;
@@ -161,31 +219,38 @@ class MotionCoachSession extends ChangeNotifier {
     _liveRepCount = 0;
     _liveRepSerial = 0;
     _liveCueSerial = 0;
+    _lastRepScore = null;
     _lastDecisionMicros = 0;
     _maximumDecisionMicros = 0;
   }
+}
 
-  PoseFrame _toPoseFrame(MotionPoseDetection detection) {
-    if (detection.poseCount != 1 || !detection.hasCompletePose) {
-      return PoseFrame(timestampMs: detection.timestampMs, landmarks: null);
-    }
-    final List<MotionPoseLandmark> normalized = detection.normalizedLandmarks!;
-    final List<MotionPoseLandmark> world = detection.worldLandmarks!;
-    return PoseFrame(
-      timestampMs: detection.timestampMs,
-      landmarks: List<PoseLandmark>.generate(
-        33,
-        (int index) => PoseLandmark(
-          position: Vector3(world[index].x, world[index].y, world[index].z),
-          visibility: math.min(
-            normalized[index].visibility,
-            normalized[index].presence,
-          ),
-        ),
-        growable: false,
-      ),
-    );
+/// Convert a platform detection into the engine's pose frame.
+///
+/// Anything short of exactly one complete pose becomes a landmark-less frame
+/// rather than a partially populated one: the engine treats missing data as
+/// missing and abstains, which is only sound if the adapter never
+/// substitutes a plausible-looking value for an absent measurement.
+PoseFrame poseFrameFromDetection(MotionPoseDetection detection) {
+  if (detection.poseCount != 1 || !detection.hasCompletePose) {
+    return PoseFrame(timestampMs: detection.timestampMs, landmarks: null);
   }
+  final List<MotionPoseLandmark> normalized = detection.normalizedLandmarks!;
+  final List<MotionPoseLandmark> world = detection.worldLandmarks!;
+  return PoseFrame(
+    timestampMs: detection.timestampMs,
+    landmarks: List<PoseLandmark>.generate(
+      33,
+      (int index) => PoseLandmark(
+        position: Vector3(world[index].x, world[index].y, world[index].z),
+        visibility: math.min(
+          normalized[index].visibility,
+          normalized[index].presence,
+        ),
+      ),
+      growable: false,
+    ),
+  );
 }
 
 MotionFramingStatus assessFraming(MotionPoseDetection detection) {

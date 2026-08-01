@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_exercise_catalog.dart';
-import 'motion_routine_catalog.dart';
 import 'motion_session_history.dart';
 
 /// Renders a completed `session-evaluation.v1` document.
@@ -19,12 +18,15 @@ class MotionRoutineResultsScreen extends StatelessWidget {
   /// input that protection exists for.
   const MotionRoutineResultsScreen({
     super.key,
-    required this.description,
+    required this.title,
     required this.record,
     this.saved = true,
   });
 
-  final MotionRoutineDescription description;
+  /// Heading shown above the score; the record's routine name in every
+  /// current flow. Only presentation, so a full routine description object
+  /// is deliberately not required (history entries may outlive the catalog).
+  final String title;
   final MotionSessionRecord record;
 
   /// False when the session finished but could not be written to history.
@@ -61,7 +63,7 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                   child: Column(
                     children: <Widget>[
                       Text(
-                        description.title,
+                        title,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: colors.textSecondary),
                       ),

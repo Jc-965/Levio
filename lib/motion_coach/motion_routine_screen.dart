@@ -274,7 +274,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => MotionRoutineResultsScreen(
-          description: widget.description,
+          title: widget.description.title,
           record: record,
           saved: saved,
         ),

@@ -7,6 +7,7 @@ import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_exercise_catalog.dart';
+import 'motion_routine_results_screen.dart';
 import 'motion_session_history.dart';
 
 /// Trends across saved routine sessions.
@@ -191,7 +192,20 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
           const SectionHeading(title: 'Sessions'),
           const SizedBox(height: 12),
           for (final MotionSessionRecord entry in entries)
-            _SessionCard(entry: entry),
+            _SessionCard(
+              entry: entry,
+              onTap: () {
+                HapticUtils.lightImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MotionRoutineResultsScreen(
+                      title: entry.routineName,
+                      record: entry,
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -299,9 +313,10 @@ class _ExerciseTrendCard extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.entry});
+  const _SessionCard({required this.entry, required this.onTap});
 
   final MotionSessionRecord entry;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -309,6 +324,7 @@ class _SessionCard extends StatelessWidget {
     return ModernCard(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
+      onTap: onTap,
       child: Row(
         children: <Widget>[
           Expanded(

@@ -651,6 +651,7 @@ class CloudBackendService {
     required int age,
     String? profileImage,
     String? email,
+    bool overwrite = false,
   }) async {
     if (!isEnabled) return false;
 
@@ -658,14 +659,23 @@ class CloudBackendService {
       final userId = _effectiveUser;
       if (userId == null) return false;
 
-      await _client!.from('users').upsert(<String, dynamic>{
-        'id': userId,
-        'name': name,
-        'email': email,
-        'age': age,
-        'profile_image': profileImage,
-        'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'id');
+      await _client!
+          .from('users')
+          .upsert(
+            <String, dynamic>{
+              'id': userId,
+              'name': name,
+              'email': email,
+              'age': age,
+              'profile_image': profileImage,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            onConflict: 'id',
+            // Existence-only by default: social actions must be able to
+            // guarantee the FK target without overwriting a real profile with
+            // whatever happens to be in memory (defaults on a fresh device).
+            ignoreDuplicates: !overwrite,
+          );
       return true;
     } catch (e, stackTrace) {
       _logger.error('Cloud upsert user failed', e, stackTrace);

@@ -313,18 +313,29 @@ class MedicationReminderService {
   }
 
   tz.TZDateTime _nextInstanceOf(int weekday, TimeOfDay time) {
-    var scheduled = tz.TZDateTime.now(tz.local);
-    scheduled = tz.TZDateTime(
+    // Walk calendar days by reconstructing from components instead of
+    // adding 24h Durations: across a DST transition the Duration walk
+    // lands an hour off the configured dose time.
+    final now = tz.TZDateTime.now(tz.local);
+    var dayOffset = 0;
+    var scheduled = tz.TZDateTime(
       tz.local,
-      scheduled.year,
-      scheduled.month,
-      scheduled.day,
+      now.year,
+      now.month,
+      now.day,
       time.hour,
       time.minute,
     );
-    while (scheduled.weekday != weekday ||
-        scheduled.isBefore(tz.TZDateTime.now(tz.local))) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    while (scheduled.weekday != weekday || scheduled.isBefore(now)) {
+      dayOffset += 1;
+      scheduled = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + dayOffset,
+        time.hour,
+        time.minute,
+      );
     }
     return scheduled;
   }

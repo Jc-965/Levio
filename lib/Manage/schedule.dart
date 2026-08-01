@@ -33,6 +33,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   void _showMedicationDetails(int index) {
     final colors = context.colors;
+    // Capture identity now: the list can be reloaded or reordered while
+    // the sheet is open, so position must never be trusted at commit time.
+    final scheduleId = singleton.scheduleIDs[index];
     HapticUtils.lightImpact();
 
     showModalBottomSheet(
@@ -114,8 +117,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     icon: Icons.check_circle_outline_rounded,
                     onPressed: () async {
                       HapticUtils.success();
-                      final saved = await singleton.recordMedicationTaken(
-                        index,
+                      final saved = await singleton.recordMedicationTakenById(
+                        scheduleId,
                       );
                       if (!mounted || !c.mounted) return;
                       Navigator.pop(c);
@@ -181,7 +184,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                         );
                         if (confirmed != true) return;
-                        await singleton.deleteEntireList(index, 'schedules');
+                        await singleton.deleteScheduleEntryById(scheduleId);
                         if (!mounted || !c.mounted) return;
                         Navigator.pop(c);
                         setState(() {});
@@ -200,6 +203,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _showEditMedicationDialog(int index) async {
     if (index < 0 || index >= singleton.schedule.length) return;
+    final scheduleId = singleton.scheduleIDs[index];
+    // Editing name/details must not drop the medication's per-dose
+    // reminder times, so capture them with the identity.
+    final existingDoseTimes = singleton.schedule[index].length > 3
+        ? singleton.schedule[index][3]
+        : '';
     final colors = context.colors;
     final nameController = TextEditingController(text: name(index));
     final detailsController = TextEditingController(text: detail(index));
@@ -265,16 +274,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         text: 'Save',
                         onPressed: () async {
                           if (nameController.text.trim().isEmpty) return;
-                          await singleton.updateScheduleEntry(
-                            index,
+                          await singleton.updateScheduleEntryById(
+                            scheduleId,
                             nameController.text.trim(),
                             detailsController.text.trim(),
                             daysController.text.trim(),
-                            // Editing name/details must not drop the
-                            // medication's per-dose reminder times.
-                            doseTimes: singleton.schedule[index].length > 3
-                                ? singleton.schedule[index][3]
-                                : '',
+                            doseTimes: existingDoseTimes,
                           );
                           if (!mounted || !c.mounted) return;
                           Navigator.pop(c);

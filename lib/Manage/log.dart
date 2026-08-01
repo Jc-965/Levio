@@ -90,6 +90,9 @@ class _LogScreenState extends State<LogScreen> {
 
   Future<void> _showLogDetails(int index) async {
     HapticUtils.lightImpact();
+    // Capture identity now: the list can re-sort while the sheet is open,
+    // so position must never be trusted at commit time.
+    final logId = singleton.logIDs[index];
     final colors = context.colors;
     final date = _parseStorageTime(_time(index));
     final severityColor = _severityColor(_severity(index), colors);
@@ -207,7 +210,7 @@ class _LogScreenState extends State<LogScreen> {
                           ),
                         );
                         if (confirmed != true) return;
-                        await singleton.deleteLog(index);
+                        await singleton.deleteLogById(logId);
                         if (!mounted || !sheetContext.mounted) return;
                         Navigator.pop(sheetContext);
                         setState(() {});
@@ -233,6 +236,7 @@ class _LogScreenState extends State<LogScreen> {
 
   Future<void> _showEditLogSheet(int index) async {
     if (index < 0 || index >= singleton.log.length) return;
+    final logId = singleton.logIDs[index];
     final colors = context.colors;
     final symptomController = TextEditingController(text: _symptom(index));
     var selectedSeverity = _severity(index);
@@ -389,8 +393,8 @@ class _LogScreenState extends State<LogScreen> {
                           : () async {
                               if (symptomController.text.trim().isEmpty) return;
                               setSheetState(() => isSaving = true);
-                              final saved = await singleton.updateLogEntry(
-                                index,
+                              final saved = await singleton.updateLogEntryById(
+                                logId,
                                 _formatStorageTime(selectedDateTime),
                                 symptomController.text.trim(),
                                 selectedSeverity,

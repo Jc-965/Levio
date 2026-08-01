@@ -437,7 +437,7 @@ void main() {
     await tester.ensureVisible(takenButton);
     await tester.pumpAndSettle();
     final saved = await tester.runAsync(
-      () => singleton.recordMedicationTaken(0),
+      () => singleton.recordMedicationTakenById(singleton.scheduleIDs.first),
     );
 
     expect(saved, isTrue);

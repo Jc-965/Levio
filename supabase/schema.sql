@@ -24,6 +24,17 @@ as $$
   select auth.uid()::text;
 $$;
 
+-- True only for sessions belonging to a real, explicitly created account.
+-- Anonymous bootstrap sessions also hold the authenticated role, so every
+-- health-data policy must restate this rather than rely on the role alone.
+create or replace function public.is_full_account()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false;
+$$;
+
 create table if not exists public.users (
   id text primary key,
   name text not null default '[Name]',
@@ -739,20 +750,20 @@ drop policy if exists logs_delete_own on public.logs;
 
 create policy logs_select_own on public.logs
   for select to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 create policy logs_insert_own on public.logs
   for insert to authenticated
-  with check (user_id = public.current_uid());
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy logs_update_own on public.logs
   for update to authenticated
-  using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account())
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy logs_delete_own on public.logs
   for delete to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 drop policy if exists schedules_select_own on public.schedules;
 drop policy if exists schedules_insert_own on public.schedules;
@@ -761,20 +772,20 @@ drop policy if exists schedules_delete_own on public.schedules;
 
 create policy schedules_select_own on public.schedules
   for select to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 create policy schedules_insert_own on public.schedules
   for insert to authenticated
-  with check (user_id = public.current_uid());
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy schedules_update_own on public.schedules
   for update to authenticated
-  using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account())
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy schedules_delete_own on public.schedules
   for delete to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 drop policy if exists recovery_sessions_select_own on public.recovery_sessions;
 drop policy if exists recovery_sessions_insert_own on public.recovery_sessions;
@@ -783,24 +794,25 @@ drop policy if exists recovery_sessions_delete_own on public.recovery_sessions;
 
 create policy recovery_sessions_select_own on public.recovery_sessions
   for select to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 create policy recovery_sessions_insert_own on public.recovery_sessions
   for insert to authenticated
   with check (
     user_id = public.current_uid()
+    and public.is_full_account()
     and length(trim(video_id)) > 0
     and length(trim(title)) > 0
   );
 
 create policy recovery_sessions_update_own on public.recovery_sessions
   for update to authenticated
-  using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account())
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy recovery_sessions_delete_own on public.recovery_sessions
   for delete to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 drop policy if exists medication_events_select_own on public.medication_events;
 drop policy if exists medication_events_insert_own on public.medication_events;
@@ -809,29 +821,30 @@ drop policy if exists medication_events_delete_own on public.medication_events;
 
 create policy medication_events_select_own on public.medication_events
   for select to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 create policy medication_events_insert_own on public.medication_events
   for insert to authenticated
   with check (
     user_id = public.current_uid()
+    and public.is_full_account()
     and length(trim(medication_name)) > 0
   );
 
 create policy medication_events_update_own on public.medication_events
   for update to authenticated
-  using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account())
+  with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy medication_events_delete_own on public.medication_events
   for delete to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 drop policy if exists sync_tombstones_select_own on public.sync_tombstones;
 
 create policy sync_tombstones_select_own on public.sync_tombstones
   for select to authenticated
-  using (user_id = public.current_uid());
+  using (user_id = public.current_uid() and public.is_full_account());
 
 drop policy if exists posts_select_all on public.community_posts;
 drop policy if exists posts_insert_own on public.community_posts;

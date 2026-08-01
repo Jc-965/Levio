@@ -810,21 +810,21 @@ class Singleton extends ChangeNotifier {
     };
     medicationNames.clear();
 
-    for (int i = 0; i < schedule.length; i++) {
-      if (schedule[i].length >= 3 &&
-          !medicationNames.contains(schedule[i][0])) {
-        if (schedule[i][2] == "Everyday") {
-          for (var key in medsPerDay.keys) {
-            medsPerDay[key] = (medsPerDay[key] ?? 0) + 1;
-          }
-        } else {
-          for (var key in medsPerDay.keys) {
-            if (schedule[i][2].contains(key)) {
-              medsPerDay[key] = (medsPerDay[key] ?? 0) + 1;
-            }
-          }
+    for (final entry in schedule) {
+      if (entry.length < 3) continue;
+      if (!medicationNames.contains(entry[0])) {
+        medicationNames.add(entry[0]);
+      }
+      // Every schedule row counts, even a second row for the same drug
+      // (morning and evening Levodopa are separate entries), and a row
+      // with per-dose times contributes one dose per time.
+      final doseCount = entry.length > 3 && entry[3].trim().isNotEmpty
+          ? entry[3].split(',').where((t) => t.trim().isNotEmpty).length
+          : 1;
+      for (final key in medsPerDay.keys) {
+        if (entry[2] == 'Everyday' || entry[2].contains(key)) {
+          medsPerDay[key] = (medsPerDay[key] ?? 0) + doseCount;
         }
-        medicationNames.add(schedule[i][0]);
       }
     }
     calcBarY();
@@ -1970,6 +1970,7 @@ class Singleton extends ChangeNotifier {
       await prefs.setString('userID', uid);
 
       final synced = await _cloud.upsertUser(
+        overwrite: true,
         id: uid,
         name: normalizedName,
         age: age,
@@ -2027,6 +2028,7 @@ class Singleton extends ChangeNotifier {
 
       final normalizedName = _normalizedDisplayName(userName);
       final created = await _cloud.upsertUser(
+        overwrite: true,
         id: uid,
         name: normalizedName,
         age: age,
@@ -2075,6 +2077,7 @@ class Singleton extends ChangeNotifier {
           ? _effectiveProfileImage(profileImage)
           : _effectiveProfileImage(image);
       final updated = await _cloud.upsertUser(
+        overwrite: true,
         id: uid,
         name: nextName,
         age: nextAge,
@@ -2132,17 +2135,18 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Update an existing log entry
-  Future<bool> updateLogEntry(
-    int index,
+  /// ID-addressed so a background reload or re-sort between the moment the
+  /// UI captured the entry and the moment the user confirms can never edit
+  /// a different medical record.
+  Future<bool> updateLogEntryById(
+    String logId,
     String time,
     String symptom,
     String severity,
   ) async {
     try {
-      if (index < 0 || index >= logIDs.length) return false;
-
-      final logId = logIDs[index];
-      if (logId.isEmpty) return false;
+      final index = logIDs.indexOf(logId);
+      if (index < 0) return false;
 
       final payload = <String, dynamic>{
         'time': time,
@@ -2170,13 +2174,11 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  /// Delete a log entry
-  Future<bool> deleteLog(int index) async {
+  /// Delete a log entry by its stable ID (see [updateLogEntryById]).
+  Future<bool> deleteLogById(String logId) async {
     try {
-      if (index < 0 || index >= logIDs.length) return false;
-
-      final logId = logIDs[index];
-      if (logId.isEmpty) return false;
+      final index = logIDs.indexOf(logId);
+      if (index < 0) return false;
 
       await _queueHealthMutation(
         entityType: SyncEntityType.log,
@@ -2239,19 +2241,18 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  /// Update an existing schedule entry
-  Future<bool> updateScheduleEntry(
-    int index,
+  /// Update an existing schedule entry by its stable ID
+  /// (see [updateLogEntryById] for why identity beats position).
+  Future<bool> updateScheduleEntryById(
+    String scheduleId,
     String medName,
     String details,
     String days, {
     String doseTimes = '',
   }) async {
     try {
-      if (index < 0 || index >= scheduleIDs.length) return false;
-
-      final scheduleId = scheduleIDs[index];
-      if (scheduleId.isEmpty) return false;
+      final index = scheduleIDs.indexOf(scheduleId);
+      if (index < 0) return false;
 
       final payload = <String, dynamic>{
         'name': medName,
@@ -2285,13 +2286,11 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  /// Delete a schedule entry
-  Future<bool> deleteScheduleEntry(int index) async {
+  /// Delete a schedule entry by its stable ID (see [updateLogEntryById]).
+  Future<bool> deleteScheduleEntryById(String scheduleId) async {
     try {
-      if (index < 0 || index >= scheduleIDs.length) return false;
-
-      final scheduleId = scheduleIDs[index];
-      if (scheduleId.isEmpty) return false;
+      final index = scheduleIDs.indexOf(scheduleId);
+      if (index < 0) return false;
 
       await _queueHealthMutation(
         entityType: SyncEntityType.schedule,
@@ -2313,18 +2312,16 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  Future<bool> recordMedicationTaken(
-    int scheduleIndex, {
+  Future<bool> recordMedicationTakenById(
+    String scheduleId, {
     DateTime? takenAt,
     DateTime? scheduledAt,
   }) async {
     try {
-      if (scheduleIndex < 0 || scheduleIndex >= schedule.length) return false;
+      final scheduleIndex = scheduleIDs.indexOf(scheduleId);
+      if (scheduleIndex < 0) return false;
       final now = (takenAt ?? DateTime.now()).toUtc();
       final eventId = _uuid.v4();
-      final scheduleId = scheduleIndex < scheduleIDs.length
-          ? scheduleIDs[scheduleIndex]
-          : '';
       final event = <String, dynamic>{
         'id': eventId,
         'schedule_id': scheduleId,
@@ -3087,13 +3084,6 @@ class Singleton extends ChangeNotifier {
   }
 
   // Legacy method for compatibility
-  Future<void> deleteEntireList(int index, String listName) async {
-    if (listName == "logs") {
-      await deleteLog(index);
-    } else if (listName == "schedules") {
-      await deleteScheduleEntry(index);
-    }
-  }
 
   /// Get in-memory cache statistics for debugging
 

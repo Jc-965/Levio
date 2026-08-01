@@ -411,10 +411,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       // Deleting the instant share() resolves races the receiving app on
       // Android (the intent can resolve before the target reads the
-      // file). Delete on dismissal without a pick; otherwise leave it for
-      // the boot sweep, which clears stale backup files on next launch.
-      if (result.status == ShareResultStatus.dismissed && await file.exists()) {
-        await file.delete();
+      // file). Delete on dismissal without a pick; after a pick, give the
+      // target two minutes to read it, then delete. The boot sweep is the
+      // last-resort cleanup if the process dies first.
+      if (result.status == ShareResultStatus.dismissed) {
+        if (await file.exists()) await file.delete();
+      } else {
+        Timer(const Duration(minutes: 2), () async {
+          try {
+            if (await file.exists()) await file.delete();
+          } catch (_) {
+            // Boot sweep handles it.
+          }
+        });
       }
     } catch (_) {
       if (!mounted) return;

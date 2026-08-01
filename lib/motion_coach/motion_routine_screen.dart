@@ -468,6 +468,15 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                           : 'Waiting for a clear view',
                     ),
                   ),
+                if (running &&
+                    _controller.phase == MotionRoutinePhase.active) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => unawaited(_confirmSkipStep()),
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: const Text('Skip this exercise'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -548,6 +557,34 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _confirmSkipStep() async {
+    final MotionExerciseDefinition exercise = _controller.currentExercise;
+    final bool? skip = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Skip ${exercise.title}?'),
+        content: const Text(
+          'The movements you completed in this exercise still count. The '
+          'routine moves on to the next exercise.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep going'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Skip'),
+          ),
+        ],
+      ),
+    );
+    if (skip == true && mounted) {
+      HapticUtils.lightImpact();
+      _controller.skipCurrentStep();
+    }
   }
 
   Widget _buildFramingStatus(BuildContext context) {

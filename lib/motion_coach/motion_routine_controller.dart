@@ -180,6 +180,18 @@ class MotionRoutineController extends ChangeNotifier {
     _restRemainingSeconds.ceil(),
   );
 
+  /// Skip the active step, keeping the movements measured so far.
+  /// No-op unless a step is actively running.
+  void skipCurrentStep() {
+    final RoutineSession? session = _session;
+    if (_disposed || session == null || _phase != MotionRoutinePhase.active) {
+      return;
+    }
+    _applyEvents(session.skipStep(_lastSampleTimestampMs));
+    _restRemainingSeconds = session.restRemainingAt(_lastSampleTimestampMs);
+    notifyListeners();
+  }
+
   /// Abandon the run without an evaluation, e.g. the user backing out.
   void reset() {
     if (!_disposed) skeleton.value = null;

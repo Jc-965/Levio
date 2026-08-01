@@ -203,6 +203,35 @@ void main() {
       expect(controller.restRemainingSeconds, greaterThan(0));
     });
 
+    test('skips the active step while keeping measured movements', () async {
+      final MotionRoutineController controller = await _controller(
+        targetRepetitions: 3,
+      );
+      addTearDown(controller.dispose);
+
+      // Skip is a no-op before the routine starts.
+      controller.skipCurrentStep();
+      expect(controller.isStarted, isFalse);
+
+      controller.start();
+      _driveRepetitions(controller, count: 1, startMs: 200);
+      expect(controller.completedRepetitions, 1);
+
+      controller.skipCurrentStep();
+
+      // A one-step routine completes immediately; the finished movement
+      // stays in the evaluation with timeout semantics.
+      expect(controller.phase, MotionRoutinePhase.complete);
+      final List<Object?> steps =
+          controller.evaluation!['steps']! as List<Object?>;
+      final Map<String, Object?> step = steps.single! as Map<String, Object?>;
+      expect(step['completed_repetitions'], 1);
+      expect(step['target_repetitions'], 3);
+      // Skip after completion stays a no-op.
+      controller.skipCurrentStep();
+      expect(controller.phase, MotionRoutinePhase.complete);
+    });
+
     test('reset abandons the run without producing an evaluation', () async {
       final MotionRoutineController controller = await _controller(
         targetRepetitions: 4,

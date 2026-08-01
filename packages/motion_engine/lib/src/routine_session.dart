@@ -277,6 +277,20 @@ final class RoutineSession {
     return events;
   }
 
+  /// End the active step now, keeping whatever was measured so far.
+  ///
+  /// A person who cannot do one exercise today should not have to abandon
+  /// the whole routine or wait out the step's maximum duration. The step
+  /// result is built by the exact rules a timeout uses: completed
+  /// repetitions still count, and a step with none is simply not assessed.
+  /// Mirrors the Python engine's `skip_step`.
+  List<RoutineSessionEvent> skipStep(int timestampMs) {
+    if (_phase != RoutineSessionPhase.active) {
+      throw StateError('skipStep() requires an active step');
+    }
+    return _finishStep(timestampMs);
+  }
+
   RoutineStepStarted _stepStartedEvent() {
     final ExerciseSpec spec = _specs[_stepIndex];
     return RoutineStepStarted(

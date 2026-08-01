@@ -86,7 +86,15 @@ class ContentModerationService {
 
   // Configuration
   static const int minContentLength = 1;
+
+  /// Hard ceiling shared with the server-side trigger; anything longer is
+  /// rejected outright even if a modified client bypasses the compose UI.
   static const int maxContentLength = 2000;
+
+  /// Product compose cap surfaced in the editor. Deliberately far below
+  /// [maxContentLength]: short posts keep the feed readable for users with
+  /// tremor-impaired scrolling.
+  static const int composeMaxLength = 420;
   static const int maxPostsPerHour = 10;
   static const double maxCapsRatio = 0.6;
   static const int repetitionThreshold = 3;

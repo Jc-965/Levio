@@ -341,7 +341,23 @@ set search_path = public
 as $$
 declare
   v_report_count integer;
+  v_recent_reports integer;
 begin
+  -- Anonymous bootstrap sessions carry the authenticated role but must not
+  -- moderate: unlimited free anonymous identities would otherwise let a
+  -- script hide any post with three fabricated reports.
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'full account required to report posts';
+  end if;
+
+  select count(*) into v_recent_reports
+  from public.community_post_reports r
+  where r.user_id = auth.uid()::text
+    and r.created_at > timezone('utc', now()) - interval '1 hour';
+  if v_recent_reports >= 10 then
+    raise exception 'report rate limit exceeded';
+  end if;
+
   insert into public.community_post_reports (post_id, user_id, reason)
   values (p_post_id, auth.uid()::text, left(coalesce(p_reason, ''), 500))
   on conflict (post_id, user_id) do nothing;
@@ -375,6 +391,9 @@ as $$
   from public.community_comments c
   where c.post_id = any(p_post_ids)
     and c.is_flagged = false
+    -- Community data is full-account only; security definer bypasses the
+    -- table policies, so the anonymous gate must be restated here.
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
   group by c.post_id;
 $$;
 

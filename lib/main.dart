@@ -84,17 +84,18 @@ Future<void> _bootstrap(
             singleton.setFirstTime(false);
             logger.info('Loaded cached user data for offline session');
           } else {
-            // User data not found, clear stale userID only when cloud is online.
-            if (singleton.isCloudConnected) {
+            // Discard the stored ID only when the cloud definitively said
+            // the profile row is absent; a transient failure at launch must
+            // not dump a real user back into onboarding.
+            if (singleton.isCloudConnected &&
+                singleton.profileConfirmedAbsent) {
               await prefs.remove('userID');
               logger.info('Stale user ID cleared');
             }
           }
         } catch (e, stackTrace) {
-          // Error loading user, clear stale userID only when cloud is online.
-          if (singleton.isCloudConnected) {
-            await prefs.remove('userID');
-          }
+          // Transient load error: keep the stored user ID and retry on the
+          // next launch rather than destroying navigation state.
           logger.error('Error loading user', e, stackTrace);
         }
       } else if (singleton.hasCachedData && singleton.name != "[Name]") {

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_card.dart';
+import '../services/content_filter.dart';
 import '../singleton.dart';
 import '../utils/haptic_utils.dart';
 
@@ -62,7 +63,7 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen>
     with SingleTickerProviderStateMixin {
-  static const int _maxPostLength = 420;
+  static const int _maxPostLength = ContentModerationService.composeMaxLength;
 
   late TabController _tabController;
   final singleton = Singleton();

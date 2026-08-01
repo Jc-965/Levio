@@ -115,11 +115,20 @@ class CloudBackendService {
       }
     }
 
+    if (error is AuthRetryableFetchException) return true;
+    if (error is HttpException || error is HandshakeException) return true;
+
+    // Last resort for wrapped errors whose type we cannot see (the supabase
+    // client rethrows some transport failures as plain ClientExceptions).
+    // Safe only because every retried operation is an idempotent upsert.
     final message = error.toString().toLowerCase();
     return message.contains('timeout') ||
-        message.contains('connection') ||
-        message.contains('temporar') ||
-        message.contains('network');
+        message.contains('socketexception') ||
+        message.contains('connection closed') ||
+        message.contains('connection refused') ||
+        message.contains('network is unreachable') ||
+        message.contains('temporarily unavailable') ||
+        message.contains('failed host lookup');
   }
 
   Future<T> _withRetry<T>(
@@ -710,8 +719,11 @@ class CloudBackendService {
       );
       return result;
     } catch (e, stackTrace) {
+      // Rethrow like the health getters: a transient failure must stay
+      // distinguishable from "profile row absent", because callers treat
+      // null as confirmed absence and may discard the stored user ID.
       _logger.error('Cloud get user failed', e, stackTrace);
-      return null;
+      rethrow;
     }
   }
 

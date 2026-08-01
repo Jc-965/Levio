@@ -547,7 +547,42 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         resizeToAvoidBottomInset: false,
         backgroundColor: colors.background,
         appBar: _buildAppBar(colors),
-        body: Column(children: [Expanded(child: _buildAnimatedTabBody())]),
+        body: Column(
+          children: [
+            ListenableBuilder(
+              listenable: singleton,
+              builder: (context, _) {
+                if (!singleton.localPersistenceFailed) {
+                  return const SizedBox.shrink();
+                }
+                return Semantics(
+                  liveRegion: true,
+                  child: Container(
+                    width: double.infinity,
+                    // Fixed pair (not theme tokens): 6.4:1 in both themes,
+                    // where error-on-textOnPrimary dips below AA at 13px.
+                    color: const Color(0xFFB91C1C),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: const Text(
+                      'Your data is not being saved on this device right '
+                      'now. Restart the app; if this keeps happening, '
+                      'contact support.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            Expanded(child: _buildAnimatedTabBody()),
+          ],
+        ),
         bottomNavigationBar: _buildBottomNavBar(colors),
         floatingActionButton: _buildFAB(colors),
       ),

@@ -763,23 +763,6 @@ class Singleton extends ChangeNotifier {
       ..addAll(sortedLogIds);
   }
 
-  void addLogList(String time, String symptom, String severity) {
-    List<String> logList = [time, symptom, severity];
-    log.add(logList);
-    logIDs.add('');
-    sortTime();
-    _persistLocalCache();
-    notifyListenersSafe();
-  }
-
-  void addScheduleList(String name, String details, String days) {
-    List<String> scheduleList = [name, details, days];
-    schedule.add(scheduleList);
-    scheduleIDs.add('');
-    _persistLocalCache();
-    notifyListenersSafe();
-  }
-
   List<String> month = [
     'January',
     'February',
@@ -1334,14 +1317,27 @@ class Singleton extends ChangeNotifier {
     return next;
   }
 
+  /// True when the last local-cache write failed, meaning changes made in
+  /// this session survive only in memory. Surfaced as a warning banner so a
+  /// wedged keystore is never a silent data loss.
+  bool localPersistenceFailed = false;
+
   Future<void> _writeLocalCacheSnapshot() async {
     try {
       final prefs = await _prefs;
       final snapshot = _buildLocalCacheSnapshot();
       final sealed = await _cacheStore.seal(jsonEncode(snapshot));
       await prefs.setString(_localCacheKey, sealed);
+      if (localPersistenceFailed) {
+        localPersistenceFailed = false;
+        notifyListenersSafe();
+      }
     } catch (e, stackTrace) {
       _logger.warning('Unable to persist local cache', e, stackTrace);
+      if (!localPersistenceFailed) {
+        localPersistenceFailed = true;
+        notifyListenersSafe();
+      }
     }
   }
 
@@ -1653,7 +1649,13 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Load user data from cloud backend
+  /// True only when the last [loadUser] call reached the cloud and the
+  /// profile row was definitively absent. Transient failures leave this
+  /// false so boot logic never discards a stored user ID on a flaky call.
+  bool profileConfirmedAbsent = false;
+
   Future<bool> loadUser() async {
+    profileConfirmedAbsent = false;
     try {
       if (!_cloud.isEnabled) {
         _logger.warning('Cloud backend is not available for user loading.');
@@ -1677,6 +1679,9 @@ class Singleton extends ChangeNotifier {
       );
       final userData = snapshot.user;
       if (userData == null) {
+        // getUser rethrows on failure, so reaching null here means the
+        // query succeeded and the row genuinely does not exist.
+        profileConfirmedAbsent = true;
         _logger.debug('User not found in cloud database');
         await _markSyncFailure('Cloud user profile not found');
         return false;
@@ -2597,6 +2602,7 @@ class Singleton extends ChangeNotifier {
         _lastCommunityError = 'Unable to share post right now.';
         return false;
       }
+      await _recordPostForRateLimit();
 
       communityPosts.insert(0, <String, dynamic>{
         'id': postId,
@@ -2767,23 +2773,31 @@ class Singleton extends ChangeNotifier {
   /// Local posting rate limit backing [ContentModerationService.maxPostsPerHour].
   /// Server-side enforcement is still an open item; this at least keeps a
   /// well-behaved client honest.
-  Future<bool> _underPostRateLimit() async {
+  Future<List<DateTime>> _recentPostTimes() async {
     final prefs = await _prefs;
     final now = DateTime.now();
-    final recent = (prefs.getStringList(_postTimesKey) ?? const <String>[])
+    return (prefs.getStringList(_postTimesKey) ?? const <String>[])
         .map(DateTime.tryParse)
         .whereType<DateTime>()
         .where((t) => now.difference(t) < const Duration(hours: 1))
         .toList();
-    if (recent.length >= ContentModerationService.maxPostsPerHour) {
-      return false;
-    }
-    recent.add(now);
+  }
+
+  Future<bool> _underPostRateLimit() async {
+    final recent = await _recentPostTimes();
+    return recent.length < ContentModerationService.maxPostsPerHour;
+  }
+
+  /// Recorded only after a post actually saves, so failed or moderated
+  /// attempts never consume the hourly quota.
+  Future<void> _recordPostForRateLimit() async {
+    final prefs = await _prefs;
+    final recent = await _recentPostTimes()
+      ..add(DateTime.now());
     await prefs.setStringList(
       _postTimesKey,
       recent.map((t) => t.toIso8601String()).toList(),
     );
-    return true;
   }
 
   static const String _blockedUsersKey = 'community_blocked_users_v1';

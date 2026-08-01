@@ -140,6 +140,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    _lastColorMode = singleton.colorMode;
     singleton.addListener(_onSingletonChange);
     _passwordRecoverySubscription = singleton.passwordRecoveryEvents.listen(
       (_) => _showPasswordRecovery(),
@@ -199,12 +200,22 @@ class _MyAppState extends State<MyApp> {
       );
   }
 
+  int _lastColorMode = 0;
+
   void _onSingletonChange() {
     if (!mounted) return;
+    // The root build only depends on colorMode (theme) and the sign-out
+    // transition; skipping every other notification keeps the whole app
+    // from rebuilding on unrelated state changes.
+    final colorModeChanged = singleton.colorMode != _lastColorMode;
+    final needsOnboarding =
+        singleton.firstTime && _currentScreen == AppScreen.home;
+    if (!colorModeChanged && !needsOnboarding) return;
     setState(() {
+      _lastColorMode = singleton.colorMode;
       // Sign-out clears the session and flips firstTime back on; return the
       // user to the onboarding entry instead of leaving a stale Navbar.
-      if (singleton.firstTime && _currentScreen == AppScreen.home) {
+      if (needsOnboarding) {
         _currentScreen = AppScreen.onboarding;
       }
     });

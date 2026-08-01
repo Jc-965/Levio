@@ -910,9 +910,13 @@ class Singleton extends ChangeNotifier {
 
   void _applyConnectivityResults(List<ConnectivityResult> results) {
     final hasConnection = results.any((r) => r != ConnectivityResult.none);
-    final primaryResult = results.isNotEmpty
-        ? results.first
-        : ConnectivityResult.none;
+    // Label with the first REAL connection: results like [none, wifi] are
+    // possible and the first element alone would mislabel an online
+    // device as offline.
+    final primaryResult = results.firstWhere(
+      (r) => r != ConnectivityResult.none,
+      orElse: () => ConnectivityResult.none,
+    );
     if (_isOnline == hasConnection && _connectionType == primaryResult) return;
     final wasOnline = _isOnline;
     _isOnline = hasConnection;

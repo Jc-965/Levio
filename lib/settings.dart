@@ -212,13 +212,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showSignOutDialog() {
     final colors = context.colors;
+    // Signing out clears the offline mutation journal; unsynced health
+    // records must never be destroyed without the user knowing.
+    final pending = singleton.pendingMutationCount;
     showDialog(
       context: context,
       builder: (BuildContext c) {
         return AlertDialog(
           title: const Text('Sign Out'),
           content: Text(
-            'Sign out of your account on this device?',
+            pending > 0
+                ? '$pending ${pending == 1 ? 'change has' : 'changes have'} '
+                      'not synced to your account yet and will be lost if '
+                      'you sign out now. Try Sync Now first, or sign out '
+                      'anyway to discard ${pending == 1 ? 'it' : 'them'}.'
+                : 'Sign out of your account on this device?',
             style: Theme.of(
               c,
             ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
@@ -236,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(c);
                 await _signOut();
               },
-              child: const Text('Sign Out'),
+              child: Text(pending > 0 ? 'Sign Out Anyway' : 'Sign Out'),
             ),
           ],
         );

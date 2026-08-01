@@ -620,27 +620,43 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         ),
       ),
       actions: [
-        // User avatar
-        GestureDetector(
-          onTap: () => _onTabTapped(4),
-          child: Container(
-            key: _avatarKey,
-            width: 34,
-            height: 34,
-            margin: const EdgeInsets.only(right: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: currentIndex == 4 ? colors.primary : colors.border,
-                width: 1.5,
+        // User avatar: 34px visual inside a 48px tap target
+        Semantics(
+          button: true,
+          selected: currentIndex == 4,
+          label: 'Profile',
+          child: ExcludeSemantics(
+            child: GestureDetector(
+              onTap: () => _onTabTapped(4),
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(
+                  child: Container(
+                    key: _avatarKey,
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: currentIndex == 4
+                            ? colors.primary
+                            : colors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: ClipOval(child: _buildNavbarAvatar(colors)),
+                  ),
+                ),
               ),
             ),
-            child: ClipOval(child: _buildNavbarAvatar(colors)),
           ),
         ),
         IconButton(
           key: _settingsKey,
           iconSize: 19,
+          tooltip: 'Settings',
           icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
           onPressed: () {
             HapticUtils.lightImpact();
@@ -759,46 +775,62 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
     GlobalKey itemKey,
     VoidCallback onTap,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        key: itemKey,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: isSelected ? 1.06 : 1.0,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: Icon(
-                  isSelected ? item.activeIcon : item.icon,
-                  key: ValueKey(isSelected),
-                  color: isSelected ? colors.primary : colors.navUnselected,
-                  size: 20,
-                ),
-              ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style:
-                  (Theme.of(context).textTheme.labelSmall ?? const TextStyle())
-                      .copyWith(
+    // Tremor-friendly: at least a 48x48 tap target per nav item, with a
+    // semantic tab role so screen readers announce label and selection.
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: item.label,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 56, minHeight: 48),
+            child: Container(
+              key: itemKey,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedScale(
+                    scale: isSelected ? 1.06 : 1.0,
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        key: ValueKey(isSelected),
                         color: isSelected
                             ? colors.primary
                             : colors.navUnselected,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        fontSize: 9,
+                        size: 24,
                       ),
-              child: Text(item.label),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style:
+                        (Theme.of(context).textTheme.labelSmall ??
+                                const TextStyle())
+                            .copyWith(
+                              color: isSelected
+                                  ? colors.navSelected
+                                  : colors.navUnselected,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              fontSize: 11,
+                            ),
+                    child: Text(item.label),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

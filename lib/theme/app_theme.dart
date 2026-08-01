@@ -32,7 +32,8 @@ class AppTheme {
     surfaceVariant: Color(0xFFEBF1FF),
     textPrimary: Color(0xFF0F172A),
     textSecondary: Color(0xFF334155),
-    textTertiary: Color(0xFF64748B),
+    // WCAG AA: 5.6:1 on background, 6.0:1 on white surfaces
+    textTertiary: Color(0xFF556478),
     textOnPrimary: Color(0xFFFFFFFF),
     success: Color(0xFF10B981),
     warning: Color(0xFFF59E0B),
@@ -47,8 +48,9 @@ class AppTheme {
     shadow: Color(0x1F0F172A),
     cardBackground: Color(0xFFFFFFFF),
     navBackground: Color(0xFFFFFFFF),
-    navSelected: Color(0xFF2A6CF7),
-    navUnselected: Color(0xFF64748B),
+    // WCAG AA at small font sizes: 5.6:1 on background
+    navSelected: Color(0xFF1E5AD6),
+    navUnselected: Color(0xFF556478),
     inputBackground: Color(0xFFFFFFFF),
     inputBorder: Color(0xFFC7D6EE),
     inputFocusBorder: Color(0xFF2A6CF7),

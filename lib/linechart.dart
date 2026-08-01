@@ -476,7 +476,6 @@ class LineChartSample1State extends State<LineChartSample1>
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: chosenTime,
-                        isDense: true,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         icon: Icon(
                           Icons.keyboard_arrow_down_rounded,

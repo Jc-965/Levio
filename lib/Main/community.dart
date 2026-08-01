@@ -1258,6 +1258,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                     ? Icons.favorite_rounded
                     : Icons.favorite_outline_rounded,
                 label: post.likes.toString(),
+                semanticLabel: post.isLiked
+                    ? 'Liked, ${post.likes} likes'
+                    : 'Like, ${post.likes} likes',
                 color: post.isLiked ? colors.error : colors.textSecondary,
                 onTap: () async {
                   if (post.isLiked) {
@@ -1302,6 +1305,7 @@ class _CommunityScreenState extends State<CommunityScreen>
               _buildActionButton(
                 icon: Icons.chat_bubble_outline_rounded,
                 label: post.commentCount.toString(),
+                semanticLabel: 'Comments, ${post.commentCount}',
                 color: colors.textSecondary,
                 onTap: () => _openCommentsSheet(post),
               ),
@@ -1309,6 +1313,7 @@ class _CommunityScreenState extends State<CommunityScreen>
               _buildActionButton(
                 icon: Icons.share_outlined,
                 label: 'Share',
+                semanticLabel: 'Share post',
                 color: colors.textSecondary,
                 onTap: () async {
                   HapticUtils.lightImpact();
@@ -1353,15 +1358,18 @@ class _CommunityScreenState extends State<CommunityScreen>
               ),
             ),
             if (post.comments.length > 1)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: GestureDetector(
-                  onTap: () => _openCommentsSheet(post),
+              GestureDetector(
+                onTap: () => _openCommentsSheet(post),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  padding: const EdgeInsets.only(top: 8),
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     'View all ${post.comments.length} comments',
                     style: TextStyle(
                       color: colors.textTertiary,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1378,23 +1386,35 @@ class _CommunityScreenState extends State<CommunityScreen>
     required String label,
     required Color color,
     required VoidCallback onTap,
+    required String semanticLabel,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+    // 48px minimum tap target for tremor-friendly interaction
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

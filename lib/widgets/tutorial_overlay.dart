@@ -263,15 +263,21 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         color: Colors.transparent,
         child: Stack(
           children: [
+            // BlockSemantics hides the app behind the modal overlay from
+            // screen readers; the barrier itself absorbs taps silently and
+            // is excluded so readers land directly on the tooltip.
             Positioned.fill(
-              child: GestureDetector(
-                onTap: () {},
-                behavior: HitTestBehavior.opaque,
-                child: CustomPaint(
-                  painter: _SpotlightPainter(
-                    targetRect: rect,
-                    overlayColor: colors.textPrimary.withValues(alpha: 0.52),
-                    showSpotlight: hasTarget,
+              child: BlockSemantics(
+                child: GestureDetector(
+                  onTap: () {},
+                  behavior: HitTestBehavior.opaque,
+                  excludeFromSemantics: true,
+                  child: CustomPaint(
+                    painter: _SpotlightPainter(
+                      targetRect: rect,
+                      overlayColor: colors.textPrimary.withValues(alpha: 0.52),
+                      showSpotlight: hasTarget,
+                    ),
                   ),
                 ),
               ),

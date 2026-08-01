@@ -144,6 +144,25 @@ class MotionSessionHistory {
     }).length;
   }
 
+  /// The most recent assessed appearance of [exerciseId] across sessions,
+  /// or null if it has never been scored.
+  ({double score, int repetitions, DateTime completedAt})? lastResultFor(
+    String exerciseId,
+  ) {
+    for (final MotionSessionRecord entry in _entries) {
+      for (final MotionSessionStep step in entry.steps) {
+        if (step.exerciseId == exerciseId && step.overallScore != null) {
+          return (
+            score: step.overallScore!,
+            repetitions: step.completedRepetitions,
+            completedAt: entry.completedAt,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
   /// Mean overall score across the [count] most recent scored sessions.
   double? recentAverageScore({int count = 5}) {
     final List<double> scores = <double>[
@@ -299,6 +318,7 @@ class MotionSessionStep {
   const MotionSessionStep({
     required this.exerciseId,
     required this.assessed,
+    this.coverage,
     required this.completedRepetitions,
     required this.targetRepetitions,
     required this.overallScore,
@@ -314,6 +334,7 @@ class MotionSessionStep {
     return MotionSessionStep(
       exerciseId: step['exercise_id']! as String,
       assessed: step['assessed']! as bool,
+      coverage: (step['coverage'] as num?)?.toDouble(),
       completedRepetitions: (step['completed_repetitions']! as num).toInt(),
       targetRepetitions: (step['target_repetitions']! as num).toInt(),
       overallScore: (score?['overall'] as num?)?.toDouble(),
@@ -335,6 +356,7 @@ class MotionSessionStep {
   ) => MotionSessionStep(
     exerciseId: json['exercise_id']! as String,
     assessed: json['assessed']! as bool,
+    coverage: (json['coverage'] as num?)?.toDouble(),
     completedRepetitions: (json['completed_repetitions']! as num).toInt(),
     targetRepetitions: (json['target_repetitions']! as num).toInt(),
     overallScore: (json['overall_score'] as num?)?.toDouble(),
@@ -353,6 +375,10 @@ class MotionSessionStep {
 
   final String exerciseId;
   final bool assessed;
+
+  /// Fraction of camera frames the engine could measure for this step, or
+  /// null for records stored before coverage was kept.
+  final double? coverage;
   final int completedRepetitions;
   final int targetRepetitions;
   final double? overallScore;
@@ -408,6 +434,15 @@ class MotionSessionStep {
         '${tempo.toStringAsFixed(1)} seconds.',
       );
     }
+    final double? tracked = coverage;
+    // Coverage is evidence about measured movements; a step with none has
+    // no movement story to qualify.
+    if (tracked != null && repetitions.isNotEmpty) {
+      statements.add(
+        'The camera could measure '
+        '${(tracked * 100).round()}% of the frames in this step.',
+      );
+    }
     final double? ratio = amplitudeLastFirstRatio;
     if (ratio != null) {
       statements.add(
@@ -424,6 +459,7 @@ class MotionSessionStep {
   Map<String, Object?> toJson() => <String, Object?>{
     'exercise_id': exerciseId,
     'assessed': assessed,
+    'coverage': coverage,
     'completed_repetitions': completedRepetitions,
     'target_repetitions': targetRepetitions,
     'overall_score': overallScore,

@@ -97,19 +97,23 @@ class MotionSkeletonOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ValueListenableBuilder<MotionSkeletonFrame?>(
-        valueListenable: frame,
-        builder: (BuildContext context, MotionSkeletonFrame? value, _) {
-          return CustomPaint(
-            painter: _SkeletonPainter(
-              frame: value,
-              mirrored: mirrored,
-              color: color,
-            ),
-            child: const SizedBox.expand(),
-          );
-        },
+    // Purely decorative: the camera preview under it is the content, and
+    // announcing per-frame skeleton changes would spam screen readers.
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: ValueListenableBuilder<MotionSkeletonFrame?>(
+          valueListenable: frame,
+          builder: (BuildContext context, MotionSkeletonFrame? value, _) {
+            return CustomPaint(
+              painter: _SkeletonPainter(
+                frame: value,
+                mirrored: mirrored,
+                color: color,
+              ),
+              child: const SizedBox.expand(),
+            );
+          },
+        ),
       ),
     );
   }
@@ -136,8 +140,6 @@ class _SkeletonPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final MotionSkeletonFrame? pose = frame;
     if (pose == null) return;
-    _bonePaint.color = color.withValues(alpha: 0.85);
-    _jointPaint.color = color;
 
     Offset? project(int landmark) {
       if (pose.visibility(landmark) < _minimumVisibility) return null;
@@ -145,15 +147,35 @@ class _SkeletonPainter extends CustomPainter {
       return Offset(x * size.width, pose.y(landmark) * size.height);
     }
 
+    // Opacity tracks confidence: a limb the model barely sees fades before
+    // it disappears, showing the person which side needs repositioning
+    // before a repetition is lost to it.
+    double opacityFor(double visibility) =>
+        ((visibility - _minimumVisibility) / (1 - _minimumVisibility)).clamp(
+              0.0,
+              1.0,
+            ) *
+            0.65 +
+        0.35;
+
     for (final List<int> pair in _skeletonBones) {
       final Offset? first = project(pair[0]);
       final Offset? second = project(pair[1]);
       if (first == null || second == null) continue;
+      final double visibility =
+          pose.visibility(pair[0]) < pose.visibility(pair[1])
+          ? pose.visibility(pair[0])
+          : pose.visibility(pair[1]);
+      _bonePaint.color = color.withValues(alpha: 0.85 * opacityFor(visibility));
       canvas.drawLine(first, second, _bonePaint);
     }
     for (final int landmark in _skeletonJoints) {
       final Offset? point = project(landmark);
-      if (point != null) canvas.drawCircle(point, 3.5, _jointPaint);
+      if (point == null) continue;
+      _jointPaint.color = color.withValues(
+        alpha: opacityFor(pose.visibility(landmark)),
+      );
+      canvas.drawCircle(point, 3.5, _jointPaint);
     }
   }
 

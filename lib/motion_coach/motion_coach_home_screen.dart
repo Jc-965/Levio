@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../services/app_logger.dart';
+import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
@@ -111,10 +112,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
       final bool begin = await showMotionSessionIntro(
         context,
         description: description,
-        exercises: <MotionExerciseDefinition>[
-          for (final RoutineStepDefinition step in routine.steps)
-            motionExerciseById(step.exerciseId),
-        ],
+        routine: routine,
         library: _library,
       );
       if (!begin || !mounted) return;
@@ -158,7 +156,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
       final bool begin = await showMotionSessionIntro(
         context,
         description: singleExerciseDescription(exercise),
-        exercises: <MotionExerciseDefinition>[exercise],
+        routine: singleExerciseRoutine(exercise),
         library: _library,
       );
       if (!begin || !mounted) return;
@@ -236,6 +234,11 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 14),
+                // Sessions here count toward the same weekly physical goal
+                // as the rest of the recovery plan; showing it here closes
+                // the loop between doing a routine and the plan moving.
+                const _WeeklyGoalCard(),
                 if (_sessionCount > 0) ...[
                   const SizedBox(height: 14),
                   ModernCard(
@@ -311,6 +314,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     in motionExerciseCatalog)
                   _ExerciseTile(
                     exercise: exercise,
+                    lastResult: _history.lastResultFor(exercise.exerciseId),
                     enabled: !_opening,
                     onTap: () => unawaited(_openSingleExercise(exercise)),
                   ),
@@ -495,9 +499,11 @@ class _ExerciseTile extends StatelessWidget {
     required this.exercise,
     required this.enabled,
     required this.onTap,
+    this.lastResult,
   });
 
   final MotionExerciseDefinition exercise;
+  final ({double score, int repetitions, DateTime completedAt})? lastResult;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -523,7 +529,8 @@ class _ExerciseTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '${exercise.postureLabel} · '
-                  '${exercise.recordingRepetitionLabel} movements',
+                  '${exercise.recordingRepetitionLabel} movements'
+                  '${lastResult == null ? '' : ' · last score ${lastResult!.score.round()}'}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
@@ -532,6 +539,98 @@ class _ExerciseTile extends StatelessWidget {
             ),
           ),
           Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+        ],
+      ),
+    );
+  }
+}
+
+/// Weekly physical goal progress, listening to the app singleton but
+/// rebuilding only when the two values it renders actually change; the
+/// singleton notifies for many unrelated reasons (sync, connectivity, logs).
+class _WeeklyGoalCard extends StatefulWidget {
+  const _WeeklyGoalCard();
+
+  @override
+  State<_WeeklyGoalCard> createState() => _WeeklyGoalCardState();
+}
+
+class _WeeklyGoalCardState extends State<_WeeklyGoalCard> {
+  final Singleton _singleton = Singleton();
+  late int _done = _singleton.weeklyPhysicalExerciseSessions;
+  late int _goal = _singleton.weeklyPhysicalExerciseGoal;
+
+  @override
+  void initState() {
+    super.initState();
+    _singleton.addListener(_onSingletonChanged);
+  }
+
+  @override
+  void dispose() {
+    _singleton.removeListener(_onSingletonChanged);
+    super.dispose();
+  }
+
+  void _onSingletonChanged() {
+    final int done = _singleton.weeklyPhysicalExerciseSessions;
+    final int goal = _singleton.weeklyPhysicalExerciseGoal;
+    if (done == _done && goal == _goal) return;
+    setState(() {
+      _done = done;
+      _goal = goal;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    if (_goal <= 0) return const SizedBox.shrink();
+    return ModernCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.flag_rounded, size: 20, color: colors.secondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Weekly movement goal',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Text(
+                '$_done of $_goal',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colors.secondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: (_done / _goal).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: colors.secondary.withValues(alpha: 0.15),
+              color: colors.secondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Guided routines count toward your physical sessions for the '
+            'week.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+          ),
         ],
       ),
     );

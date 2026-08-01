@@ -67,6 +67,12 @@ toward the weekly plan and appear in recovery history.
 
 ## Boundaries that are intentional
 
+- Backgrounding mid-session discards the whole run (camera and engine clocks
+  cannot survive teardown), which for a multi-step routine loses more than
+  the single-exercise flow it mirrors. The screen discloses this; whether a
+  transient interruption should cost a full routine needs an explicit
+  product decision before any resume mechanism is designed.
+
 - No cloud sync of motion metrics; only the completion event syncs (as a
   recovery session). Metrics sync is deferred until export/deletion/RLS
   work is done.

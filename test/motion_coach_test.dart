@@ -76,11 +76,16 @@ void main() {
       addTearDown(session.dispose);
 
       session.beginRecording();
+      // Three identical readings: the published framing status is debounced
+      // so a single frame cannot reclassify it.
       session.handleSample(_sample(timestampMs: 60, poseCount: 2));
+      session.handleSample(_sample(timestampMs: 120, poseCount: 2));
+      session.handleSample(_sample(timestampMs: 180, poseCount: 2));
 
       final List<PoseFrame> frames = session.finishAndDrain();
-      expect(frames, hasLength(1));
-      expect(frames.single.landmarks, isNull);
+      expect(frames, hasLength(3));
+      expect(frames.first.landmarks, isNull);
+      expect(frames.last.landmarks, isNull);
       expect(session.framingStatus, MotionFramingStatus.multiplePeople);
     });
 

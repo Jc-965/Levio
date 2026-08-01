@@ -42,6 +42,9 @@ class MotionCoachSession extends ChangeNotifier {
   bool _disposed = false;
   int _goodFramingFrames = 0;
   int _badFramingFrames = 0;
+  MotionFramingStatus _candidateFramingStatus =
+      MotionFramingStatus.lookingForPerson;
+  int _candidateFramingFrames = 0;
   int _lastTimestampMs = -1;
   bool _recording = false;
   bool _ready = false;
@@ -102,8 +105,20 @@ class MotionCoachSession extends ChangeNotifier {
     final Object before = _observableState();
     _frameWidth = math.max(1, sample.frameWidth);
     _frameHeight = math.max(1, sample.frameHeight);
-    _framingStatus = assessFraming(sample.detection);
-    if (_framingStatus == MotionFramingStatus.ready) {
+    final MotionFramingStatus raw = assessFraming(sample.detection);
+    // Debounced like the routine controller: the published status feeds
+    // user-visible guidance and must not reclassify frame to frame while a
+    // landmark hovers at a threshold.
+    if (raw == _candidateFramingStatus) {
+      _candidateFramingFrames += 1;
+    } else {
+      _candidateFramingStatus = raw;
+      _candidateFramingFrames = 1;
+    }
+    if (_candidateFramingFrames >= 3) {
+      _framingStatus = raw;
+    }
+    if (raw == MotionFramingStatus.ready) {
       _goodFramingFrames += 1;
       _badFramingFrames = 0;
       if (_goodFramingFrames >= 6) {
@@ -197,6 +212,8 @@ class MotionCoachSession extends ChangeNotifier {
     _ready = false;
     _goodFramingFrames = 0;
     _badFramingFrames = 0;
+    _candidateFramingStatus = MotionFramingStatus.lookingForPerson;
+    _candidateFramingFrames = 0;
     _lastTimestampMs = -1;
     _framingStatus = MotionFramingStatus.lookingForPerson;
     _resetLiveCoach();

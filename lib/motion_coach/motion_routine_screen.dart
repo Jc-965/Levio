@@ -124,9 +124,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (_phase == _RoutineScreenPhase.suspended) unawaited(_initialize());
-      return;
+    } else {
+      unawaited(_suspend());
     }
-    if (state != AppLifecycleState.resumed) unawaited(_suspend());
   }
 
   void _onControllerChanged() {
@@ -484,39 +484,76 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildStage(context, running: running),
-                const SizedBox(height: 16),
-                if (running)
-                  _buildLiveStatus(context)
-                else
-                  _buildFramingStatus(context),
-                const SizedBox(height: 16),
-                if (!running)
-                  FilledButton.icon(
-                    onPressed: _controller.isFramingReady ? _start : null,
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56),
-                    ),
-                    label: Text(
-                      _controller.isFramingReady
-                          ? 'Start routine'
-                          : 'Waiting for a clear view',
-                    ),
-                  ),
-                if (running &&
-                    _controller.phase == MotionRoutinePhase.active) ...[
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => unawaited(_confirmSkipStep()),
-                    icon: const Icon(Icons.skip_next_rounded),
-                    label: const Text('Skip this exercise'),
-                  ),
-                ],
+                // Tablets and other wide viewports get the stage beside the
+                // status column instead of stacked, keeping the camera and
+                // the numbers visible together without scrolling.
+                LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final Widget status = _buildStatusColumn(
+                      context,
+                      running: running,
+                    );
+                    if (constraints.maxWidth < 720) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          _buildStage(context, running: running),
+                          const SizedBox(height: 16),
+                          status,
+                        ],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          flex: 3,
+                          child: _buildStage(context, running: running),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 2, child: status),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildStatusColumn(BuildContext context, {required bool running}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (running)
+          _buildLiveStatus(context)
+        else
+          _buildFramingStatus(context),
+        const SizedBox(height: 16),
+        if (!running)
+          FilledButton.icon(
+            onPressed: _controller.isFramingReady ? _start : null,
+            icon: const Icon(Icons.play_arrow_rounded),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
+            label: Text(
+              _controller.isFramingReady
+                  ? 'Start routine'
+                  : 'Waiting for a clear view',
+            ),
+          ),
+        if (running && _controller.phase == MotionRoutinePhase.active) ...[
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => unawaited(_confirmSkipStep()),
+            icon: const Icon(Icons.skip_next_rounded),
+            label: const Text('Skip this exercise'),
+          ),
+        ],
       ],
     );
   }
@@ -583,13 +620,18 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                   Expanded(
                     child: demonstration == null
                         ? const SizedBox.expand()
-                        : MotionDemonstrationView(
-                            key: ValueKey<String>(demonstration.exerciseId),
-                            loop: demonstration,
-                            color: colors.primary,
-                            playing:
-                                _controller.phase !=
-                                MotionRoutinePhase.complete,
+                        : Semantics(
+                            label:
+                                'Animated demonstration of the reference '
+                                'movement',
+                            child: MotionDemonstrationView(
+                              key: ValueKey<String>(demonstration.exerciseId),
+                              loop: demonstration,
+                              color: colors.primary,
+                              playing:
+                                  _controller.phase !=
+                                  MotionRoutinePhase.complete,
+                            ),
                           ),
                   ),
                 ],
@@ -636,6 +678,22 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       _controller.skipCurrentStep();
     }
   }
+
+  /// Guidance for a framing problem, phrased for someone mid-session.
+  static String _framingGuidance(MotionFramingStatus status) =>
+      switch (status) {
+        MotionFramingStatus.ready => '',
+        MotionFramingStatus.multiplePeople =>
+          'More than one person is in view. Movements cannot be counted '
+              'until only you are in frame.',
+        MotionFramingStatus.showMoreBody =>
+          'Part of you is out of frame. Move so your head, hands, and hips '
+              'are all visible.',
+        MotionFramingStatus.moveCloser =>
+          'You look far away. Move a little closer to the phone.',
+        MotionFramingStatus.lookingForPerson =>
+          'The camera lost you. Step back into view to keep counting.',
+      };
 
   Widget _buildFramingStatus(BuildContext context) {
     final colors = context.colors;
@@ -729,9 +787,42 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
     final ExerciseRepScore? score = _controller.lastRepScore;
     final LiveExerciseCue? cue = _controller.cue;
+    // Hysteresis can leave isFramingReady false for a few frames after the
+    // status itself recovers; the banner keys off the actionable guidance so
+    // it never shows empty text.
+    final String framingGuidance = _framingGuidance(_controller.framingStatus);
+    final bool trackingLost =
+        _controller.phase == MotionRoutinePhase.active &&
+        !_controller.isFramingReady &&
+        framingGuidance.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (trackingLost) ...[
+          Semantics(
+            liveRegion: true,
+            child: ModernCard(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.all(16),
+              backgroundColor: colors.warning.withValues(alpha: 0.14),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.visibility_off_rounded, color: colors.warning),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      framingGuidance,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         ModernCard(
           margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(20),
@@ -748,11 +839,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      '${_controller.completedRepetitions} of '
-                      '${_controller.targetRepetitions}',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        '${_controller.completedRepetitions} of '
+                        '${_controller.targetRepetitions}',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ],
                 ),

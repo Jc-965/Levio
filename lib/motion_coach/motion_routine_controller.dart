@@ -51,6 +51,9 @@ class MotionRoutineController extends ChangeNotifier {
   MotionRoutinePhase _phase = MotionRoutinePhase.framing;
   int _goodFramingFrames = 0;
   int _badFramingFrames = 0;
+  MotionFramingStatus _candidateFramingStatus =
+      MotionFramingStatus.lookingForPerson;
+  int _candidateFramingFrames = 0;
   bool _framingReady = false;
   int _lastTimestampMs = -1;
   int _lastSampleTimestampMs = 0;
@@ -200,6 +203,8 @@ class MotionRoutineController extends ChangeNotifier {
     _framingStatus = MotionFramingStatus.lookingForPerson;
     _goodFramingFrames = 0;
     _badFramingFrames = 0;
+    _candidateFramingStatus = MotionFramingStatus.lookingForPerson;
+    _candidateFramingFrames = 0;
     _framingReady = false;
     _lastTimestampMs = -1;
     _lastSampleTimestampMs = 0;
@@ -216,8 +221,21 @@ class MotionRoutineController extends ChangeNotifier {
   }
 
   void _updateFraming(MotionPoseSample sample) {
-    _framingStatus = assessFraming(sample.detection);
-    if (_framingStatus == MotionFramingStatus.ready) {
+    final MotionFramingStatus raw = assessFraming(sample.detection);
+    // The published status is debounced: landmarks hovering at a threshold
+    // can reclassify every frame, and the status feeds user-visible (and
+    // screen-reader live-region) guidance that must not flap. A new reading
+    // must persist for three consecutive frames before it is shown.
+    if (raw == _candidateFramingStatus) {
+      _candidateFramingFrames += 1;
+    } else {
+      _candidateFramingStatus = raw;
+      _candidateFramingFrames = 1;
+    }
+    if (_candidateFramingFrames >= 3) {
+      _framingStatus = raw;
+    }
+    if (raw == MotionFramingStatus.ready) {
       _goodFramingFrames += 1;
       _badFramingFrames = 0;
       if (_goodFramingFrames >= 6) _framingReady = true;

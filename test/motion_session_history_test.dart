@@ -72,9 +72,14 @@ void main() {
       final MotionSessionStep step = history.entries.single.steps.first;
 
       expect(step.medianRomPctOfReference, 88);
+      expect(step.coverage, closeTo(0.97, 1e-9));
       expect(step.medianTempoSeconds, closeTo(3.1, 1e-9));
       final List<String> statements = step.evidenceStatements;
-      expect(statements, hasLength(3));
+      expect(statements, hasLength(4));
+      expect(
+        statements[2],
+        'The camera could measure 97% of the frames in this step.',
+      );
       expect(
         statements[0],
         'Across 3 complete movements, the median movement size measured '
@@ -85,7 +90,7 @@ void main() {
         'A complete movement took a median of 3.1 seconds.',
       );
       expect(
-        statements[2],
+        statements[3],
         'The first movement measured 96% of the reference and the last '
         'measured 72% (75% of the first).',
       );

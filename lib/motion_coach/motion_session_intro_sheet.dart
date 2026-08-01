@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:motion_engine/motion_engine.dart';
 
 import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
@@ -19,7 +20,7 @@ import 'motion_routine_catalog.dart';
 Future<bool> showMotionSessionIntro(
   BuildContext context, {
   required MotionRoutineDescription description,
-  required List<MotionExerciseDefinition> exercises,
+  required RoutineDefinition routine,
   required MotionReferenceLibrary library,
 }) async {
   final bool? start = await showModalBottomSheet<bool>(
@@ -29,7 +30,7 @@ Future<bool> showMotionSessionIntro(
     backgroundColor: Colors.transparent,
     builder: (BuildContext context) => _MotionSessionIntroSheet(
       description: description,
-      exercises: exercises,
+      routine: routine,
       library: library,
     ),
   );
@@ -37,13 +38,17 @@ Future<bool> showMotionSessionIntro(
 }
 
 class _MotionSessionIntroSheet extends StatefulWidget {
-  const _MotionSessionIntroSheet({
+  _MotionSessionIntroSheet({
     required this.description,
-    required this.exercises,
+    required this.routine,
     required this.library,
-  });
+  }) : exercises = <MotionExerciseDefinition>[
+         for (final RoutineStepDefinition step in routine.steps)
+           motionExerciseById(step.exerciseId),
+       ];
 
   final MotionRoutineDescription description;
+  final RoutineDefinition routine;
   final List<MotionExerciseDefinition> exercises;
   final MotionReferenceLibrary library;
 
@@ -178,6 +183,8 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
                       _ExerciseIntroRow(
                         index: index,
                         exercise: widget.exercises[index],
+                        targetRepetitions:
+                            widget.routine.steps[index].targetRepetitions,
                         selected: index == _previewIndex,
                         onTap: () => unawaited(_loadPreview(index)),
                       ),
@@ -235,12 +242,14 @@ class _ExerciseIntroRow extends StatelessWidget {
   const _ExerciseIntroRow({
     required this.index,
     required this.exercise,
+    required this.targetRepetitions,
     required this.selected,
     required this.onTap,
   });
 
   final int index;
   final MotionExerciseDefinition exercise;
+  final int targetRepetitions;
   final bool selected;
   final VoidCallback onTap;
 
@@ -277,7 +286,8 @@ class _ExerciseIntroRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  '${exercise.title} · ${exercise.postureLabel}',
+                  '${exercise.title} · ${exercise.postureLabel} · '
+                  '$targetRepetitions movements',
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),

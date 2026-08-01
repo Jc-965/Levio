@@ -1113,6 +1113,7 @@ class Singleton extends ChangeNotifier {
           'name': schedule[index].isNotEmpty ? schedule[index][0] : '',
           'details': schedule[index].length > 1 ? schedule[index][1] : '',
           'days': schedule[index].length > 2 ? schedule[index][2] : '',
+          'times': schedule[index].length > 3 ? schedule[index][3] : '',
         },
       ),
       'medication_events': medicationEvents
@@ -1213,10 +1214,12 @@ class Singleton extends ChangeNotifier {
             .whereType<Map>()
             .map((entry) {
               final map = Map<String, dynamic>.from(entry);
+              final times = map['times']?.toString() ?? '';
               return <String>[
                 map['name']?.toString() ?? '',
                 map['details']?.toString() ?? '',
                 map['days']?.toString() ?? '',
+                if (times.isNotEmpty) times,
               ];
             }),
       );
@@ -1535,10 +1538,12 @@ class Singleton extends ChangeNotifier {
       return;
     }
 
+    final mutationTimes = mutation.payload['times']?.toString() ?? '';
     final entry = <String>[
       mutation.payload['name']?.toString() ?? '',
       mutation.payload['details']?.toString() ?? '',
       mutation.payload['days']?.toString() ?? '',
+      if (mutationTimes.isNotEmpty) mutationTimes,
     ];
     if (index >= 0) {
       schedule[index] = entry;
@@ -1690,10 +1695,12 @@ class Singleton extends ChangeNotifier {
       scheduleIDs.clear();
       for (final scheduleEntry in snapshot.schedules) {
         final parsedData = _decodeDataField(scheduleEntry['data']);
+        final scheduleTimes = (parsedData['times'] ?? '').toString();
         schedule.add(<String>[
           (parsedData['name'] ?? scheduleEntry['title'] ?? '').toString(),
           (scheduleEntry['details'] ?? parsedData['details'] ?? '').toString(),
           (scheduleEntry['days'] ?? parsedData['days'] ?? '').toString(),
+          if (scheduleTimes.isNotEmpty) scheduleTimes,
         ]);
         scheduleIDs.add((scheduleEntry['id'] ?? '').toString());
       }
@@ -2106,13 +2113,19 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Save a new schedule entry
-  Future<bool> saveSchedule(String medName, String details, String days) async {
+  Future<bool> saveSchedule(
+    String medName,
+    String details,
+    String days, {
+    String doseTimes = '',
+  }) async {
     try {
       final scheduleId = _uuid.v4();
       final payload = <String, dynamic>{
         'name': medName,
         'details': details,
         'days': days,
+        'times': doseTimes,
       };
 
       await _queueHealthMutation(
@@ -2122,7 +2135,12 @@ class Singleton extends ChangeNotifier {
         payload: payload,
       );
 
-      schedule.add(<String>[medName, details, days]);
+      schedule.add(<String>[
+        medName,
+        details,
+        days,
+        if (doseTimes.isNotEmpty) doseTimes,
+      ]);
       scheduleIDs.add(scheduleId);
       calcMeds();
       unawaited(MedicationReminderService().syncFromSchedule(schedule));
@@ -2141,8 +2159,9 @@ class Singleton extends ChangeNotifier {
     int index,
     String medName,
     String details,
-    String days,
-  ) async {
+    String days, {
+    String doseTimes = '',
+  }) async {
     try {
       if (index < 0 || index >= scheduleIDs.length) return false;
 
@@ -2153,6 +2172,7 @@ class Singleton extends ChangeNotifier {
         'name': medName,
         'details': details,
         'days': days,
+        'times': doseTimes,
       };
 
       await _queueHealthMutation(
@@ -2162,7 +2182,12 @@ class Singleton extends ChangeNotifier {
         payload: payload,
       );
 
-      schedule[index] = <String>[medName, details, days];
+      schedule[index] = <String>[
+        medName,
+        details,
+        days,
+        if (doseTimes.isNotEmpty) doseTimes,
+      ];
       calcMeds();
       unawaited(MedicationReminderService().syncFromSchedule(schedule));
       await _persistLocalCache();

@@ -35,7 +35,36 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
   late final Animation<double> _animation;
 
   List<String> selectedDays = <String>[];
+  final List<TimeOfDay> _doseTimes = <TimeOfDay>[];
   bool _isLoading = false;
+
+  String _formatDoseTimes() {
+    final sorted = List<TimeOfDay>.from(_doseTimes)
+      ..sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
+    return sorted
+        .map(
+          (t) =>
+              '${t.hour.toString().padLeft(2, '0')}:'
+              '${t.minute.toString().padLeft(2, '0')}',
+        )
+        .join(',');
+  }
+
+  Future<void> _addDoseTime() async {
+    HapticUtils.lightImpact();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 8, minute: 0),
+      helpText: 'Dose time',
+    );
+    if (picked == null || !mounted) return;
+    if (_doseTimes.any(
+      (t) => t.hour == picked.hour && t.minute == picked.minute,
+    )) {
+      return;
+    }
+    setState(() => _doseTimes.add(picked));
+  }
 
   @override
   void initState() {
@@ -136,6 +165,7 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
         _nameController.text.trim(),
         _detailsController.text.trim(),
         _formatSchedule(),
+        doseTimes: _formatDoseTimes(),
       );
 
       if (!saved) {
@@ -410,6 +440,45 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Dose times (optional)',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: context.colors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final time in _doseTimes)
+                        InputChip(
+                          label: Text(time.format(context)),
+                          onDeleted: () {
+                            HapticUtils.selectionClick();
+                            setState(() => _doseTimes.remove(time));
+                          },
+                        ),
+                      ActionChip(
+                        avatar: const Icon(Icons.add_alarm_rounded, size: 18),
+                        label: const Text('Add time'),
+                        onPressed: _addDoseTime,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _doseTimes.isEmpty
+                        ? 'Without dose times, reminders use the time set in '
+                              'Settings.'
+                        : 'Reminders fire at each dose time on the selected '
+                              'days.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.colors.textTertiary,
                     ),
                   ),
                   const SizedBox(height: 14),

@@ -2,6 +2,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 
 void main() {
+  group('doseTimesFromText', () {
+    test('parses comma separated times', () {
+      final times = MedicationReminderService.doseTimesFromText(
+        '08:00,13:30,20:15',
+      );
+      expect(times.length, 3);
+      expect(times[1].hour, 13);
+      expect(times[1].minute, 30);
+    });
+
+    test('drops invalid tokens and bounds', () {
+      final times = MedicationReminderService.doseTimesFromText(
+        '25:00,notatime,09:75,07:45',
+      );
+      expect(times.length, 1);
+      expect(times.single.hour, 7);
+    });
+
+    test('empty text means no per-dose times', () {
+      expect(MedicationReminderService.doseTimesFromText(''), isEmpty);
+    });
+  });
+
   group('weekdaysFromScheduleText', () {
     test('everyday maps to all seven weekdays', () {
       expect(MedicationReminderService.weekdaysFromScheduleText('Everyday'), {

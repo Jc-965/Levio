@@ -597,19 +597,18 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
                         ),
                       );
                     },
-                    // Scale down instead of ellipsizing so long greetings
-                    // always fit on one line.
-                    child: FittedBox(
+                    // Ellipsize rather than scale down: shrinking the
+                    // greeting under large accessibility text settings gave
+                    // low-vision users SMALLER text exactly when they asked
+                    // for bigger.
+                    child: Text(
+                      _appBarTitle(),
                       key: ValueKey<int>(currentIndex),
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _appBarTitle(),
-                        maxLines: 1,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                        ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
                       ),
                     ),
                   ),

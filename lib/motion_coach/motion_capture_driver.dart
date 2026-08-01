@@ -164,10 +164,15 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
   Future<void> cancelRecording() async {
     final CameraController? camera = _camera;
     if (camera?.value.isRecordingVideo != true) return;
-    final XFile file = await camera!.stopVideoRecording();
-    final File recording = File(file.path);
-    if (await recording.exists()) {
-      await recording.delete();
+    try {
+      final XFile file = await camera!.stopVideoRecording();
+      final File recording = File(file.path);
+      if (await recording.exists()) {
+        await recording.delete();
+      }
+    } on CameraException {
+      // The camera already died (lifecycle race); there is nothing to
+      // cancel and no recording file to clean up.
     }
   }
 

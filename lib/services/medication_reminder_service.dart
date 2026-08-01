@@ -150,26 +150,49 @@ class MedicationReminderService {
     }
   }
 
+  /// Parses per-dose times stored as "08:00,13:30" into [TimeOfDay]s.
+  /// Invalid tokens are dropped; an empty result means the medication uses
+  /// the app-wide default reminder time.
+  static List<TimeOfDay> doseTimesFromText(String text) {
+    final times = <TimeOfDay>[];
+    for (final token in text.split(',')) {
+      final parts = token.trim().split(':');
+      if (parts.length != 2) continue;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) continue;
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) continue;
+      times.add(TimeOfDay(hour: hour, minute: minute));
+    }
+    return times;
+  }
+
   /// Rebuilds all pending reminders from the current schedule list. Each
-  /// entry is `[name, details, daysText]`.
+  /// entry is `[name, details, daysText]` with an optional fourth element
+  /// of comma-separated per-dose times; medications without their own
+  /// times fall back to the app-wide reminder time.
   Future<void> syncFromSchedule(List<List<String>> schedule) async {
     if (!await _ensureInitialized()) return;
     try {
       await _plugin.cancelAll();
       if (!await remindersEnabled()) return;
 
-      final time = await reminderTime();
+      final fallbackTime = await reminderTime();
       var notificationId = 0;
       for (final entry in schedule) {
         if (entry.isEmpty) continue;
         final name = entry[0];
         final daysText = entry.length > 2 ? entry[2] : 'Everyday';
+        final doseTimes = doseTimesFromText(entry.length > 3 ? entry[3] : '');
+        final times = doseTimes.isEmpty ? [fallbackTime] : doseTimes;
         for (final weekday in weekdaysFromScheduleText(daysText)) {
-          await _scheduleWeekly(
-            id: notificationId++,
-            body: 'Time to take $name',
-            at: _nextInstanceOf(weekday, time),
-          );
+          for (final time in times) {
+            await _scheduleWeekly(
+              id: notificationId++,
+              body: 'Time to take $name',
+              at: _nextInstanceOf(weekday, time),
+            );
+          }
         }
       }
     } catch (e) {

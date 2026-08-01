@@ -22,18 +22,21 @@ void main() {
   });
 
   group('symptom log CRUD', () {
-    test('saveLog keeps entries sorted newest-first with aligned ids', () async {
-      await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
-      await singleton.saveLog('09:30, 3 July 2026', 'Stiffness', '2');
-      await singleton.saveLog('07:15, 2 July 2026', 'Fatigue', '4');
+    test(
+      'saveLog keeps entries sorted newest-first with aligned ids',
+      () async {
+        await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
+        await singleton.saveLog('09:30, 3 July 2026', 'Stiffness', '2');
+        await singleton.saveLog('07:15, 2 July 2026', 'Fatigue', '4');
 
-      expect(singleton.log.length, 3);
-      expect(singleton.logIDs.length, 3);
-      expect(singleton.log[0][1], 'Stiffness');
-      expect(singleton.log[1][1], 'Fatigue');
-      expect(singleton.log[2][1], 'Tremor');
-      expect(singleton.logIDs.toSet().length, 3);
-    });
+        expect(singleton.log.length, 3);
+        expect(singleton.logIDs.length, 3);
+        expect(singleton.log[0][1], 'Stiffness');
+        expect(singleton.log[1][1], 'Fatigue');
+        expect(singleton.log[2][1], 'Tremor');
+        expect(singleton.logIDs.toSet().length, 3);
+      },
+    );
 
     test('deleteLog removes the entry and its id at the same index', () async {
       await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
@@ -70,15 +73,22 @@ void main() {
       expect(singleton.log[newIndex][2], '5');
     });
 
-    test('unparseable timestamps sort to the tail but are never dropped', () async {
-      await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
-      await singleton.saveLog('not a real date', 'Mystery', '1');
-      await singleton.saveLog('09:30, 3 July 2026', 'Stiffness', '2');
+    test(
+      'unparseable timestamps sort to the tail but are never dropped',
+      () async {
+        await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
+        await singleton.saveLog('not a real date', 'Mystery', '1');
+        await singleton.saveLog('09:30, 3 July 2026', 'Stiffness', '2');
 
-      expect(singleton.log.length, 3, reason: 'bad dates must not be dropped');
-      expect(singleton.log.last[1], 'Mystery');
-      expect(singleton.logIDs.length, 3);
-    });
+        expect(
+          singleton.log.length,
+          3,
+          reason: 'bad dates must not be dropped',
+        );
+        expect(singleton.log.last[1], 'Mystery');
+        expect(singleton.logIDs.length, 3);
+      },
+    );
 
     test('deleteLog with an out-of-range index is a safe no-op', () async {
       await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
@@ -95,6 +105,29 @@ void main() {
 
       expect(singleton.schedule.single, ['Levodopa', '100mg', 'Everyday']);
       expect(singleton.scheduleIDs.single, isNotEmpty);
+    });
+
+    test('per-dose times survive save and backup round-trip', () async {
+      await singleton.saveSchedule(
+        'Levodopa',
+        '100mg',
+        'Everyday',
+        doseTimes: '08:00,13:00,18:00',
+      );
+
+      expect(singleton.schedule.single, [
+        'Levodopa',
+        '100mg',
+        'Everyday',
+        '08:00,13:00,18:00',
+      ]);
+
+      final backup = singleton.exportBackupJson();
+      singleton.schedule.clear();
+      singleton.scheduleIDs.clear();
+      expect(await singleton.importBackupJson(backup), isTrue);
+      expect(singleton.schedule.single.length, 4);
+      expect(singleton.schedule.single[3], '08:00,13:00,18:00');
     });
 
     test('updateScheduleEntry rewrites in place with a stable id', () async {

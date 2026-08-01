@@ -247,6 +247,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             nameController.text.trim(),
                             detailsController.text.trim(),
                             daysController.text.trim(),
+                            // Editing name/details must not drop the
+                            // medication's per-dose reminder times.
+                            doseTimes: singleton.schedule[index].length > 3
+                                ? singleton.schedule[index][3]
+                                : '',
                           );
                           if (!mounted || !c.mounted) return;
                           Navigator.pop(c);

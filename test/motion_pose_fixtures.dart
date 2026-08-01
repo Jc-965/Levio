@@ -24,8 +24,23 @@ const List<double> repPhase = <double>[
 ///
 /// Built analytically rather than replayed from a recording so that a test's
 /// expected range of motion is exact and independent of any device.
-MotionPoseSample armRaiseSample(double angleDegrees, int timestampMs) {
+MotionPoseSample armRaiseSample(
+  double angleDegrees,
+  int timestampMs, {
+  bool wellFramed = true,
+}) {
   final List<MotionPoseLandmark> normalized = _framedNormalizedLandmarks();
+  if (!wellFramed) {
+    // A framing landmark below the visibility threshold classifies the
+    // frame as showMoreBody without touching the world-space measurement.
+    normalized[0] = const MotionPoseLandmark(
+      x: 0.5,
+      y: 0.18,
+      z: 0,
+      visibility: 0.2,
+      presence: 0.2,
+    );
+  }
   final List<MotionPoseLandmark> world = List<MotionPoseLandmark>.generate(
     33,
     (_) =>

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -320,6 +321,20 @@ class _ExerciseTrendCard extends StatelessWidget {
               ],
             ),
           ),
+          if (scores.length >= 2) ...[
+            SizedBox(
+              width: 64,
+              height: 24,
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  // Stored newest-first; drawn oldest-to-newest.
+                  scores: scores.reversed.toList(growable: false),
+                  color: colors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           Text(
             '${latest.round()}',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -411,4 +426,44 @@ class _SessionCard extends StatelessWidget {
     ];
     return '${value.day} ${months[value.month - 1]} ${value.year}';
   }
+}
+
+/// Single-series score trend, oldest to newest, on the fixed 0-100 score
+/// scale so identical shapes always mean identical score movements.
+class _SparklinePainter extends CustomPainter {
+  const _SparklinePainter({required this.scores, required this.color});
+
+  final List<double> scores;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (scores.length < 2) return;
+    // Inset so the end-point dot is not clipped by the canvas edge.
+    final double plotWidth = size.width - 3;
+    final Paint line = Paint()
+      ..color = color.withValues(alpha: 0.75)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final Path path = Path();
+    for (int index = 0; index < scores.length; index += 1) {
+      final double x = plotWidth * index / (scores.length - 1);
+      final double y =
+          size.height * (1 - (scores[index] / 100).clamp(0.0, 1.0));
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, line);
+    final double lastY =
+        size.height * (1 - (scores.last / 100).clamp(0.0, 1.0));
+    canvas.drawCircle(Offset(plotWidth, lastY), 3, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter oldDelegate) =>
+      oldDelegate.color != color || !listEquals(oldDelegate.scores, scores);
 }

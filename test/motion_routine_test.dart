@@ -163,6 +163,32 @@ void main() {
       expect(overall['assessed_steps'], 1);
     });
 
+    test('debounces the published framing status', () async {
+      final MotionRoutineController controller = await _controller(
+        targetRepetitions: 2,
+      );
+      addTearDown(controller.dispose);
+
+      for (int index = 0; index < 6; index += 1) {
+        controller.handleSample(armRaiseSample(10, index * 60));
+      }
+      expect(controller.framingStatus, MotionFramingStatus.ready);
+
+      // A single marginal frame must not change the published status.
+      controller.handleSample(armRaiseSample(10, 400, wellFramed: false));
+      expect(controller.framingStatus, MotionFramingStatus.ready);
+      controller.handleSample(armRaiseSample(10, 460));
+      expect(controller.framingStatus, MotionFramingStatus.ready);
+
+      // Three consecutive identical readings do.
+      for (int index = 0; index < 3; index += 1) {
+        controller.handleSample(
+          armRaiseSample(10, 520 + index * 60, wellFramed: false),
+        );
+      }
+      expect(controller.framingStatus, MotionFramingStatus.showMoreBody);
+    });
+
     test('exposes the upcoming exercise during rest', () async {
       final MotionReferenceLibrary library = MotionReferenceLibrary();
       await library.templateFor('seated_bilateral_lateral_arm_raise');

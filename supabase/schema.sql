@@ -50,6 +50,48 @@ create table if not exists public.users (
 );
 
 alter table public.users add column if not exists community_alias text;
+
+-- Length caps on attacker-controlled text: client ids are UUIDs (36
+-- chars) and profile fields have small UI limits, so anything oversized
+-- is a modified client attempting storage abuse.
+alter table public.users drop constraint if exists users_field_length_caps;
+alter table public.users add constraint users_field_length_caps check (
+  length(id) <= 64
+  and length(name) <= 120
+  and (email is null or length(email) <= 254)
+  and (community_alias is null or length(community_alias) <= 40)
+  and (profile_image is null or length(profile_image) <= 200)
+);
+alter table public.logs drop constraint if exists logs_field_length_caps;
+alter table public.logs add constraint logs_field_length_caps check (
+  length(id) <= 64 and length(data) <= 10000
+);
+alter table public.schedules
+  drop constraint if exists schedules_field_length_caps;
+alter table public.schedules add constraint schedules_field_length_caps
+  check (length(id) <= 64 and length(data) <= 10000);
+alter table public.recovery_sessions
+  drop constraint if exists recovery_sessions_field_length_caps;
+alter table public.recovery_sessions
+  add constraint recovery_sessions_field_length_caps
+  check (length(id) <= 64 and length(video_id) <= 32
+    and length(title) <= 200);
+alter table public.medication_events
+  drop constraint if exists medication_events_field_length_caps;
+alter table public.medication_events
+  add constraint medication_events_field_length_caps
+  check (length(id) <= 64 and length(medication_name) <= 200
+    and (schedule_id is null or length(schedule_id) <= 64));
+alter table public.community_posts
+  drop constraint if exists posts_field_length_caps;
+alter table public.community_posts add constraint posts_field_length_caps
+  check (length(id) <= 64 and (category is null or length(category) <= 40));
+alter table public.community_comments
+  drop constraint if exists comments_field_length_caps;
+alter table public.community_comments
+  add constraint comments_field_length_caps
+  check (length(id) <= 64 and length(post_id) <= 64);
+
 create unique index if not exists users_community_alias_unique
   on public.users (community_alias)
   where community_alias is not null;
@@ -513,6 +555,8 @@ declare
   v_payload jsonb;
   v_client_updated_at timestamptz;
   v_acknowledged jsonb := '[]'::jsonb;
+  v_rows integer;
+  v_owner text;
 begin
   if v_user_id is null then
     raise exception 'Authentication required';
@@ -764,6 +808,32 @@ begin
                public.medication_events.last_mutation_id)
               <= (excluded.client_updated_at, excluded.last_mutation_id);
       end if;
+
+      -- A zero-row guarded upsert is fine when our own newer row won LWW,
+      -- but if the id is owned by ANOTHER account the write was dropped
+      -- outright. Acknowledging it would purge the client journal and
+      -- lose the record silently; leaving it unacknowledged keeps the
+      -- loss visible as a pending change on the device.
+      get diagnostics v_rows = row_count;
+      if v_rows = 0 then
+        v_owner := null;
+        if v_entity_type = 'log' then
+          select user_id into v_owner
+          from public.logs where id = v_entity_id;
+        elsif v_entity_type = 'schedule' then
+          select user_id into v_owner
+          from public.schedules where id = v_entity_id;
+        elsif v_entity_type = 'recoverySession' then
+          select user_id into v_owner
+          from public.recovery_sessions where id = v_entity_id;
+        elsif v_entity_type = 'medicationEvent' then
+          select user_id into v_owner
+          from public.medication_events where id = v_entity_id;
+        end if;
+        if v_owner is not null and v_owner <> v_user_id then
+          continue;
+        end if;
+      end if;
     end if;
 
     v_acknowledged := v_acknowledged || jsonb_build_array(v_mutation_id);
@@ -933,7 +1003,9 @@ drop policy if exists posts_delete_own on public.community_posts;
 create policy posts_select_all on public.community_posts
   for select to authenticated
   using (
-    is_hidden = false
+    -- Authors keep sight of their own hidden posts; without the exception
+    -- a moderated post silently vanishes for the person who wrote it.
+    (is_hidden = false or user_id = public.current_uid())
     and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
   );
 

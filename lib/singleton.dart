@@ -1387,7 +1387,27 @@ class Singleton extends ChangeNotifier {
       medicationEvents: _medicationAdherenceEvents(),
       therapySessions: _therapyObservations(),
       weeklyTherapyGoal: weeklySpeechExerciseGoal + weeklyPhysicalExerciseGoal,
+      expectedDosesByWeekday: _expectedDosesByWeekday(),
     );
+  }
+
+  /// Expected doses per weekday from the medication schedule, so adherence
+  /// compares taken doses to the plan instead of to itself.
+  Map<int, int> _expectedDosesByWeekday() {
+    const dayNumbers = <String, int>{
+      'Monday': DateTime.monday,
+      'Tuesday': DateTime.tuesday,
+      'Wednesday': DateTime.wednesday,
+      'Thursday': DateTime.thursday,
+      'Friday': DateTime.friday,
+      'Saturday': DateTime.saturday,
+      'Sunday': DateTime.sunday,
+    };
+    return <int, int>{
+      for (final entry in medsPerDay.entries)
+        if (dayNumbers.containsKey(entry.key))
+          dayNumbers[entry.key]!: entry.value.round(),
+    };
   }
 
   void _invalidateAnalytics() {
@@ -2884,15 +2904,16 @@ class Singleton extends ChangeNotifier {
     final prefs = await _prefs;
     _blockedUserIds ??=
         (prefs.getStringList(_blockedUsersKey) ?? const <String>[]).toSet();
-    // Merge the server-side block list once per session so blocks follow
-    // the account across devices and reinstalls.
+    // The server list is authoritative once per session: replacing (not
+    // unioning) means an unblock made on another device actually takes
+    // effect here. On fetch failure the local set is kept untouched.
     if (!_blockedUsersSynced && _cloud.isEnabled) {
-      _blockedUsersSynced = true;
       final uid = await _resolveUserId();
       if (uid != null) {
         final remote = await _cloud.getBlockedUserIds(uid);
-        if (remote.isNotEmpty) {
-          _blockedUserIds!.addAll(remote);
+        if (remote != null) {
+          _blockedUsersSynced = true;
+          _blockedUserIds = {...remote};
           await prefs.setStringList(
             _blockedUsersKey,
             _blockedUserIds!.toList(),

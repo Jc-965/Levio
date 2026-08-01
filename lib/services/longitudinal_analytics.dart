@@ -80,6 +80,7 @@ class LongitudinalAnalytics {
     required Iterable<MedicationAdherenceEvent> medicationEvents,
     required Iterable<TherapyObservation> therapySessions,
     int weeklyTherapyGoal = 0,
+    Map<int, int> expectedDosesByWeekday = const <int, int>{},
   }) {
     final symptomList = symptoms.toList()
       ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
@@ -130,13 +131,28 @@ class LongitudinalAnalytics {
         ..severityTotal += symptom.severity
         ..symptomCount += 1;
     }
+    final hasExpectations = expectedDosesByWeekday.values.any(
+      (count) => count > 0,
+    );
     for (final medication in medicationList) {
       final signals = daily.putIfAbsent(
         _dayKey(medication.scheduledAt),
         _DailySignals.new,
       );
-      signals.medicationsScheduled += 1;
+      if (!hasExpectations) signals.medicationsScheduled += 1;
       if (medication.wasTaken) signals.medicationsTaken += 1;
+    }
+    if (hasExpectations) {
+      // The schedule, not the event log, defines how many doses each day
+      // was supposed to contain; the app only records taken doses, so
+      // counting events as "scheduled" would make adherence always 100%.
+      for (final entry in daily.entries) {
+        final weekday = DateTime.fromMillisecondsSinceEpoch(
+          entry.key,
+          isUtc: true,
+        ).weekday;
+        entry.value.medicationsScheduled = expectedDosesByWeekday[weekday] ?? 0;
+      }
     }
     for (final therapy in therapyList) {
       final signals = daily.putIfAbsent(
@@ -173,9 +189,32 @@ class LongitudinalAnalytics {
     }
 
     final takenCount = medicationList.where((event) => event.wasTaken).length;
-    final adherenceRate = medicationList.isEmpty
-        ? 0.0
-        : takenCount / medicationList.length;
+    double adherenceRate;
+    if (hasExpectations && sortedDays.isNotEmpty) {
+      var expectedTotal = 0;
+      final firstDay = DateTime.fromMillisecondsSinceEpoch(
+        sortedDays.first,
+        isUtc: true,
+      );
+      final lastDay = DateTime.fromMillisecondsSinceEpoch(
+        sortedDays.last,
+        isUtc: true,
+      );
+      for (
+        var day = firstDay;
+        !day.isAfter(lastDay);
+        day = DateTime.utc(day.year, day.month, day.day + 1)
+      ) {
+        expectedTotal += expectedDosesByWeekday[day.weekday] ?? 0;
+      }
+      adherenceRate = expectedTotal == 0
+          ? 0.0
+          : (takenCount / expectedTotal).clamp(0.0, 1.0);
+    } else {
+      adherenceRate = medicationList.isEmpty
+          ? 0.0
+          : takenCount / medicationList.length;
+    }
     final medicationTimingDelta =
         baselineCount == 0 || afterMedicationCount == 0
         ? 0.0

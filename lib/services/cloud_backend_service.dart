@@ -1099,8 +1099,10 @@ class CloudBackendService {
     }
   }
 
-  Future<Set<String>> getBlockedUserIds(String blockerId) async {
-    if (!isEnabled) return <String>{};
+  /// Returns null on failure so callers can tell "no blocks" apart from
+  /// "could not fetch" and keep their local set instead of clearing it.
+  Future<Set<String>?> getBlockedUserIds(String blockerId) async {
+    if (!isEnabled) return null;
     try {
       final result = await _withRetry<List<dynamic>>(
         'get blocked users',
@@ -1117,7 +1119,7 @@ class CloudBackendService {
           .toSet();
     } catch (e, stackTrace) {
       _logger.error('Cloud get blocks failed', e, stackTrace);
-      return <String>{};
+      return null;
     }
   }
 

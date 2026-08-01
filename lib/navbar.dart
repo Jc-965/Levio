@@ -819,14 +819,17 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
   ) {
     // Tremor-friendly: at least a 48x48 tap target per nav item, with a
     // semantic tab role so screen readers announce label and selection.
+    // InkWell (not GestureDetector) so keyboard and switch-access users
+    // can traverse and activate the primary navigation.
     return Semantics(
       button: true,
       selected: isSelected,
       label: item.label,
       child: ExcludeSemantics(
-        child: GestureDetector(
+        child: InkWell(
           onTap: onTap,
-          behavior: HitTestBehavior.opaque,
+          canRequestFocus: true,
+          borderRadius: BorderRadius.circular(12),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 56, minHeight: 48),
             child: Container(

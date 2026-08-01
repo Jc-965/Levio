@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motion_engine/motion_engine.dart';
 import 'package:parkiwell/motion_coach/motion_coach_home_screen.dart';
@@ -5,7 +6,13 @@ import 'package:parkiwell/motion_coach/motion_coach_session.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/motion_coach/motion_routine_catalog.dart';
+import 'package:parkiwell/motion_coach/motion_capture_driver.dart';
+import 'package:parkiwell/motion_coach/motion_cue_speaker.dart';
 import 'package:parkiwell/motion_coach/motion_routine_controller.dart';
+import 'package:parkiwell/motion_coach/motion_routine_screen.dart';
+import 'package:parkiwell/motion_coach/motion_session_history.dart';
+import 'package:parkiwell/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'motion_pose_fixtures.dart';
 
@@ -172,6 +179,75 @@ void main() {
     });
   });
 
+  group('MotionRoutineScreen', () {
+    // Asset I/O must load outside testWidgets bodies: the widget-test zone
+    // controls the clock and a real bundle read awaited there never
+    // completes.
+    late MotionReferenceLibrary screenLibrary;
+    setUpAll(() async {
+      screenLibrary = MotionReferenceLibrary();
+      await screenLibrary.templateFor(seatedArmRaiseExercise.exerciseId);
+    });
+
+    testWidgets('completes a session, saves it, and logs it to recovery', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final MotionReferenceLibrary library = screenLibrary;
+      final _FakeRoutineDriver driver = _FakeRoutineDriver();
+      final List<MotionSessionRecord> logged = <MotionSessionRecord>[];
+      final MotionSessionHistory history = MotionSessionHistory();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme(),
+          home: MotionRoutineScreen(
+            description: singleExerciseDescription(seatedArmRaiseExercise),
+            routine: singleExerciseRoutine(seatedArmRaiseExercise),
+            library: library,
+            driverFactory: () => driver,
+            cueSpeaker: _SilentCueSpeaker(),
+            history: history,
+            onSessionLogged: (MotionSessionRecord record) async {
+              logged.add(record);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(armRaiseSample(10, index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start routine'));
+      await tester.tap(find.text('Start routine'));
+      await tester.pump();
+
+      int timestampMs = 600;
+      for (
+        int rep = 0;
+        rep < seatedArmRaiseExercise.maximumRecordingRepetitions;
+        rep += 1
+      ) {
+        for (final double phase in repPhase) {
+          driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
+          timestampMs += 200;
+        }
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine summary'), findsOneWidget);
+      expect(logged, hasLength(1));
+      expect(
+        logged.single.routineId,
+        'single_${seatedArmRaiseExercise.exerciseId}',
+      );
+      expect(history.entries, hasLength(1));
+      expect(history.entries.single.steps.single.repetitions, isNotEmpty);
+    });
+  });
+
   group('single-exercise practice', () {
     test('is a one-step routine over the same engine path', () {
       final RoutineDefinition routine = singleExerciseRoutine(
@@ -244,4 +320,61 @@ void _driveRepetitions(
       timestampMs += 200;
     }
   }
+}
+
+class _FakeRoutineDriver implements MotionCaptureDriver {
+  MotionSampleCallback? _onSample;
+  bool _initialized = false;
+
+  void emit(MotionPoseSample sample) => _onSample?.call(sample);
+
+  @override
+  bool get isInitialized => _initialized;
+
+  @override
+  bool get isRecording => false;
+
+  @override
+  double get aspectRatio => 3 / 4;
+
+  @override
+  Widget buildPreview() => const ColoredBox(color: Colors.black);
+
+  @override
+  Future<void> initialize(
+    MotionSampleCallback onSample, {
+    VoidCallback? onPersistentFailure,
+  }) async {
+    _onSample = onSample;
+    _initialized = true;
+  }
+
+  @override
+  Future<void> startRecording() async {}
+
+  @override
+  Future<String> stopRecording() async => '';
+
+  @override
+  Future<void> cancelRecording() async {}
+
+  @override
+  Future<void> dispose() async {
+    _onSample = null;
+    _initialized = false;
+  }
+}
+
+class _SilentCueSpeaker implements MotionCueSpeaker {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> speak(String text) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
@@ -37,6 +38,7 @@ class MotionRoutineScreen extends StatefulWidget {
     this.driverFactory,
     this.cueSpeaker,
     this.history,
+    this.onSessionLogged,
   });
 
   final MotionRoutineDescription description;
@@ -45,6 +47,11 @@ class MotionRoutineScreen extends StatefulWidget {
   final MotionCaptureDriverFactory? driverFactory;
   final MotionCueSpeaker? cueSpeaker;
   final MotionSessionHistory? history;
+
+  /// Called once when a session completes, so it counts in the app's shared
+  /// recovery tracking (weekly plan, history). Injectable for tests; the
+  /// default logs through the app [Singleton].
+  final Future<void> Function(MotionSessionRecord record)? onSessionLogged;
 
   @override
   State<MotionRoutineScreen> createState() => _MotionRoutineScreenState();
@@ -256,6 +263,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     } on Object {
       saved = false;
     }
+    // Count the completed session in the app's shared recovery tracking.
+    // Best effort: a logging failure must not block the results screen.
+    try {
+      await (widget.onSessionLogged ?? _logToRecoveryTracking)(record);
+    } on Object {
+      // The coach's own history above is the authoritative record.
+    }
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
@@ -267,6 +281,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       ),
     );
   }
+
+  static Future<void> _logToRecoveryTracking(MotionSessionRecord record) =>
+      Singleton().recordMotionCoachSession(
+        routineId: record.routineId,
+        title: 'Motion coach: ${record.routineName}',
+        completedAt: record.completedAt,
+      );
 
   Future<void> _confirmExit() async {
     if (_phase != _RoutineScreenPhase.running) {

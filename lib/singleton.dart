@@ -473,6 +473,65 @@ class Singleton extends ChangeNotifier {
     );
   }
 
+  /// Identifier prefix for camera-coached motion sessions stored in the
+  /// shared recovery log. They are not YouTube videos, so their ids live in
+  /// a distinct namespace while still counting as physical sessions for the
+  /// weekly plan, history, and cloud sync (the backend accepts any text id).
+  static const String motionSessionIdPrefix = 'motion:';
+
+  /// Log a completed motion coach session as a physical recovery session.
+  ///
+  /// Only the fact of completion, the routine identity, and the time are
+  /// recorded here; scores and per-movement evidence stay in the coach's
+  /// local-only history.
+  Future<void> recordMotionCoachSession({
+    required String routineId,
+    required String title,
+    DateTime? completedAt,
+  }) async {
+    final trimmedRoutineId = routineId.trim();
+    final trimmedTitle = title.trim();
+    if (trimmedRoutineId.isEmpty || trimmedTitle.isEmpty) return;
+
+    final completionTime = (completedAt ?? DateTime.now()).toLocal();
+    if (completionTime.isAfter(
+      DateTime.now().add(const Duration(minutes: 1)),
+    )) {
+      return;
+    }
+
+    final session = <String, dynamic>{
+      'id': _uuid.v4(),
+      'type': recoveryTypePhysical,
+      'video_id': '$motionSessionIdPrefix$trimmedRoutineId',
+      'title': trimmedTitle,
+      'completed_at': completionTime.toIso8601String(),
+    };
+    recoverySessions.add(session);
+    exerNum = totalRecoverySessions;
+    _invalidateAnalytics();
+    notifyListenersSafe();
+
+    try {
+      await _queueHealthMutation(
+        entityType: SyncEntityType.recoverySession,
+        entityId: session['id']!.toString(),
+        operation: SyncMutationOperation.upsert,
+        payload: session,
+      );
+      await _persistLocalCache();
+      unawaited(syncPendingMutations());
+    } catch (error) {
+      recoverySessions.removeWhere(
+        (entry) => entry['id']?.toString() == session['id']?.toString(),
+      );
+      exerNum = totalRecoverySessions;
+      _invalidateAnalytics();
+      notifyListenersSafe();
+      rethrow;
+    }
+  }
+
   Future<int> recordSpeechExerciseSession(
     String videoId, {
     DateTime? completedAt,

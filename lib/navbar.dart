@@ -699,6 +699,11 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
 
   Widget _buildAnimatedTabBody() {
     final colors = context.colors;
+    // Honor the OS reduce-motion setting for the tab slide/fade.
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final transitionDuration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
     final visibleIndices = <int>[
       if (_previousIndex != currentIndex) _previousIndex,
       currentIndex,
@@ -725,11 +730,11 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
             child: IgnorePointer(
               ignoring: !isCurrent,
               child: AnimatedSlide(
-                duration: const Duration(milliseconds: 220),
+                duration: transitionDuration,
                 curve: Curves.easeOutCubic,
                 offset: targetOffset,
                 child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
+                  duration: transitionDuration,
                   curve: Curves.easeOutCubic,
                   opacity: isCurrent ? 1.0 : 0.0,
                   child: RepaintBoundary(

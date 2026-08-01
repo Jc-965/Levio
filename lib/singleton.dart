@@ -352,18 +352,6 @@ class Singleton extends ChangeNotifier {
     notifyListenersSafe();
   }
 
-  void setPostNum(int p) {
-    postNum = p;
-    _persistLocalCache();
-    notifyListenersSafe();
-  }
-
-  void setExerNum(int e) {
-    exerNum = e;
-    _persistLocalCache();
-    notifyListenersSafe();
-  }
-
   static const String recoveryTypePhysical = 'physical';
   static const String recoveryTypeSpeech = 'speech';
 
@@ -829,8 +817,6 @@ class Singleton extends ChangeNotifier {
     'November',
     'December',
   ];
-
-  List<String> year = ['2023', '2024', '2025', '2026', '2027', '2028'];
 
   Map<String, double> medsPerDay = {
     'Monday': 0,
@@ -2930,14 +2916,6 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Get in-memory cache statistics for debugging
-  Future<Map<String, int>> getDatabaseStats() async {
-    return <String, int>{
-      'logs': log.length,
-      'schedules': schedule.length,
-      'community_posts_cache': communityPosts.length,
-      'community_comment_threads_cache': communityComments.length,
-    };
-  }
 
   @override
   void dispose() {

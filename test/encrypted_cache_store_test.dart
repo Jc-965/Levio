@@ -45,6 +45,15 @@ void main() {
     expect(await store.open(tampered), isNull);
   });
 
+  test('large payloads round-trip through the isolate path', () async {
+    final store = EncryptedCacheStore();
+    final payload = '{"log":"${'x' * 64 * 1024}"}';
+
+    final sealed = await store.seal(payload);
+    expect(sealed, startsWith(EncryptedCacheStore.payloadPrefix));
+    expect(await store.open(sealed), payload);
+  });
+
   test('sealed payloads differ between calls (fresh nonce)', () async {
     final store = EncryptedCacheStore();
     final first = await store.seal('same-input');

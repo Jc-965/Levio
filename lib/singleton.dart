@@ -44,9 +44,14 @@ class Singleton extends ChangeNotifier {
   factory Singleton() => _instance;
 
   void notifyListenersSafe() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) {
       notifyListeners();
     });
+    // A post-frame callback only fires if a frame is produced; on an idle
+    // screen (e.g. connectivity restored while nothing animates) the
+    // notification would otherwise be deferred indefinitely.
+    binding.ensureVisualUpdate();
   }
 
   Singleton._internal() {
@@ -2459,6 +2464,12 @@ class Singleton extends ChangeNotifier {
         return false;
       }
 
+      if (!await _underPostRateLimit()) {
+        _lastCommunityError =
+            'You are posting quite often. Please wait a while and try again.';
+        return false;
+      }
+
       final moderation = _moderation.moderateContent(
         content,
         allowLinks: false,
@@ -2659,6 +2670,30 @@ class Singleton extends ChangeNotifier {
       _lastCommunityError = 'Unable to like post right now.';
       return false;
     }
+  }
+
+  static const String _postTimesKey = 'community_post_times_v1';
+
+  /// Local posting rate limit backing [ContentModerationService.maxPostsPerHour].
+  /// Server-side enforcement is still an open item; this at least keeps a
+  /// well-behaved client honest.
+  Future<bool> _underPostRateLimit() async {
+    final prefs = await _prefs;
+    final now = DateTime.now();
+    final recent = (prefs.getStringList(_postTimesKey) ?? const <String>[])
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .where((t) => now.difference(t) < const Duration(hours: 1))
+        .toList();
+    if (recent.length >= ContentModerationService.maxPostsPerHour) {
+      return false;
+    }
+    recent.add(now);
+    await prefs.setStringList(
+      _postTimesKey,
+      recent.map((t) => t.toIso8601String()).toList(),
+    );
+    return true;
   }
 
   static const String _blockedUsersKey = 'community_blocked_users_v1';

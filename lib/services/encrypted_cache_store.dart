@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
@@ -78,6 +79,11 @@ class EncryptedCacheStore {
   /// than writing health data as plaintext. Debug and test environments
   /// (which have no platform keystore) fall back to plaintext so local
   /// development keeps working.
+  /// Payloads at or above this size are sealed on a background isolate;
+  /// pure-Dart AES-GCM on the UI isolate would jank as the health record
+  /// grows.
+  static const int _isolateThresholdBytes = 32 * 1024;
+
   Future<String> seal(String plaintext) async {
     final key = await _obtainKey();
     if (key == null) {
@@ -86,7 +92,19 @@ class EncryptedCacheStore {
       }
       return plaintext;
     }
-    final box = await _cipher.encrypt(utf8.encode(plaintext), secretKey: key);
+    final data = utf8.encode(plaintext);
+    if (data.length >= _isolateThresholdBytes) {
+      final keyBytes = await key.extractBytes();
+      final sealed = await Isolate.run(() async {
+        final box = await AesGcm.with256bits().encrypt(
+          data,
+          secretKey: SecretKey(keyBytes),
+        );
+        return base64Encode(box.concatenation());
+      });
+      return '$payloadPrefix$sealed';
+    }
+    final box = await _cipher.encrypt(data, secretKey: key);
     return '$payloadPrefix${base64Encode(box.concatenation())}';
   }
 
@@ -98,6 +116,21 @@ class EncryptedCacheStore {
     if (key == null) return null;
     try {
       final raw = base64Decode(stored.substring(payloadPrefix.length));
+      if (raw.length >= _isolateThresholdBytes) {
+        final keyBytes = await key.extractBytes();
+        return await Isolate.run(() async {
+          final box = SecretBox.fromConcatenation(
+            raw,
+            nonceLength: AesGcm.defaultNonceLength,
+            macLength: 16,
+          );
+          final clear = await AesGcm.with256bits().decrypt(
+            box,
+            secretKey: SecretKey(keyBytes),
+          );
+          return utf8.decode(clear);
+        });
+      }
       final box = SecretBox.fromConcatenation(
         raw,
         nonceLength: AesGcm.defaultNonceLength,

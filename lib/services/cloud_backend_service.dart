@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/backend_config.dart';
 import 'app_logger.dart';
+import 'secure_session_storage.dart';
 
 class CloudAuthProfile {
   final String userId;
@@ -181,7 +182,12 @@ class CloudBackendService {
       await Supabase.initialize(
         url: BackendConfig.supabaseUrl,
         publishableKey: BackendConfig.supabaseAnonKey,
-        authOptions: const FlutterAuthClientOptions(autoRefreshToken: true),
+        authOptions: FlutterAuthClientOptions(
+          autoRefreshToken: true,
+          // The refresh token unlocks all server-side health data; keep it
+          // in the keystore, not plaintext SharedPreferences.
+          localStorage: SecureSessionStorage(),
+        ),
       );
 
       _client = Supabase.instance.client;

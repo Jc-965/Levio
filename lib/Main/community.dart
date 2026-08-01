@@ -53,26 +53,6 @@ class PostComment {
   });
 }
 
-class SupportGroup {
-  final String id;
-  final String name;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final int memberCount;
-  bool isJoined;
-
-  SupportGroup({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.icon,
-    required this.color,
-    required this.memberCount,
-    this.isJoined = false,
-  });
-}
-
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
 
@@ -100,34 +80,7 @@ class _CommunityScreenState extends State<CommunityScreen>
   String _visibleCacheSortMode = '';
   bool _visibleCacheOnlyMine = false;
   List<CommunityPost> _visiblePostsCache = <CommunityPost>[];
-  final List<SupportGroup> _groups = <SupportGroup>[
-    SupportGroup(
-      id: 'caregivers',
-      name: 'Caregivers Circle',
-      description: 'Support for caregivers and family members',
-      icon: Icons.family_restroom_outlined,
-      color: const Color(0xFF3B82F6),
-      memberCount: 1280,
-    ),
-    SupportGroup(
-      id: 'newly-diagnosed',
-      name: 'Newly Diagnosed',
-      description: 'Early-stage guidance and peer support',
-      icon: Icons.waving_hand_outlined,
-      color: const Color(0xFF0EA5E9),
-      memberCount: 940,
-    ),
-    SupportGroup(
-      id: 'movement',
-      name: 'Movement & Mobility',
-      description: 'Daily routines for balance and mobility',
-      icon: Icons.directions_walk_rounded,
-      color: const Color(0xFF10B981),
-      memberCount: 760,
-    ),
-  ];
   bool _isLoadingFeed = true;
-  bool _isLoadingGroups = true;
   static const List<String> _postCategories = <String>[
     'General',
     'Exercise Tips',
@@ -141,7 +94,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadFeedData();
-    _loadGroupMemberships();
   }
 
   DateTime _parseTimestamp(dynamic value) {
@@ -194,74 +146,6 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   Future<void> _refreshFeed() async {
     await _loadFeedData();
-  }
-
-  Future<void> _loadGroupMemberships() async {
-    if (!mounted) return;
-    setState(() => _isLoadingGroups = true);
-
-    try {
-      final joinedIds = await singleton.loadJoinedCommunityGroups();
-      if (!mounted) return;
-
-      setState(() {
-        for (final group in _groups) {
-          group.isJoined = joinedIds.contains(group.id);
-        }
-        _isLoadingGroups = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isLoadingGroups = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Unable to load groups right now.'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-    }
-  }
-
-  Future<void> _refreshGroups() async {
-    await _loadGroupMemberships();
-  }
-
-  Future<void> _toggleGroupMembership(SupportGroup group) async {
-    final targetState = !group.isJoined;
-    setState(() => group.isJoined = targetState);
-
-    final updated = await singleton.setCommunityGroupMembership(
-      groupId: group.id,
-      isJoined: targetState,
-    );
-
-    if (!mounted) return;
-    if (updated) {
-      HapticUtils.lightImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            targetState ? 'Joined ${group.name}' : 'Left ${group.name}',
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-      );
-      return;
-    }
-
-    setState(() => group.isJoined = !targetState);
-    final error =
-        singleton.consumeLastCommunityError() ??
-        'Unable to update group right now.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(error),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-    );
   }
 
   Future<void> _sharePost(CommunityPost post) async {
@@ -1625,174 +1509,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     );
   }
 
-  // Kept for potential future use when Groups tab is re-enabled.
-  // ignore: unused_element
-  Widget _buildGroupsTab(AppColors colors) {
-    if (_isLoadingGroups) {
-      return Center(child: CircularProgressIndicator(color: colors.primary));
-    }
-
-    if (_groups.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refreshGroups,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          children: [
-            const SizedBox(height: 80),
-            _buildEmptyGroupsState(colors),
-            const SizedBox(height: 24),
-          ],
-        ),
-      );
-    }
-
-    final joinedGroups = _groups.where((g) => g.isJoined).toList();
-    final availableGroups = _groups.where((g) => !g.isJoined).toList();
-
-    return RefreshIndicator(
-      onRefresh: _refreshGroups,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: [
-          if (!singleton.isCloudConnected)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Group membership is saved on this device when offline.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.textTertiary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          if (joinedGroups.isNotEmpty) ...[
-            Text(
-              'Your Groups',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...joinedGroups.map(
-              (group) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildGroupCard(group, colors),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (availableGroups.isNotEmpty) ...[
-            Text(
-              'Discover',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...availableGroups.map(
-              (group) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildGroupCard(group, colors),
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyGroupsState(AppColors colors) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.group_outlined, size: 40, color: colors.textTertiary),
-            const SizedBox(height: 16),
-            Text(
-              'No groups available',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Support groups will appear here as they become available.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGroupCard(SupportGroup group, AppColors colors) {
-    final displayedMemberCount = group.memberCount + (group.isJoined ? 1 : 0);
-
-    return ModernCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Icon(group.icon, color: colors.textSecondary, size: 20),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  group.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_formatMemberCount(displayedMemberCount)} members',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () async {
-              await _toggleGroupMembership(group);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: group.isJoined ? colors.surfaceVariant : colors.primary,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                group.isJoined ? 'Joined' : 'Join',
-                style: TextStyle(
-                  color: group.isJoined ? colors.textSecondary : Colors.white,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildResourcesTab(AppColors colors) {
     final resources = [
       {
@@ -1905,13 +1621,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
-  }
-
-  String _formatMemberCount(int count) {
-    if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}k';
-    }
-    return count.toString();
   }
 }
 

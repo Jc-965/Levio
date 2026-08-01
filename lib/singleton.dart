@@ -242,7 +242,6 @@ class Singleton extends ChangeNotifier {
   // Community cache
   final List<Map<String, dynamic>> communityPosts = [];
   final Map<String, List<Map<String, dynamic>>> communityComments = {};
-  final Set<String> joinedCommunityGroups = <String>{};
   String? _lastCommunityError;
   String? _lastCommunitySupportMessage;
 
@@ -1050,7 +1049,6 @@ class Singleton extends ChangeNotifier {
           ),
         ),
       ),
-      'joined_groups': joinedCommunityGroups.toList(),
     };
   }
 
@@ -1183,14 +1181,6 @@ class Singleton extends ChangeNotifier {
         communityComments[postId] = thread;
       });
     }
-
-    joinedCommunityGroups
-      ..clear()
-      ..addAll(
-        (snapshot['joined_groups'] as List<dynamic>? ?? const <dynamic>[])
-            .map((groupId) => groupId.toString())
-            .where((groupId) => groupId.isNotEmpty),
-      );
 
     postNum = communityPosts.length;
     calcMeds();
@@ -1696,10 +1686,7 @@ class Singleton extends ChangeNotifier {
       }
 
       if (includeCommunity) {
-        await Future.wait<dynamic>(<Future<dynamic>>[
-          loadCommunityPosts(limit: 100),
-          loadJoinedCommunityGroups(),
-        ]);
+        await loadCommunityPosts(limit: 100);
       }
 
       await _persistLocalCache();
@@ -2163,7 +2150,6 @@ class Singleton extends ChangeNotifier {
       medicationEvents.clear();
       communityPosts.clear();
       communityComments.clear();
-      joinedCommunityGroups.clear();
       recoverySessions.clear();
       name = '[Name]';
       email = '[Email]';
@@ -2204,7 +2190,6 @@ class Singleton extends ChangeNotifier {
       medicationEvents.clear();
       communityPosts.clear();
       communityComments.clear();
-      joinedCommunityGroups.clear();
       recoverySessions.clear();
       name = '[Name]';
       email = '[Email]';
@@ -2529,89 +2514,6 @@ class Singleton extends ChangeNotifier {
     } catch (e, stackTrace) {
       _logger.error('Error liking post', e, stackTrace);
       _lastCommunityError = 'Unable to like post right now.';
-      return false;
-    }
-  }
-
-  Future<Set<String>> loadJoinedCommunityGroups() async {
-    try {
-      _lastCommunityError = null;
-      if (!_cloud.isEnabled) {
-        // Use locally persisted groups when cloud is off
-        return joinedCommunityGroups;
-      }
-
-      final uid = await _resolveUserId();
-      if (uid == null) {
-        _lastCommunityError = 'Complete profile setup first.';
-        return joinedCommunityGroups;
-      }
-
-      final joined = await _cloud.getJoinedCommunityGroupIds(uid);
-      joinedCommunityGroups
-        ..clear()
-        ..addAll(joined);
-      await _persistLocalCache();
-      notifyListenersSafe();
-      return joinedCommunityGroups;
-    } catch (e, stackTrace) {
-      _logger.error('Error loading community groups', e, stackTrace);
-      _lastCommunityError = 'Unable to load groups right now.';
-      return joinedCommunityGroups;
-    }
-  }
-
-  Future<bool> setCommunityGroupMembership({
-    required String groupId,
-    required bool isJoined,
-  }) async {
-    try {
-      _lastCommunityError = null;
-      if (!_cloud.isEnabled) {
-        // Work offline: update local state and persist
-        if (isJoined) {
-          joinedCommunityGroups.add(groupId);
-        } else {
-          joinedCommunityGroups.remove(groupId);
-        }
-        await _persistLocalCache();
-        notifyListenersSafe();
-        return true;
-      }
-
-      final uid = await _resolveUserId();
-      if (uid == null) {
-        _lastCommunityError = 'Complete profile setup first.';
-        return false;
-      }
-
-      if (!await _ensureCloudUserRecord(uid)) {
-        _lastCommunityError = 'Unable to verify your profile.';
-        return false;
-      }
-
-      final updated = await _cloud.setCommunityGroupMembership(
-        userId: uid,
-        groupId: groupId,
-        isJoined: isJoined,
-      );
-      if (!updated) {
-        _lastCommunityError = 'Unable to update group membership.';
-        return false;
-      }
-
-      if (isJoined) {
-        joinedCommunityGroups.add(groupId);
-      } else {
-        joinedCommunityGroups.remove(groupId);
-      }
-
-      await _persistLocalCache();
-      notifyListenersSafe();
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('Error updating community group membership', e, stackTrace);
-      _lastCommunityError = 'Unable to update group membership.';
       return false;
     }
   }

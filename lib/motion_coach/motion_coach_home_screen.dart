@@ -13,6 +13,7 @@ import 'motion_reference_library.dart';
 import 'motion_routine_catalog.dart';
 import 'motion_routine_screen.dart';
 import 'motion_session_history.dart';
+import 'motion_session_intro_sheet.dart';
 
 /// Entry point for guided, camera-coached movement.
 ///
@@ -63,6 +64,16 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         description.routineAssetId,
       );
       if (!mounted) return;
+      final bool begin = await showMotionSessionIntro(
+        context,
+        description: description,
+        exercises: <MotionExerciseDefinition>[
+          for (final RoutineStepDefinition step in routine.steps)
+            motionExerciseById(step.exerciseId),
+        ],
+        library: _library,
+      );
+      if (!begin || !mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MotionRoutineScreen(
@@ -95,6 +106,13 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     try {
       await _library.templateFor(exercise.exerciseId);
       if (!mounted) return;
+      final bool begin = await showMotionSessionIntro(
+        context,
+        description: singleExerciseDescription(exercise),
+        exercises: <MotionExerciseDefinition>[exercise],
+        library: _library,
+      );
+      if (!begin || !mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MotionRoutineScreen(

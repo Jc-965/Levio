@@ -299,12 +299,39 @@ alter table public.community_post_reports enable row level security;
 drop policy if exists post_reports_insert_own on public.community_post_reports;
 create policy post_reports_insert_own on public.community_post_reports
   for insert to authenticated
-  with check (user_id = auth.uid()::text);
+  with check (
+    user_id = auth.uid()::text
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 drop policy if exists post_reports_select_own on public.community_post_reports;
 create policy post_reports_select_own on public.community_post_reports
   for select to authenticated
   using (user_id = auth.uid()::text);
+
+create table if not exists public.community_user_blocks (
+  blocker_id text not null references public.users(id) on delete cascade,
+  blocked_id text not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (blocker_id, blocked_id)
+);
+
+alter table public.community_user_blocks enable row level security;
+
+drop policy if exists user_blocks_select_own on public.community_user_blocks;
+create policy user_blocks_select_own on public.community_user_blocks
+  for select to authenticated
+  using (blocker_id = public.current_uid());
+
+drop policy if exists user_blocks_insert_own on public.community_user_blocks;
+create policy user_blocks_insert_own on public.community_user_blocks
+  for insert to authenticated
+  with check (blocker_id = public.current_uid());
+
+drop policy if exists user_blocks_delete_own on public.community_user_blocks;
+create policy user_blocks_delete_own on public.community_user_blocks
+  for delete to authenticated
+  using (blocker_id = public.current_uid());
 
 create or replace function public.report_post(p_post_id text, p_reason text)
 returns void
@@ -792,6 +819,7 @@ create policy posts_insert_own on public.community_posts
   with check (
     user_id = public.current_uid()
     and length(trim(content)) > 0
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
   );
 
 -- Server-side content guard: the client-side moderation pass can be
@@ -847,7 +875,9 @@ for each row execute function public.enforce_community_content();
 -- author could clear is_hidden/is_flagged/reports on their own row and
 -- undo the community's reports.
 revoke update on public.community_posts from authenticated;
-grant update (content, category, likes, updated_at)
+-- likes moves only through the security definer RPCs, so an author can
+-- never hand-edit their own counter.
+grant update (content, category, updated_at)
   on public.community_posts to authenticated;
 revoke update on public.community_comments from authenticated;
 grant update (content, updated_at)
@@ -856,7 +886,10 @@ grant update (content, updated_at)
 create policy posts_update_own on public.community_posts
   for update to authenticated
   using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  with check (
+    user_id = public.current_uid()
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 create policy posts_delete_own on public.community_posts
   for delete to authenticated
@@ -879,12 +912,16 @@ create policy comments_insert_own on public.community_comments
   with check (
     user_id = public.current_uid()
     and length(trim(content)) > 0
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
   );
 
 create policy comments_update_own on public.community_comments
   for update to authenticated
   using (user_id = public.current_uid())
-  with check (user_id = public.current_uid());
+  with check (
+    user_id = public.current_uid()
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 create policy comments_delete_own on public.community_comments
   for delete to authenticated
@@ -900,7 +937,10 @@ create policy post_likes_select_own on public.community_post_likes
 
 create policy post_likes_insert_own on public.community_post_likes
   for insert to authenticated
-  with check (user_id = public.current_uid());
+  with check (
+    user_id = public.current_uid()
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 create policy post_likes_delete_own on public.community_post_likes
   for delete to authenticated

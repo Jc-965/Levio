@@ -50,14 +50,21 @@ class AppLogger {
     _logger.w(message, error: error, stackTrace: stackTrace);
   }
 
+  /// Redacts exception payloads in release: PostgrestException and friends
+  /// can embed row data, which must never reach device logs.
+  Object? _releaseSafe(dynamic error) {
+    if (error == null) return null;
+    return kReleaseMode ? error.runtimeType.toString() : error;
+  }
+
   /// Log errors
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error: error, stackTrace: stackTrace);
+    _logger.e(message, error: _releaseSafe(error), stackTrace: stackTrace);
   }
 
   /// Log fatal errors
   void fatal(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.f(message, error: error, stackTrace: stackTrace);
+    _logger.f(message, error: _releaseSafe(error), stackTrace: stackTrace);
   }
 
   /// Log database operations

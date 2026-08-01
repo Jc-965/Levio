@@ -1110,44 +1110,7 @@ class CloudBackendService {
       });
       return true;
     } catch (e, stackTrace) {
-      _logger.warning(
-        'Cloud like RPC failed, falling back to direct update',
-        e,
-        stackTrace,
-      );
-    }
-
-    // Compatibility fallback for older schemas where the RPC does not exist.
-    try {
-      final record = await _withRetry<Map<String, dynamic>?>(
-        'fetch post likes fallback',
-        () async {
-          return _client!
-              .from('community_posts')
-              .select('likes')
-              .eq('id', postId)
-              .maybeSingle();
-        },
-      );
-      if (record == null) return false;
-      final currentLikes = (record['likes'] as num?)?.toInt() ?? 0;
-      final updated = await _withRetry<Map<String, dynamic>?>(
-        'increment post like fallback',
-        () async {
-          return _client!
-              .from('community_posts')
-              .update(<String, dynamic>{
-                'likes': currentLikes + 1,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', postId)
-              .select('id')
-              .maybeSingle();
-        },
-      );
-      return updated != null;
-    } catch (e, stackTrace) {
-      _logger.error('Cloud like post failed', e, stackTrace);
+      _logger.error('Cloud like RPC failed', e, stackTrace);
       return false;
     }
   }
@@ -1182,6 +1145,58 @@ class CloudBackendService {
     final incremented = await incrementPostLike(postId);
     if (!incremented) return null;
     return true;
+  }
+
+  Future<bool> setUserBlock({
+    required String blockerId,
+    required String blockedId,
+    required bool blocked,
+  }) async {
+    if (!isEnabled) return false;
+    try {
+      if (blocked) {
+        await _withRetry<void>('block community user', () async {
+          await _client!.from('community_user_blocks').upsert(<String, String>{
+            'blocker_id': blockerId,
+            'blocked_id': blockedId,
+          }, onConflict: 'blocker_id,blocked_id');
+        });
+      } else {
+        await _withRetry<void>('unblock community user', () async {
+          await _client!
+              .from('community_user_blocks')
+              .delete()
+              .eq('blocker_id', blockerId)
+              .eq('blocked_id', blockedId);
+        });
+      }
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('Cloud block update failed', e, stackTrace);
+      return false;
+    }
+  }
+
+  Future<Set<String>> getBlockedUserIds(String blockerId) async {
+    if (!isEnabled) return <String>{};
+    try {
+      final result = await _withRetry<List<dynamic>>(
+        'get blocked users',
+        () async {
+          return _client!
+              .from('community_user_blocks')
+              .select('blocked_id')
+              .eq('blocker_id', blockerId);
+        },
+      );
+      return result
+          .map((row) => row['blocked_id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+    } catch (e, stackTrace) {
+      _logger.error('Cloud get blocks failed', e, stackTrace);
+      return <String>{};
+    }
   }
 
   /// Records a unique per-user report; the RPC hides the post after three
@@ -1261,51 +1276,13 @@ class CloudBackendService {
           params: {'p_post_id': postId},
         );
       });
-      return true;
     } catch (e, stackTrace) {
-      _logger.warning(
-        'Like refresh RPC failed, falling back to direct update',
-        e,
-        stackTrace,
-      );
+      // The like row is already gone; the counter refresh is best-effort
+      // and idempotent, so a failure only leaves the count stale until the
+      // next like/unlike touches it.
+      _logger.warning('Like refresh RPC failed', e, stackTrace);
     }
-
-    // Compatibility fallback for schemas without the refresh RPC.
-    try {
-      final record = await _withRetry<Map<String, dynamic>?>(
-        'fetch post likes for unlike fallback',
-        () async {
-          return _client!
-              .from('community_posts')
-              .select('likes')
-              .eq('id', postId)
-              .maybeSingle();
-        },
-      );
-      if (record == null) return true;
-      final currentLikes = (record['likes'] as num?)?.toInt() ?? 0;
-      final nextLikes = currentLikes > 0 ? currentLikes - 1 : 0;
-      await _withRetry<Map<String, dynamic>?>(
-        'decrement post like fallback',
-        () async {
-          return _client!
-              .from('community_posts')
-              .update(<String, dynamic>{
-                'likes': nextLikes,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', postId)
-              .select('id')
-              .maybeSingle();
-        },
-      );
-      return true;
-    } catch (e, stackTrace) {
-      _logger.error('Cloud unlike fallback failed', e, stackTrace);
-      // The like row is already gone; report success so the UI stays
-      // consistent with the user's action.
-      return true;
-    }
+    return true;
   }
 
   Future<List<Map<String, dynamic>>> getCommunityComments(String postId) async {

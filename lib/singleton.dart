@@ -2726,21 +2726,44 @@ class Singleton extends ChangeNotifier {
   static const String _blockedUsersKey = 'community_blocked_users_v1';
   Set<String>? _blockedUserIds;
 
+  bool _blockedUsersSynced = false;
+
   Future<Set<String>> blockedUserIds() async {
-    if (_blockedUserIds != null) return _blockedUserIds!;
     final prefs = await _prefs;
-    _blockedUserIds =
+    _blockedUserIds ??=
         (prefs.getStringList(_blockedUsersKey) ?? const <String>[]).toSet();
+    // Merge the server-side block list once per session so blocks follow
+    // the account across devices and reinstalls.
+    if (!_blockedUsersSynced && _cloud.isEnabled) {
+      _blockedUsersSynced = true;
+      final uid = await _resolveUserId();
+      if (uid != null) {
+        final remote = await _cloud.getBlockedUserIds(uid);
+        if (remote.isNotEmpty) {
+          _blockedUserIds!.addAll(remote);
+          await prefs.setStringList(
+            _blockedUsersKey,
+            _blockedUserIds!.toList(),
+          );
+        }
+      }
+    }
     return _blockedUserIds!;
   }
 
-  /// Blocks are enforced locally: the blocker simply stops seeing the
-  /// blocked member's posts and comments on this device.
+  /// Blocks hide the member locally and are stored server-side so they
+  /// follow the account across devices.
   Future<void> blockCommunityUser(String userId) async {
     final blocked = await blockedUserIds();
     if (userId.trim().isEmpty || !blocked.add(userId)) return;
     final prefs = await _prefs;
     await prefs.setStringList(_blockedUsersKey, blocked.toList());
+    final uid = await _resolveUserId();
+    if (uid != null) {
+      unawaited(
+        _cloud.setUserBlock(blockerId: uid, blockedId: userId, blocked: true),
+      );
+    }
     notifyListenersSafe();
   }
 
@@ -2749,6 +2772,12 @@ class Singleton extends ChangeNotifier {
     if (!blocked.remove(userId)) return;
     final prefs = await _prefs;
     await prefs.setStringList(_blockedUsersKey, blocked.toList());
+    final uid = await _resolveUserId();
+    if (uid != null) {
+      unawaited(
+        _cloud.setUserBlock(blockerId: uid, blockedId: userId, blocked: false),
+      );
+    }
     notifyListenersSafe();
   }
 

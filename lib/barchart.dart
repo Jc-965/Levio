@@ -47,33 +47,41 @@ class BarChartSample3State extends State<BarChartSample3> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final dosesThisWeek = singleton.medsPerDay.values
+        .fold<double>(0, (sum, count) => sum + count)
+        .round();
 
-    return SizedBox(
-      height: 180,
-      child: BarChart(
-        BarChartData(
-          barTouchData: barTouchData(colors),
-          titlesData: titlesData(colors),
-          borderData: borderData(colors),
-          barGroups: barGroups(colors),
-          gridData: FlGridData(
-            show: true,
-            drawHorizontalLine: true,
-            drawVerticalLine: false,
-            horizontalInterval: 1,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: colors.divider.withValues(alpha: 0.5),
-                strokeWidth: 1,
-                dashArray: [5, 5],
-              );
-            },
+    return Semantics(
+      label:
+          'Weekly medication chart. '
+          '$dosesThisWeek doses logged in the last 7 days.',
+      child: SizedBox(
+        height: 180,
+        child: BarChart(
+          BarChartData(
+            barTouchData: barTouchData(colors),
+            titlesData: titlesData(colors),
+            borderData: borderData(colors),
+            barGroups: barGroups(colors),
+            gridData: FlGridData(
+              show: true,
+              drawHorizontalLine: true,
+              drawVerticalLine: false,
+              horizontalInterval: 1,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: colors.divider.withValues(alpha: 0.5),
+                  strokeWidth: 1,
+                  dashArray: [5, 5],
+                );
+              },
+            ),
+            alignment: BarChartAlignment.spaceAround,
+            maxY: singleton.barY,
           ),
-          alignment: BarChartAlignment.spaceAround,
-          maxY: singleton.barY,
+          swapAnimationDuration: const Duration(milliseconds: 300),
+          swapAnimationCurve: Curves.easeOutCubic,
         ),
-        swapAnimationDuration: const Duration(milliseconds: 300),
-        swapAnimationCurve: Curves.easeOutCubic,
       ),
     );
   }

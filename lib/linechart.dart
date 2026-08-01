@@ -508,16 +508,22 @@ class LineChartSample1State extends State<LineChartSample1>
                 ),
                 const SizedBox(height: 24),
                 _symptomChartHasData
-                    ? SizedBox(
-                        height: 200,
-                        child: AnimatedBuilder(
-                          animation: _animation,
-                          builder: (context, child) {
-                            return LineChart(
-                              sampleData1,
-                              duration: const Duration(milliseconds: 300),
-                            );
-                          },
+                    ? Semantics(
+                        label:
+                            'Symptom trend chart. '
+                            '${singleton.log.length} symptoms logged, '
+                            'shown by ${chosenTime.toLowerCase()}.',
+                        child: SizedBox(
+                          height: 200,
+                          child: AnimatedBuilder(
+                            animation: _animation,
+                            builder: (context, child) {
+                              return LineChart(
+                                sampleData1,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                            },
+                          ),
                         ),
                       )
                     : Container(

@@ -144,6 +144,25 @@ class MotionSessionHistory {
     }).length;
   }
 
+  /// The most recent assessed appearance of [exerciseId] across sessions,
+  /// or null if it has never been scored.
+  ({double score, int repetitions, DateTime completedAt})? lastResultFor(
+    String exerciseId,
+  ) {
+    for (final MotionSessionRecord entry in _entries) {
+      for (final MotionSessionStep step in entry.steps) {
+        if (step.exerciseId == exerciseId && step.overallScore != null) {
+          return (
+            score: step.overallScore!,
+            repetitions: step.completedRepetitions,
+            completedAt: entry.completedAt,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
   /// Mean overall score across the [count] most recent scored sessions.
   double? recentAverageScore({int count = 5}) {
     final List<double> scores = <double>[

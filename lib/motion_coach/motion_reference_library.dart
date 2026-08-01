@@ -21,7 +21,7 @@ class MotionReferenceLibrary {
   MotionReferenceLibrary({AssetBundle? bundle}) : _bundle = bundle;
 
   /// Process-wide instance so a template is decoded at most once per launch.
-  /// Tests construct their own instance with a stub bundle instead.
+  /// Tests construct their own instances, reading the real bundled assets.
   static final MotionReferenceLibrary shared = MotionReferenceLibrary();
 
   static const String templateAssetPrefix = 'assets/motion/templates/';

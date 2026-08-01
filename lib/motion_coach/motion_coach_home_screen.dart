@@ -311,6 +311,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     in motionExerciseCatalog)
                   _ExerciseTile(
                     exercise: exercise,
+                    lastResult: _history.lastResultFor(exercise.exerciseId),
                     enabled: !_opening,
                     onTap: () => unawaited(_openSingleExercise(exercise)),
                   ),
@@ -495,9 +496,11 @@ class _ExerciseTile extends StatelessWidget {
     required this.exercise,
     required this.enabled,
     required this.onTap,
+    this.lastResult,
   });
 
   final MotionExerciseDefinition exercise;
+  final ({double score, int repetitions, DateTime completedAt})? lastResult;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -523,7 +526,8 @@ class _ExerciseTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '${exercise.postureLabel} · '
-                  '${exercise.recordingRepetitionLabel} movements',
+                  '${exercise.recordingRepetitionLabel} movements'
+                  '${lastResult == null ? '' : ' · last score ${lastResult!.score.round()}'}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),

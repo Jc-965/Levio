@@ -124,9 +124,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (_phase == _RoutineScreenPhase.suspended) unawaited(_initialize());
-      return;
+    } else {
+      unawaited(_suspend());
     }
-    if (state != AppLifecycleState.resumed) unawaited(_suspend());
   }
 
   void _onControllerChanged() {
@@ -583,13 +583,18 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                   Expanded(
                     child: demonstration == null
                         ? const SizedBox.expand()
-                        : MotionDemonstrationView(
-                            key: ValueKey<String>(demonstration.exerciseId),
-                            loop: demonstration,
-                            color: colors.primary,
-                            playing:
-                                _controller.phase !=
-                                MotionRoutinePhase.complete,
+                        : Semantics(
+                            label:
+                                'Animated demonstration of the reference '
+                                'movement',
+                            child: MotionDemonstrationView(
+                              key: ValueKey<String>(demonstration.exerciseId),
+                              loop: demonstration,
+                              color: colors.primary,
+                              playing:
+                                  _controller.phase !=
+                                  MotionRoutinePhase.complete,
+                            ),
                           ),
                   ),
                 ],
@@ -748,11 +753,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      '${_controller.completedRepetitions} of '
-                      '${_controller.targetRepetitions}',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        '${_controller.completedRepetitions} of '
+                        '${_controller.targetRepetitions}',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ],
                 ),

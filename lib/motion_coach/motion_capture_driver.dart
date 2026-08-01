@@ -5,6 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/app_logger.dart';
 import 'motion_coach_session.dart';
 import 'motion_pose_bridge.dart';
 
@@ -15,7 +16,13 @@ abstract interface class MotionCaptureDriver {
   bool get isRecording;
   double get aspectRatio;
 
-  Future<void> initialize(MotionSampleCallback onSample);
+  /// [onPersistentFailure] fires once if pose detection keeps throwing frame
+  /// after frame. Without it a broken detector is indistinguishable from "no
+  /// person in view" and the screen waits forever.
+  Future<void> initialize(
+    MotionSampleCallback onSample, {
+    VoidCallback? onPersistentFailure,
+  });
   Widget buildPreview();
   Future<void> startRecording();
   Future<String> stopRecording();
@@ -23,15 +30,30 @@ abstract interface class MotionCaptureDriver {
   Future<void> dispose();
 }
 
+/// Internal signal that [CameraMotionCaptureDriver.dispose] ran while
+/// [CameraMotionCaptureDriver.initialize] was still between awaits.
+class _DisposedDuringInitialize implements Exception {
+  const _DisposedDuringInitialize();
+}
+
 class CameraMotionCaptureDriver implements MotionCaptureDriver {
   CameraMotionCaptureDriver({MotionPoseBridge? poseBridge})
     : _poseBridge = poseBridge ?? MotionPoseBridge();
 
+  /// Consecutive detect() exceptions before the driver reports the detector
+  /// as broken; roughly three seconds of frames at the low end of the
+  /// supported rate. Detections that simply find nobody do not count.
+  static const int persistentFailureThreshold = 45;
+
   final MotionPoseBridge _poseBridge;
+  final AppLogger _logger = AppLogger();
   final Stopwatch _clock = Stopwatch();
   CameraController? _camera;
   CameraDescription? _description;
   MotionSampleCallback? _onSample;
+  VoidCallback? _onPersistentFailure;
+  int _consecutiveDetectionFailures = 0;
+  bool _persistentFailureReported = false;
   bool _processingFrame = false;
   bool _disposed = false;
 
@@ -45,12 +67,17 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
   double get aspectRatio => _camera?.value.aspectRatio ?? 3 / 4;
 
   @override
-  Future<void> initialize(MotionSampleCallback onSample) async {
+  Future<void> initialize(
+    MotionSampleCallback onSample, {
+    VoidCallback? onPersistentFailure,
+  }) async {
     if (_disposed) {
       throw StateError('A disposed camera driver cannot be reused');
     }
     _onSample = onSample;
+    _onPersistentFailure = onPersistentFailure;
     final List<CameraDescription> cameras = await availableCameras();
+    _throwIfDisposedDuringInitialize();
     if (cameras.isEmpty) {
       throw CameraException(
         'NoCamera',
@@ -71,13 +98,38 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
           : ImageFormatGroup.yuv420,
     );
     _camera = controller;
-    await controller.initialize();
-    await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
-    await _poseBridge.initialize();
-    _clock
-      ..reset()
-      ..start();
-    await controller.startImageStream(_handleImage);
+    try {
+      await controller.initialize();
+      _throwIfDisposedDuringInitialize();
+      await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+      await _poseBridge.initialize();
+      _throwIfDisposedDuringInitialize();
+      _clock
+        ..reset()
+        ..start();
+      await controller.startImageStream(_handleImage);
+      _throwIfDisposedDuringInitialize();
+    } on _DisposedDuringInitialize {
+      // dispose() already ran and found nothing to clean up, so this camera
+      // would keep streaming with no owner. Tear it down here instead of
+      // leaving the hardware on after the user has left the screen.
+      _camera = null;
+      try {
+        await controller.dispose();
+      } catch (_) {
+        // Already-released platform resources are fine to ignore here.
+      }
+      return;
+    }
+  }
+
+  /// Guard for every await inside [initialize]: [dispose] can run mid-flight
+  /// (State.dispose is synchronous and cannot wait for us), and once it has,
+  /// any camera resources we create afterwards would leak.
+  void _throwIfDisposedDuringInitialize() {
+    if (_disposed) {
+      throw const _DisposedDuringInitialize();
+    }
   }
 
   @override
@@ -164,6 +216,7 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
         isFrontCamera: description.lensDirection == CameraLensDirection.front,
         timestampMs: timestampMs,
       );
+      _consecutiveDetectionFailures = 0;
       if (!_disposed) {
         final bool swapsDimensions =
             description.sensorOrientation.abs() % 180 == 90;
@@ -175,7 +228,26 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
           ),
         );
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _consecutiveDetectionFailures += 1;
+      if (_consecutiveDetectionFailures == 1) {
+        _logger.warning('Motion pose detection failed', error, stackTrace);
+      }
+      if (_consecutiveDetectionFailures >= persistentFailureThreshold &&
+          !_persistentFailureReported &&
+          !_disposed) {
+        // Every frame is failing: without this, the detector being broken is
+        // indistinguishable from nobody standing in front of the camera and
+        // the screen waits on "Looking for you" forever.
+        _persistentFailureReported = true;
+        _logger.error(
+          'Motion pose detection failed '
+          '$_consecutiveDetectionFailures frames in a row',
+          error,
+          stackTrace,
+        );
+        _onPersistentFailure?.call();
+      }
       if (!_disposed) {
         final int orientation = _description?.sensorOrientation ?? 0;
         final bool swapsDimensions = orientation.abs() % 180 == 90;

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:parkiwell/motion_coach/motion_analysis.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
+import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/singleton.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -107,7 +108,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     if (controller == null) {
       if (!demoOnly) return;
       await launchUrl(
-        exercise!.youtubeWatchUri(demoOnly: true),
+        exercise!.videoSegment!.youtubeWatchUri(demoOnly: true),
         mode: LaunchMode.inAppBrowserView,
       );
       return;
@@ -118,7 +119,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
       _isVideoLoading = true;
     });
     final Uri uri = demoOnly
-        ? exercise!.youtubeEmbedUri(demoOnly: true)
+        ? exercise!.videoSegment!.youtubeEmbedUri(demoOnly: true)
         : _fullSessionEmbedUri(videoId);
     await controller.loadRequest(uri, headers: youTubeEmbeddedPlayerHeaders);
     if (!mounted) return;
@@ -289,9 +290,15 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     setState(() => _isMotionCoachOpening = true);
     try {
       if (!await _ensureMotionCoachConsent() || !mounted) return;
+      // The live coach reads its thresholds from the exercise template, so
+      // the asset has to be decoded before the capture screen is built.
+      final MotionReferenceLibrary library = MotionReferenceLibrary.shared;
+      await library.templateFor(exercise.exerciseId);
+      if (!mounted) return;
       final outcome = await Navigator.of(context).push<MotionCoachOutcome>(
         MaterialPageRoute<MotionCoachOutcome>(
-          builder: (_) => MotionCoachScreen(exercise: exercise),
+          builder: (_) =>
+              MotionCoachScreen(library: library, exercise: exercise),
         ),
       );
       if (outcome == null || !mounted) return;
@@ -455,6 +462,8 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
 
     final source = exerciseData.length > 3 ? exerciseData[3] : '';
     final MotionExerciseDefinition? motionExercise = _motionExercise;
+    final MotionExerciseVideoSegment? motionSegment =
+        motionExercise?.videoSegment;
     final sessionCount = singleton.exerciseSessionCountForVideo(
       singleton.currentURL,
     );
@@ -562,8 +571,8 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _isShowingMotionDemo && motionExercise != null
-                          ? 'Short demo · ${motionExercise.demoTimeRangeLabel}'
+                      _isShowingMotionDemo && motionSegment != null
+                          ? 'Short demo · ${motionSegment.demoTimeRangeLabel}'
                           : 'Guided movement session',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: colors.textSecondary,
@@ -679,14 +688,16 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                           ],
                         ),
                       ),
-                if (_isShowingMotionDemo && motionExercise != null) ...[
+                if (_isShowingMotionDemo &&
+                    motionExercise != null &&
+                    motionSegment != null) ...[
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           '${motionExercise.title} · '
-                          '${motionExercise.demonstrationRepetitions} guided '
+                          '${motionSegment.demonstrationRepetitions} guided '
                           'repetitions',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colors.textSecondary),
@@ -703,11 +714,13 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                 ],
                 if (!kIsWeb) ...[
                   const SizedBox(height: 24),
-                  if (motionCoachEnabled && motionExercise != null) ...[
+                  if (motionCoachEnabled &&
+                      motionExercise != null &&
+                      motionSegment != null) ...[
                     SectionHeading(
                       title: 'Motion check',
                       description:
-                          'Watch the ${motionExercise.demoDurationSeconds}-second '
+                          'Watch the ${motionSegment.demoDurationSeconds}-second '
                           'example, then try the movement with private, '
                           'on-device observations.',
                     ),

@@ -10,7 +10,9 @@ import 'package:parkiwell/motion_coach/motion_coach_results_screen.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/motion_coach/motion_coach_session.dart';
 import 'package:parkiwell/motion_coach/motion_cue_speaker.dart';
+import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_pose_bridge.dart';
+import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/theme/app_theme.dart';
 
 void main() {
@@ -20,7 +22,7 @@ void main() {
     test(
       'requires stable framing and uses hysteresis when framing is lost',
       () {
-        final MotionCoachSession session = MotionCoachSession();
+        final MotionCoachSession session = _session();
         addTearDown(session.dispose);
 
         for (int index = 0; index < 5; index += 1) {
@@ -45,7 +47,7 @@ void main() {
     test(
       'buffers only ordered recording frames and drains them immediately',
       () {
-        final MotionCoachSession session = MotionCoachSession();
+        final MotionCoachSession session = _session();
         addTearDown(session.dispose);
 
         session.handleSample(_sample(timestampMs: 0));
@@ -67,7 +69,7 @@ void main() {
     );
 
     test('does not analyze frames containing multiple people', () {
-      final MotionCoachSession session = MotionCoachSession();
+      final MotionCoachSession session = _session();
       addTearDown(session.dispose);
 
       session.beginRecording();
@@ -79,37 +81,23 @@ void main() {
       expect(session.framingStatus, MotionFramingStatus.multiplePeople);
     });
 
-    test('counts a live rep and exposes an allowlisted cue', () {
-      final MotionCoachSession session = MotionCoachSession(
-        liveCoach: LiveArmRaiseCoach(
-          const LiveArmRaiseConfig(referenceRomDeg: 80, referenceTempoS: 1),
-        ),
-      );
+    test('counts a live rep, scores it, and exposes an allowlisted cue', () {
+      final MotionCoachSession session = _session();
       addTearDown(session.dispose);
       session.beginRecording();
-      const List<double> phase = <double>[
-        0,
-        0.25,
-        0.5,
-        0.75,
-        1,
-        0.75,
-        0.5,
-        0.25,
-        0,
-        0,
-        0,
-        0,
-      ];
-      for (int index = 0; index < phase.length; index += 1) {
+      for (int index = 0; index < _repPhase.length; index += 1) {
         session.handleSample(
-          _motionSampleForAngle(10 + 40 * phase[index], index * 100),
+          _motionSampleForAngle(10 + 40 * _repPhase[index], index * 200),
         );
       }
 
       expect(session.liveRepCount, 1);
-      expect(session.liveCue, LiveCueKind.comfortableRange);
+      expect(session.liveCue!.kind, ExerciseCueKind.amplitude);
       expect(session.liveCue!.text, contains('If comfortable'));
+      // Scores are the engine's, never the app's: a half-reference raise
+      // must not read as a good repetition.
+      expect(session.lastRepScore!.rangeScore, lessThan(60));
+      expect(session.averageRepScore, session.lastRepScore!.overall);
       expect(session.maximumDecisionMicros, lessThan(100000));
     });
 
@@ -355,6 +343,12 @@ void main() {
   });
 
   group('MotionCoachScreen', () {
+    // Asset I/O must not happen inside a testWidgets body: the
+    // widget-test zone controls the clock, and a real bundle read
+    // awaited there never completes.
+    late MotionReferenceLibrary library;
+    setUpAll(() async => library = await _armRaiseLibrary());
+
     testWidgets('explains how to recover from denied camera access', (
       WidgetTester tester,
     ) async {
@@ -364,7 +358,10 @@ void main() {
           'Permission denied',
         ),
       );
-      await _pumpApp(tester, MotionCoachScreen(driverFactory: () => driver));
+      await _pumpApp(
+        tester,
+        MotionCoachScreen(library: library, driverFactory: () => driver),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Camera access is needed'), findsOneWidget);
@@ -380,7 +377,11 @@ void main() {
       final _FakeMotionCueSpeaker speaker = _FakeMotionCueSpeaker();
       await _pumpApp(
         tester,
-        MotionCoachScreen(driverFactory: () => driver, cueSpeaker: speaker),
+        MotionCoachScreen(
+          library: library,
+          driverFactory: () => driver,
+          cueSpeaker: speaker,
+        ),
       );
       await tester.pumpAndSettle();
       for (int index = 0; index < 6; index += 1) {
@@ -391,23 +392,9 @@ void main() {
       await tester.tap(find.text('Start movement'));
       await tester.pumpAndSettle();
 
-      const List<double> phase = <double>[
-        0,
-        0.25,
-        0.5,
-        0.75,
-        1,
-        0.75,
-        0.5,
-        0.25,
-        0,
-        0,
-        0,
-        0,
-      ];
-      for (int index = 0; index < phase.length; index += 1) {
+      for (int index = 0; index < _repPhase.length; index += 1) {
         driver.emit(
-          _motionSampleForAngle(10 + 32 * phase[index], 400 + index * 100),
+          _motionSampleForAngle(10 + 40 * _repPhase[index], 400 + index * 200),
         );
       }
       await tester.pump();
@@ -425,11 +412,32 @@ void main() {
       expect(speaker.disposed, isTrue);
     });
 
+    testWidgets('surfaces an error when pose detection keeps failing', (
+      WidgetTester tester,
+    ) async {
+      final _FakeMotionCaptureDriver driver = _FakeMotionCaptureDriver();
+      await _pumpApp(
+        tester,
+        MotionCoachScreen(library: library, driverFactory: () => driver),
+      );
+      await tester.pumpAndSettle();
+
+      driver.persistentFailureCallback!();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Movement tracking stopped working'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+      expect(driver.disposeCalls, 1);
+    });
+
     testWidgets(
       'cancels and disposes a recording when the app is backgrounded',
       (WidgetTester tester) async {
         final _FakeMotionCaptureDriver driver = _FakeMotionCaptureDriver();
-        await _pumpApp(tester, MotionCoachScreen(driverFactory: () => driver));
+        await _pumpApp(
+          tester,
+          MotionCoachScreen(library: library, driverFactory: () => driver),
+        );
         await tester.pumpAndSettle();
 
         for (int index = 0; index < 6; index += 1) {
@@ -456,6 +464,39 @@ void main() {
       },
     );
   });
+}
+
+/// One rise-and-return cycle, sampled as a fraction of the peak.
+const List<double> _repPhase = <double>[
+  0,
+  0.25,
+  0.5,
+  0.75,
+  1,
+  0.75,
+  0.5,
+  0.25,
+  0,
+  0,
+  0,
+  0,
+];
+
+/// A session wired to the real arm-raise specification with explicit
+/// thresholds, so the pure-logic tests need no asset bundle.
+MotionCoachSession _session() => MotionCoachSession(
+  liveCoach: LiveExerciseCoach(
+    seatedArmRaiseExercise.engineSpec,
+    const LiveExerciseCoachConfig(referenceRomDeg: 70, referenceTempoS: 2.93),
+  ),
+);
+
+/// A library holding the shipped arm-raise template, loaded from the real
+/// asset so the widget tests exercise the same thresholds as the app.
+Future<MotionReferenceLibrary> _armRaiseLibrary() async {
+  final MotionReferenceLibrary library = MotionReferenceLibrary();
+  await library.templateFor(seatedArmRaiseExercise.exerciseId);
+  return library;
 }
 
 Future<void> _pumpApp(WidgetTester tester, Widget home) {
@@ -635,6 +676,7 @@ class _FakeMotionCaptureDriver implements MotionCaptureDriver {
 
   final CameraException? initializeError;
   MotionSampleCallback? _onSample;
+  VoidCallback? persistentFailureCallback;
   bool _initialized = false;
   bool _recording = false;
   int cancelCalls = 0;
@@ -655,9 +697,13 @@ class _FakeMotionCaptureDriver implements MotionCaptureDriver {
   Widget buildPreview() => const ColoredBox(color: Colors.black);
 
   @override
-  Future<void> initialize(MotionSampleCallback onSample) async {
+  Future<void> initialize(
+    MotionSampleCallback onSample, {
+    VoidCallback? onPersistentFailure,
+  }) async {
     if (initializeError != null) throw initializeError!;
     _onSample = onSample;
+    persistentFailureCallback = onPersistentFailure;
     _initialized = true;
   }
 

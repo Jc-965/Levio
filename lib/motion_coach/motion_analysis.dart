@@ -22,40 +22,52 @@ String get motionPoseRuntime {
   return 'mediapipe_tasks_test';
 }
 
-ExerciseTemplate motionCoachTemplateFor(MotionExerciseDefinition exercise) =>
-    ExerciseTemplate(
-      schemaVersion: 'exercise-template.v1',
-      templateVersion: exercise.templateVersion,
-      exerciseId: exercise.exerciseId,
-      poseContract: const PoseModelContract(
-        runtime: 'mediapipe_tasks',
-        model: motionPoseModelName,
-        version: motionPoseModelVersion,
-        coordinateSpace: 'mediapipe_world_3d',
-      ),
-      allowedOrientations: const <String>{'portrait'},
-      primarySignal: switch (exercise.analysisKind) {
-        MotionAnalysisKind.bilateralLateralArmRaise => 'arm_elevation_mean',
-      },
-      requiredLandmarks: switch (exercise.analysisKind) {
-        MotionAnalysisKind.bilateralLateralArmRaise => const <String>[
-          'left_shoulder',
-          'right_shoulder',
-          'left_wrist',
-          'right_wrist',
-          'left_hip',
-          'right_hip',
-        ],
-      },
-      referenceRomDeg: exercise.referenceRomDegrees,
-      referenceTempoS: exercise.referenceTempoSeconds,
-      confidencePolicy: const ConfidencePolicy(
-        visibilityThreshold: 0.6,
-        minimumSessionCoverage: 0.8,
-        minimumSamplingHz: 15,
-        maximumInterpolatedGapFrames: 3,
-      ),
+/// Build the offline analyzer template for an exercise.
+///
+/// Only exercises with a [MotionDetailedAnalysisSpec] have an offline path;
+/// `analyzePoseStream` rejects any other primary signal outright, so this
+/// fails fast rather than producing a template the engine will refuse.
+ExerciseTemplate motionCoachTemplateFor(MotionExerciseDefinition exercise) {
+  final MotionDetailedAnalysisSpec? analysis = exercise.detailedAnalysis;
+  if (analysis == null) {
+    throw ArgumentError(
+      '${exercise.exerciseId} has no detailed-analysis specification',
     );
+  }
+  return ExerciseTemplate(
+    schemaVersion: 'exercise-template.v1',
+    templateVersion: analysis.templateVersion,
+    exerciseId: exercise.exerciseId,
+    poseContract: const PoseModelContract(
+      runtime: 'mediapipe_tasks',
+      model: motionPoseModelName,
+      version: motionPoseModelVersion,
+      coordinateSpace: 'mediapipe_world_3d',
+    ),
+    allowedOrientations: const <String>{'portrait'},
+    primarySignal: switch (analysis.kind) {
+      MotionAnalysisKind.bilateralLateralArmRaise => 'arm_elevation_mean',
+    },
+    requiredLandmarks: switch (analysis.kind) {
+      MotionAnalysisKind.bilateralLateralArmRaise => const <String>[
+        'left_shoulder',
+        'right_shoulder',
+        'left_wrist',
+        'right_wrist',
+        'left_hip',
+        'right_hip',
+      ],
+    },
+    referenceRomDeg: analysis.referenceRomDegrees,
+    referenceTempoS: analysis.referenceTempoSeconds,
+    confidencePolicy: const ConfidencePolicy(
+      visibilityThreshold: 0.6,
+      minimumSessionCoverage: 0.8,
+      minimumSamplingHz: 15,
+      maximumInterpolatedGapFrames: 3,
+    ),
+  );
+}
 
 ExerciseTemplate get motionCoachTemplate =>
     motionCoachTemplateFor(seatedArmRaiseExercise);
@@ -99,14 +111,15 @@ MotionAnalysisResult _analyze(_AnalysisRequest request) {
     ),
     frames: request.frames,
   );
+  final ExerciseTemplate template = motionCoachTemplateFor(request.exercise);
   return MotionAnalysisResult.fromDocument(
     analyzePoseStream(
       stream,
-      motionCoachTemplateFor(request.exercise),
+      template,
       engineVersion: motionCoachEngineVersion,
     ),
-    referenceRomDegrees: request.exercise.referenceRomDegrees,
-    referenceTempoSeconds: request.exercise.referenceTempoSeconds,
+    referenceRomDegrees: template.referenceRomDeg,
+    referenceTempoSeconds: template.referenceTempoS,
   );
 }
 

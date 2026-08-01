@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
@@ -36,6 +37,25 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
   Future<void> _load() async {
     await widget.history.load();
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _export() async {
+    HapticUtils.lightImpact();
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: widget.history.exportJson(),
+          subject: 'ParkiWell movement history',
+        ),
+      );
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to export your history right now.'),
+        ),
+      );
+    }
   }
 
   Future<void> _confirmClear() async {
@@ -78,12 +98,18 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
         elevation: 0,
         title: const Text('Movement progress'),
         actions: <Widget>[
-          if (entries.isNotEmpty)
+          if (entries.isNotEmpty) ...[
+            IconButton(
+              tooltip: 'Export history',
+              icon: const Icon(Icons.ios_share_rounded),
+              onPressed: () => unawaited(_export()),
+            ),
             IconButton(
               tooltip: 'Delete history',
               icon: const Icon(Icons.delete_outline_rounded),
               onPressed: () => unawaited(_confirmClear()),
             ),
+          ],
         ],
       ),
       body: LiquidBackground(

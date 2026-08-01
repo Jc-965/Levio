@@ -204,6 +204,29 @@ void main() {
       expect(history.currentStreakDays(now: now), 3);
     });
 
+    test('exports a versioned document of stored sessions only', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.record(
+        _evaluation(score: 82),
+        completedAt: DateTime.utc(2026, 7, 30),
+      );
+
+      final Map<String, Object?> exported =
+          jsonDecode(history.exportJson()) as Map<String, Object?>;
+
+      expect(exported['format'], 'parkiwell-motion-history');
+      expect(exported['format_version'], 1);
+      expect(exported['session_count'], 1);
+      final List<Object?> sessions = exported['sessions']! as List<Object?>;
+      expect(sessions, hasLength(1));
+      final Map<String, Object?> session =
+          sessions.single! as Map<String, Object?>;
+      expect(session['routine_id'], 'seated_foundation');
+      // Nothing beyond the stored derived record may leak into an export.
+      expect(session.keys, isNot(contains('video')));
+      expect(session.keys, isNot(contains('landmarks')));
+    });
+
     test('clear removes every stored session', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(

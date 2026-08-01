@@ -66,6 +66,21 @@ class MotionSessionHistory {
     await _write();
   }
 
+  /// Versioned export of every stored session, for the person to share or
+  /// keep. Contains only what this store holds: derived scores, counts, and
+  /// the engine's allowlisted sentences; never video or pose data. Export is
+  /// always an explicit user action, mirroring the app's backup export.
+  String exportJson() =>
+      const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+        'format': 'parkiwell-motion-history',
+        'format_version': 1,
+        'exported_at': DateTime.now().toIso8601String(),
+        'session_count': _entries.length,
+        'sessions': <Object?>[
+          for (final MotionSessionRecord entry in _entries) entry.toJson(),
+        ],
+      });
+
   Future<void> clear() async {
     _entries = const <MotionSessionRecord>[];
     _loaded = true;

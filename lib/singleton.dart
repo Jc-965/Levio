@@ -321,8 +321,9 @@ class Singleton extends ChangeNotifier {
   }
 
   void setPage(int n) {
+    // Navigation state only: not worth re-serializing the whole health
+    // snapshot. The page still rides along with the next real persist.
     page = n;
-    _persistLocalCache();
     notifyListenersSafe();
   }
 
@@ -1214,7 +1215,23 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  Future<void> _persistLocalCache() async {
+  Future<void> _persistTail = Future<void>.value();
+
+  /// Serializes snapshot writes: each request runs after the previous write
+  /// finishes, so overlapping full-state serializations can never race or
+  /// land out of order. A wedged predecessor (for example a stalled keystore
+  /// call) is abandoned after a short grace period rather than blocking all
+  /// future persistence. [_writeLocalCacheSnapshot] never throws, keeping
+  /// the chain unbroken.
+  Future<void> _persistLocalCache() {
+    final next = _persistTail
+        .timeout(const Duration(seconds: 5), onTimeout: () {})
+        .then((_) => _writeLocalCacheSnapshot());
+    _persistTail = next;
+    return next;
+  }
+
+  Future<void> _writeLocalCacheSnapshot() async {
     try {
       final prefs = await _prefs;
       final snapshot = _buildLocalCacheSnapshot();

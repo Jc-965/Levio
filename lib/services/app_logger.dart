@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 import '../config/environment.dart';
@@ -91,9 +92,16 @@ Level loggerThresholdFor(LogLevel level) {
 
 /// Filters log output by the environment's configured level, so release
 /// builds never print info-level records (which can reference user activity)
-/// to device logs.
+/// to device logs. Release mode enforces a warning floor even when the
+/// build forgot to pass ENVIRONMENT, so a misconfigured release can never
+/// log user activity.
 class _EnvironmentLogFilter extends LogFilter {
   @override
-  bool shouldLog(LogEvent event) =>
-      event.level.value >= loggerThresholdFor(EnvironmentConfig.logLevel).value;
+  bool shouldLog(LogEvent event) {
+    var threshold = loggerThresholdFor(EnvironmentConfig.logLevel);
+    if (kReleaseMode && threshold.value < Level.warning.value) {
+      threshold = Level.warning;
+    }
+    return event.level.value >= threshold.value;
+  }
 }

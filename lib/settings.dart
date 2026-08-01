@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -81,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 HapticUtils.lightImpact();
                 Navigator.pop(c);
-                _showDeletingDialog();
+                await _showDeletingDialog();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.error,
@@ -244,48 +246,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     controller.dispose();
   }
 
-  void _showDeletingDialog() {
+  Future<void> _showDeletingDialog() async {
     final colors = context.colors;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext c) {
-        // Perform deletion
-        Future.delayed(const Duration(seconds: 2), () async {
-          await singleton.deleteAccount();
-          if (mounted && c.mounted) {
-            Navigator.pop(c);
-            HapticUtils.lightImpact();
-            await TerminateRestart.instance.restartApp(
-              options: const TerminateRestartOptions(terminate: false),
-            );
-          }
-        });
+    // The dialog builder must stay side-effect free: builders can rerun on
+    // rebuild, which would fire the deletion more than once.
+    unawaited(
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext c) => _buildDeletingDialog(c, colors),
+      ),
+    );
 
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              CircularProgressIndicator(color: colors.primary, strokeWidth: 2),
-              const SizedBox(height: 20),
-              Text(
-                'Deleting Account...',
-                style: Theme.of(c).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Please wait while we remove your data',
-                style: Theme.of(
-                  c,
-                ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-            ],
+    final deleted = await singleton.deleteAccount();
+    if (!mounted) return;
+    navigator.pop();
+
+    if (deleted) {
+      HapticUtils.lightImpact();
+      await TerminateRestart.instance.restartApp(
+        options: const TerminateRestartOptions(terminate: false),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Account deletion failed. Your data has NOT been removed. '
+          'Please check your connection and try again.',
+        ),
+        duration: const Duration(seconds: 8),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    );
+  }
+
+  Widget _buildDeletingDialog(BuildContext c, AppColors colors) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          CircularProgressIndicator(color: colors.primary, strokeWidth: 2),
+          const SizedBox(height: 20),
+          Text('Deleting Account...', style: Theme.of(c).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Please wait while we remove your data',
+            style: Theme.of(
+              c,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
-        );
-      },
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 

@@ -40,6 +40,31 @@ void main() async {
   // Initialize singleton services
   final singleton = Singleton();
 
+  // Set up error handling for production
+  if (isProduction) {
+    FlutterError.onError = (details) {
+      logger.fatal('Flutter error', details.exception, details.stack);
+    };
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      logger.fatal('Platform error', error, stack);
+      return true;
+    };
+  }
+
+  // Cloud sync runs concurrently with the first frame; the in-app splash
+  // waits for it (with a hard timeout) instead of blocking runApp on the
+  // network, so launch never hangs on a flaky connection.
+  final bootstrap = _bootstrap(singleton, logger, isProduction);
+
+  runApp(MyApp(bootstrap: bootstrap));
+}
+
+Future<void> _bootstrap(
+  Singleton singleton,
+  AppLogger logger,
+  bool isProduction,
+) async {
   try {
     await singleton.initialize(isProduction: isProduction);
 
@@ -83,24 +108,14 @@ void main() async {
   } catch (e, stackTrace) {
     logger.fatal('Critical initialization error', e, stackTrace);
   }
-
-  // Set up error handling for production
-  if (isProduction) {
-    FlutterError.onError = (details) {
-      logger.fatal('Flutter error', details.exception, details.stack);
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      logger.fatal('Platform error', error, stack);
-      return true;
-    };
-  }
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.bootstrap});
+
+  /// Startup work (cloud init, user load) running concurrently with the
+  /// first frame. Null means there is nothing to wait for.
+  final Future<void>? bootstrap;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -115,6 +130,13 @@ class _MyAppState extends State<MyApp> {
   bool _passwordDialogVisible = false;
   AppScreen _currentScreen = AppScreen.splash;
 
+  /// Cap on how long the splash may hold for startup sync; past this the
+  /// app continues with locally cached data.
+  static const Duration _bootstrapTimeout = Duration(seconds: 8);
+
+  bool _splashAnimationDone = false;
+  bool _bootstrapSettled = false;
+
   @override
   void initState() {
     super.initState();
@@ -125,6 +147,25 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (singleton.isPasswordRecoveryPending) _showPasswordRecovery();
     });
+    _awaitBootstrap();
+  }
+
+  Future<void> _awaitBootstrap() async {
+    final bootstrap = widget.bootstrap;
+    if (bootstrap != null) {
+      try {
+        await bootstrap.timeout(_bootstrapTimeout);
+      } on TimeoutException {
+        AppLogger().warning(
+          'Startup sync timed out; continuing with local data',
+        );
+      } catch (_) {
+        // Bootstrap errors are already logged at the source.
+      }
+    }
+    if (!mounted) return;
+    _bootstrapSettled = true;
+    _maybeLeaveSplash();
   }
 
   @override
@@ -170,13 +211,22 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _onSplashComplete() {
-    if (mounted) {
-      setState(() {
-        _currentScreen = singleton.firstTime
-            ? AppScreen.onboarding
-            : AppScreen.home;
-      });
-    }
+    if (!mounted) return;
+    _splashAnimationDone = true;
+    _maybeLeaveSplash();
+  }
+
+  void _maybeLeaveSplash() {
+    // Leave the splash only when the animation has finished AND startup
+    // sync has settled (completed, failed, or timed out), so routing sees
+    // the loaded firstTime state.
+    if (!_splashAnimationDone || !_bootstrapSettled) return;
+    if (_currentScreen != AppScreen.splash) return;
+    setState(() {
+      _currentScreen = singleton.firstTime
+          ? AppScreen.onboarding
+          : AppScreen.home;
+    });
   }
 
   void _onOnboardingComplete() {

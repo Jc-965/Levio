@@ -112,10 +112,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
       final bool begin = await showMotionSessionIntro(
         context,
         description: description,
-        exercises: <MotionExerciseDefinition>[
-          for (final RoutineStepDefinition step in routine.steps)
-            motionExerciseById(step.exerciseId),
-        ],
+        routine: routine,
         library: _library,
       );
       if (!begin || !mounted) return;
@@ -159,7 +156,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
       final bool begin = await showMotionSessionIntro(
         context,
         description: singleExerciseDescription(exercise),
-        exercises: <MotionExerciseDefinition>[exercise],
+        routine: singleExerciseRoutine(exercise),
         library: _library,
       );
       if (!begin || !mounted) return;

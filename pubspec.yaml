@@ -67,6 +67,10 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
 
+  # Security: at-rest encryption for the local health cache
+  flutter_secure_storage: ^9.2.2
+  cryptography: ^2.7.0
+
 dependency_overrides:
   win32: ^5.5.0
   archive: ^3.6.1

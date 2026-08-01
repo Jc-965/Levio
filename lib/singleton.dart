@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:parkiwell/services/app_logger.dart';
 import 'package:parkiwell/services/cloud_backend_service.dart';
 import 'package:parkiwell/services/content_filter.dart';
+import 'package:parkiwell/services/encrypted_cache_store.dart';
 import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
@@ -24,6 +25,7 @@ class Singleton extends ChangeNotifier {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   final CloudBackendService _cloud = CloudBackendService();
   final ContentModerationService _moderation = ContentModerationService();
+  final EncryptedCacheStore _cacheStore = EncryptedCacheStore();
   final AppLogger _logger = AppLogger();
   final Uuid _uuid = const Uuid();
   final Connectivity _connectivity = Connectivity();
@@ -1200,11 +1202,18 @@ class Singleton extends ChangeNotifier {
       final prefs = await _prefs;
       final raw = prefs.getString(_localCacheKey);
       if (raw == null || raw.isEmpty) return;
-      final decoded = jsonDecode(raw);
+      final wasPlaintext = !raw.startsWith(EncryptedCacheStore.payloadPrefix);
+      final opened = await _cacheStore.open(raw);
+      if (opened == null) return;
+      final decoded = jsonDecode(opened);
       if (decoded is! Map<String, dynamic>) return;
       _applyLocalCacheSnapshot(decoded);
       _hasHydratedLocalCache = true;
       _logger.info('Local cache hydrated');
+      if (wasPlaintext && !_cacheStore.keystoreUnavailable) {
+        // Migrate a legacy plaintext snapshot to sealed storage.
+        await _persistLocalCache();
+      }
       notifyListenersSafe();
     } catch (e, stackTrace) {
       _logger.warning('Unable to hydrate local cache', e, stackTrace);
@@ -1215,7 +1224,8 @@ class Singleton extends ChangeNotifier {
     try {
       final prefs = await _prefs;
       final snapshot = _buildLocalCacheSnapshot();
-      await prefs.setString(_localCacheKey, jsonEncode(snapshot));
+      final sealed = await _cacheStore.seal(jsonEncode(snapshot));
+      await prefs.setString(_localCacheKey, sealed);
     } catch (e, stackTrace) {
       _logger.warning('Unable to persist local cache', e, stackTrace);
     }

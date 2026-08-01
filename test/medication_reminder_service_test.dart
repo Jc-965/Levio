@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 
@@ -22,6 +23,75 @@ void main() {
 
     test('empty text means no per-dose times', () {
       expect(MedicationReminderService.doseTimesFromText(''), isEmpty);
+    });
+  });
+
+  group('planReminderSlots', () {
+    final now = DateTime(2026, 8, 3, 12, 0); // a Monday, noon
+
+    test('orders slots by soonest next occurrence', () {
+      final slots = MedicationReminderService.planReminderSlots(
+        [
+          ['Evening med', '', 'Every Monday', '20:00'],
+          ['Afternoon med', '', 'Every Monday', '14:00'],
+          ['Tomorrow med', '', 'Every Tuesday', '08:00'],
+        ],
+        const TimeOfDay(hour: 9, minute: 0),
+        now,
+      );
+
+      expect(slots[0].name, 'Afternoon med');
+      expect(slots[1].name, 'Evening med');
+      expect(slots[2].name, 'Tomorrow med');
+    });
+
+    test('a slot at the current minute rolls to next week', () {
+      final slots = MedicationReminderService.planReminderSlots(
+        [
+          ['Now med', '', 'Every Monday', '12:00'],
+          ['Soon med', '', 'Every Monday', '12:01'],
+        ],
+        const TimeOfDay(hour: 9, minute: 0),
+        now,
+      );
+
+      expect(slots.first.name, 'Soon med');
+    });
+
+    test('heavy regimens exceed the cap and keep the soonest doses', () {
+      // 12 meds x everyday = 84 slots, past the 60-slot cap.
+      final schedule = List.generate(
+        12,
+        (i) => ['Med $i', '', 'Everyday', '0${(i % 9) + 1}:00'],
+      );
+      final slots = MedicationReminderService.planReminderSlots(
+        schedule,
+        const TimeOfDay(hour: 9, minute: 0),
+        now,
+      );
+
+      expect(slots.length, 84);
+      expect(
+        slots.length > MedicationReminderService.maxScheduledReminders,
+        isTrue,
+        reason: 'this regimen must trigger the capped path',
+      );
+      final kept = slots
+          .take(MedicationReminderService.maxScheduledReminders)
+          .toList();
+      // Everything kept fires sooner than everything dropped.
+      final dropped = slots
+          .skip(MedicationReminderService.maxScheduledReminders)
+          .toList();
+      int minutesUntil(({String name, int weekday, TimeOfDay time}) s) {
+        var d = (s.weekday - now.weekday) % 7;
+        final sm = s.time.hour * 60 + s.time.minute;
+        final nm = now.hour * 60 + now.minute;
+        if (d == 0 && sm <= nm) d = 7;
+        return d * 24 * 60 + sm - nm;
+      }
+
+      expect(minutesUntil(kept.last) <= minutesUntil(dropped.first), isTrue);
     });
   });
 

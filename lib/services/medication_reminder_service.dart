@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -169,6 +171,44 @@ class MedicationReminderService {
     return times;
   }
 
+  /// iOS silently drops pending notifications past 64; stay under it with
+  /// headroom so no dose reminder ever disappears without a trace.
+  static const int maxScheduledReminders = 60;
+
+  /// Expands schedule entries into (name, weekday, time) slots ordered by
+  /// how soon each next fires from [now], so capping keeps the reminders a
+  /// patient needs first. Pure and testable.
+  static List<({String name, int weekday, TimeOfDay time})> planReminderSlots(
+    List<List<String>> schedule,
+    TimeOfDay fallbackTime,
+    DateTime now,
+  ) {
+    final slots = <({String name, int weekday, TimeOfDay time})>[];
+    for (final entry in schedule) {
+      if (entry.isEmpty) continue;
+      final name = entry[0];
+      final daysText = entry.length > 2 ? entry[2] : 'Everyday';
+      final doseTimes = doseTimesFromText(entry.length > 3 ? entry[3] : '');
+      final times = doseTimes.isEmpty ? [fallbackTime] : doseTimes;
+      for (final weekday in weekdaysFromScheduleText(daysText)) {
+        for (final time in times) {
+          slots.add((name: name, weekday: weekday, time: time));
+        }
+      }
+    }
+
+    int minutesUntil(({String name, int weekday, TimeOfDay time}) slot) {
+      var dayDelta = (slot.weekday - now.weekday) % 7;
+      final slotMinutes = slot.time.hour * 60 + slot.time.minute;
+      final nowMinutes = now.hour * 60 + now.minute;
+      if (dayDelta == 0 && slotMinutes <= nowMinutes) dayDelta = 7;
+      return dayDelta * 24 * 60 + slotMinutes - nowMinutes;
+    }
+
+    slots.sort((a, b) => minutesUntil(a).compareTo(minutesUntil(b)));
+    return slots;
+  }
+
   /// Rebuilds all pending reminders from the current schedule list. Each
   /// entry is `[name, details, daysText]` with an optional fourth element
   /// of comma-separated per-dose times; medications without their own
@@ -180,22 +220,25 @@ class MedicationReminderService {
       if (!await remindersEnabled()) return;
 
       final fallbackTime = await reminderTime();
+      final slots = planReminderSlots(schedule, fallbackTime, DateTime.now());
+      if (slots.length > maxScheduledReminders) {
+        _logger.warning(
+          'Reminder plan exceeds the platform pending limit; scheduling the '
+          'soonest $maxScheduledReminders of ${slots.length} slots',
+        );
+      }
       var notificationId = 0;
-      for (final entry in schedule) {
-        if (entry.isEmpty) continue;
-        final name = entry[0];
-        final daysText = entry.length > 2 ? entry[2] : 'Everyday';
-        final doseTimes = doseTimesFromText(entry.length > 3 ? entry[3] : '');
-        final times = doseTimes.isEmpty ? [fallbackTime] : doseTimes;
-        for (final weekday in weekdaysFromScheduleText(daysText)) {
-          for (final time in times) {
-            await _scheduleWeekly(
-              id: notificationId++,
-              body: 'Time to take $name',
-              at: _nextInstanceOf(weekday, time),
-            );
-          }
-        }
+      for (final slot in slots.take(maxScheduledReminders)) {
+        await _scheduleWeekly(
+          id: notificationId++,
+          // iOS cannot hide the body on the lock screen the way the
+          // Android private-visibility channel does, so the body stays
+          // generic there; naming the drug would disclose the diagnosis.
+          body: Platform.isIOS
+              ? 'Time for your scheduled medication'
+              : 'Time to take ${slot.name}',
+          at: _nextInstanceOf(slot.weekday, slot.time),
+        );
       }
     } catch (e) {
       _logger.warning('Unable to schedule medication reminders');

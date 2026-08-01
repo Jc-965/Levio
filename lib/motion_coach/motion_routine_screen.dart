@@ -128,7 +128,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       _handledCueSerial = _controller.cueSerial;
       if (_preferences.speechEnabled) unawaited(_cueSpeaker.speak(cue.text));
     }
-    if (_demonstrationExerciseId != _controller.currentStep.exerciseId) {
+    if (_demonstrationExerciseId != _demonstrationTargetId) {
       unawaited(_loadDemonstration());
     }
     if (_controller.phase == MotionRoutinePhase.complete) {
@@ -137,8 +137,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     setState(() {});
   }
 
+  /// During rest, the guide previews the next exercise so the person can
+  /// reposition for it; otherwise it mirrors the current step.
+  String get _demonstrationTargetId =>
+      (_controller.upcomingExercise ?? _controller.currentExercise).exerciseId;
+
   Future<void> _loadDemonstration() async {
-    final String exerciseId = _controller.currentStep.exerciseId;
+    final String exerciseId = _demonstrationTargetId;
     _demonstrationExerciseId = exerciseId;
     try {
       final MotionDemonstrationLoop loop = await widget.library
@@ -590,6 +595,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   Widget _buildLiveStatus(BuildContext context) {
     final colors = context.colors;
     if (_controller.phase == MotionRoutinePhase.rest) {
+      final MotionExerciseDefinition? upcoming = _controller.upcomingExercise;
       return ModernCard(
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(20),
@@ -610,6 +616,25 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                 color: colors.primary,
               ),
             ),
+            if (upcoming != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Next: ${upcoming.title}',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                upcoming.setupHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ],
         ),
       );

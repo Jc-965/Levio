@@ -163,6 +163,46 @@ void main() {
       expect(overall['assessed_steps'], 1);
     });
 
+    test('exposes the upcoming exercise during rest', () async {
+      final MotionReferenceLibrary library = MotionReferenceLibrary();
+      await library.templateFor('seated_bilateral_lateral_arm_raise');
+      await library.templateFor('seated_bilateral_forward_reach');
+      final MotionRoutineController controller = MotionRoutineController(
+        routine: RoutineDefinition(
+          routineId: 'two_step',
+          routineVersion: 1,
+          displayName: 'Two step',
+          steps: <RoutineStepDefinition>[
+            RoutineStepDefinition(
+              exerciseId: 'seated_bilateral_lateral_arm_raise',
+              targetRepetitions: 1,
+              maximumDurationS: 600,
+              restDurationS: 10,
+            ),
+            RoutineStepDefinition(
+              exerciseId: 'seated_bilateral_forward_reach',
+              targetRepetitions: 1,
+              maximumDurationS: 600,
+              restDurationS: 0,
+            ),
+          ],
+        ),
+        library: library,
+      );
+      addTearDown(controller.dispose);
+
+      controller.start();
+      expect(controller.upcomingExercise, isNull);
+      _driveRepetitions(controller, count: 1, startMs: 200);
+
+      expect(controller.phase, MotionRoutinePhase.rest);
+      expect(
+        controller.upcomingExercise?.exerciseId,
+        'seated_bilateral_forward_reach',
+      );
+      expect(controller.restRemainingSeconds, greaterThan(0));
+    });
+
     test('reset abandons the run without producing an evaluation', () async {
       final MotionRoutineController controller = await _controller(
         targetRepetitions: 4,

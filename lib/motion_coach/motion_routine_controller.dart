@@ -78,6 +78,18 @@ class MotionRoutineController extends ChangeNotifier {
   MotionExerciseDefinition get currentExercise =>
       motionExerciseById(currentStep.exerciseId);
 
+  /// The step after the current one, or null on the last step.
+  RoutineStepDefinition? get nextStep => _stepIndex + 1 < routine.steps.length
+      ? routine.steps[_stepIndex + 1]
+      : null;
+
+  /// During rest, the exercise the person should be setting up for.
+  MotionExerciseDefinition? get upcomingExercise {
+    if (_phase != MotionRoutinePhase.rest) return null;
+    final RoutineStepDefinition? step = nextStep;
+    return step == null ? null : motionExerciseById(step.exerciseId);
+  }
+
   int get completedRepetitions => _completedReps;
   int get targetRepetitions => currentStep.targetRepetitions;
   int get repSerial => _repSerial;

@@ -138,6 +138,18 @@ class MedicationReminderService {
     return days;
   }
 
+  /// Cancels every pending reminder; used on sign-out and account
+  /// deletion so a later device user never sees another person's
+  /// medication names.
+  Future<void> cancelAll() async {
+    if (!await _ensureInitialized()) return;
+    try {
+      await _plugin.cancelAll();
+    } catch (_) {
+      // Plugin unavailable in this environment.
+    }
+  }
+
   /// Rebuilds all pending reminders from the current schedule list. Each
   /// entry is `[name, details, daysText]`.
   Future<void> syncFromSchedule(List<List<String>> schedule) async {
@@ -172,6 +184,9 @@ class MedicationReminderService {
       channelDescription: 'Reminders for scheduled medications in ParkiWell',
       importance: Importance.high,
       priority: Priority.high,
+      // Keep medication names off the lock screen; naming a Parkinson's
+      // drug there discloses the diagnosis to anyone glancing at it.
+      visibility: NotificationVisibility.private,
     ),
     iOS: DarwinNotificationDetails(),
   );

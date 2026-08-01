@@ -338,6 +338,22 @@ $$;
 revoke all on function public.report_post(text, text) from public;
 grant execute on function public.report_post(text, text) to authenticated;
 
+create or replace function public.get_comment_counts(p_post_ids text[])
+returns table(post_id text, comment_count bigint)
+language sql
+security definer
+set search_path = public
+as $$
+  select c.post_id, count(*)::bigint
+  from public.community_comments c
+  where c.post_id = any(p_post_ids)
+    and c.is_flagged = false
+  group by c.post_id;
+$$;
+
+revoke all on function public.get_comment_counts(text[]) from public;
+grant execute on function public.get_comment_counts(text[]) to authenticated;
+
 create or replace function public.apply_health_mutations(p_mutations jsonb)
 returns jsonb
 language plpgsql
@@ -794,33 +810,48 @@ begin
     raise exception 'content length out of bounds';
   end if;
 
-  select count(*) into v_recent
-  from public.community_posts p
-  where p.user_id = new.user_id
-    and p.created_at > timezone('utc', now()) - interval '1 hour';
-  if tg_table_name = 'community_comments' then
-    select count(*) into v_recent
-    from public.community_comments c
-    where c.user_id = new.user_id
-      and c.created_at > timezone('utc', now()) - interval '1 hour';
-  end if;
-  if v_recent >= 30 then
-    raise exception 'rate limit exceeded';
+  if tg_op = 'INSERT' then
+    if tg_table_name = 'community_comments' then
+      select count(*) into v_recent
+      from public.community_comments c
+      where c.user_id = new.user_id
+        and c.created_at > timezone('utc', now()) - interval '1 hour';
+    else
+      select count(*) into v_recent
+      from public.community_posts p
+      where p.user_id = new.user_id
+        and p.created_at > timezone('utc', now()) - interval '1 hour';
+    end if;
+    if v_recent >= 30 then
+      raise exception 'rate limit exceeded';
+    end if;
   end if;
 
   return new;
 end;
 $$;
 
+-- Guard both insert and update: without the update trigger, benign content
+-- could be inserted and then rewritten to arbitrary text.
 drop trigger if exists trg_posts_content_guard on public.community_posts;
 create trigger trg_posts_content_guard
-before insert on public.community_posts
+before insert or update of content on public.community_posts
 for each row execute function public.enforce_community_content();
 
 drop trigger if exists trg_comments_content_guard on public.community_comments;
 create trigger trg_comments_content_guard
-before insert on public.community_comments
+before insert or update of content on public.community_comments
 for each row execute function public.enforce_community_content();
+
+-- Moderation state is not author-writable: without the column grants an
+-- author could clear is_hidden/is_flagged/reports on their own row and
+-- undo the community's reports.
+revoke update on public.community_posts from authenticated;
+grant update (content, category, likes, updated_at)
+  on public.community_posts to authenticated;
+revoke update on public.community_comments from authenticated;
+grant update (content, updated_at)
+  on public.community_comments to authenticated;
 
 create policy posts_update_own on public.community_posts
   for update to authenticated

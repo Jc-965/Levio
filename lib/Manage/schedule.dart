@@ -339,7 +339,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
           onPressed: () {
             HapticUtils.lightImpact();
-            Navigator.pushNamed(context, '/');
+            // Pop back instead of pushing a duplicate app shell.
+            Navigator.of(context).maybePop();
           },
         ),
         title: Text(

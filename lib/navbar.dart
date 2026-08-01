@@ -683,12 +683,16 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(navItems.length, (index) {
               final isSelected = currentIndex == index;
-              return _buildNavItem(
-                navItems[index],
-                isSelected,
-                colors,
-                _navItemKeys[index],
-                () => _onTabTapped(index),
+              // Expanded so five items share width instead of overflowing
+              // at large accessibility text scales.
+              return Expanded(
+                child: _buildNavItem(
+                  navItems[index],
+                  isSelected,
+                  colors,
+                  _navItemKeys[index],
+                  () => _onTabTapped(index),
+                ),
               );
             }),
           ),
@@ -830,7 +834,12 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
                                   : FontWeight.w400,
                               fontSize: 11,
                             ),
-                    child: Text(item.label),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
               ),

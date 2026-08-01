@@ -215,7 +215,12 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(c);
-                        Navigator.pushNamed(context, '/scheduleScreen');
+                        // Replace so the back stack does not grow on each
+                        // save-and-view round trip.
+                        Navigator.pushReplacementNamed(
+                          context,
+                          '/scheduleScreen',
+                        );
                       },
                       child: const Text('View Meds'),
                     ),

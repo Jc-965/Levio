@@ -24,7 +24,8 @@ class GamesScreen extends StatelessWidget {
           ),
           onPressed: () {
             HapticUtils.lightImpact();
-            Navigator.pushNamed(context, '/');
+            // Pop back instead of pushing a duplicate app shell.
+            Navigator.of(context).maybePop();
           },
         ),
         title: Text(

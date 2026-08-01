@@ -85,6 +85,32 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('primary navigation survives 2x text scale without overflow', (
+    tester,
+  ) async {
+    // Overflow errors surface as test failures, so pumping at the largest
+    // common accessibility scale pins layout resilience.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: ThemeMode.light,
+        routes: namedRoutes,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2.0)),
+          child: child!,
+        ),
+        home: const Navbar(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Home'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dark theme text meets contrast guideline on navbar', (
     tester,
   ) async {

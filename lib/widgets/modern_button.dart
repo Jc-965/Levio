@@ -60,9 +60,11 @@ class _ModernButtonState extends State<ModernButton> {
         : LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            // Blend toward the darker primary so the gradient's light end
+            // never dips below AA contrast with the button label.
             colors: [
               backgroundColor,
-              backgroundColor.blend(colors.primaryLight, 0.35),
+              backgroundColor.blend(colors.primaryDark, 0.25),
             ],
           );
 

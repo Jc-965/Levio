@@ -698,36 +698,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildThemeSwitch(AppColors colors) {
-    return GestureDetector(
-      onTap: () {
-        HapticUtils.lightImpact();
-        setState(() {
-          theme = !theme;
-          singleton.switchColorTheme(theme);
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 48,
-        height: 28,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: theme ? colors.primary : colors.border,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: theme ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
+    // A real Switch: 48dp target, toggle semantics, and screen reader
+    // state announcements, unlike the hand-rolled 28dp pill it replaces.
+    return Semantics(
+      label: 'Dark mode',
+      child: Switch(
+        value: theme,
+        activeThumbColor: colors.primary,
+        onChanged: (value) {
+          HapticUtils.lightImpact();
+          setState(() {
+            theme = value;
+            singleton.switchColorTheme(theme);
+          });
+        },
       ),
     );
   }

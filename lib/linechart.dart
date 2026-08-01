@@ -458,20 +458,26 @@ class LineChartSample1State extends State<LineChartSample1>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.show_chart_rounded,
-                          color: colors.chartLine,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Symptoms',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ],
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.show_chart_rounded,
+                            color: colors.chartLine,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              'Symptoms',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -567,10 +573,13 @@ class LineChartSample1State extends State<LineChartSample1>
                       size: 24,
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      'Weekly Medications',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: Text(
+                        'Weekly Medications',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],

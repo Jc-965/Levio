@@ -208,6 +208,29 @@ class _LogScreenState extends State<LogScreen> {
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () async {
+                        // Confirm first: a tremor tap must never destroy a
+                        // medical record irreversibly.
+                        final confirmed = await showDialog<bool>(
+                          context: sheetContext,
+                          builder: (c) => AlertDialog(
+                            title: const Text('Delete Log Entry'),
+                            content: const Text(
+                              'Delete this symptom log entry? This cannot '
+                              'be undone.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(c, false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(c, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
                         await singleton.deleteLog(index);
                         if (!mounted || !sheetContext.mounted) return;
                         Navigator.pop(sheetContext);

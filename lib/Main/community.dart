@@ -749,6 +749,26 @@ class _CommunityScreenState extends State<CommunityScreen>
       );
     }
 
+    // Never open arbitrary file paths delivered in server rows: only the
+    // device owner's own stored photo may be read from disk. Anything else
+    // renders as initials.
+    if (imagePath != singleton.image) {
+      return CircleAvatar(
+        radius: size / 2,
+        backgroundColor: backgroundColor,
+        child: Center(
+          child: Text(
+            fallbackLabel,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: size * 0.4,
+            ),
+          ),
+        ),
+      );
+    }
+
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: backgroundColor,

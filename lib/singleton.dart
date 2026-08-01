@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:parkiwell/services/app_logger.dart';
 import 'package:parkiwell/services/cloud_backend_service.dart';
@@ -2248,6 +2250,20 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Delete entire account and all associated data
+  /// Removes stored avatar files; prefs.clear() cannot touch the
+  /// filesystem, so sign-out and deletion clean these explicitly.
+  Future<void> _deleteStoredAvatarFiles() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final avatarDir = Directory('${directory.path}/avatars');
+      if (await avatarDir.exists()) {
+        await avatarDir.delete(recursive: true);
+      }
+    } catch (_) {
+      // Filesystem unavailable in this environment.
+    }
+  }
+
   Future<bool> deleteAccount() async {
     try {
       final uid = await _resolveUserId();
@@ -2299,6 +2315,8 @@ class Singleton extends ChangeNotifier {
       // for the deleted identity.
       await _cacheStore.destroyKey();
       await SecureSessionStorage().removePersistedSession();
+      await MedicationReminderService().cancelAll();
+      await _deleteStoredAvatarFiles();
       _lastSyncAt = null;
       _lastSyncStatus = 'Not synced yet';
       _hasHydratedLocalCache = false;
@@ -2345,6 +2363,11 @@ class Singleton extends ChangeNotifier {
       await prefs.remove(_localCacheKey);
       await prefs.remove(_syncStatusKey);
       await prefs.remove(_syncTimestampKey);
+      // Health traces beyond the cache: pending reminders would name the
+      // signed-out user's medications to the next device user, and the
+      // avatar file lives outside prefs entirely.
+      await MedicationReminderService().cancelAll();
+      await _deleteStoredAvatarFiles();
       _lastSyncAt = null;
       _lastSyncStatus = 'Not synced yet';
       _hasHydratedLocalCache = false;

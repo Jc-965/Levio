@@ -41,8 +41,9 @@ class AppTheme {
     info: Color(0xFF3B82F6),
     chartLine: Color(0xFF2A6CF7),
     chartBar: Color(0xFF0FA5A2),
-    divider: Color(0xFFD9E2F3),
-    border: Color(0xFFC7D6EE),
+    // WCAG 1.4.11 non-text contrast: >=3:1 against white surfaces
+    divider: Color(0xFF7C8FA9),
+    border: Color(0xFF7A8DAA),
     shadow: Color(0x1F0F172A),
     cardBackground: Color(0xFFFFFFFF),
     navBackground: Color(0xFFFFFFFF),
@@ -50,7 +51,7 @@ class AppTheme {
     navSelected: Color(0xFF1E5AD6),
     navUnselected: Color(0xFF556478),
     inputBackground: Color(0xFFFFFFFF),
-    inputBorder: Color(0xFFC7D6EE),
+    inputBorder: Color(0xFF7A8DAA),
     inputFocusBorder: Color(0xFF2A6CF7),
   );
 
@@ -68,22 +69,23 @@ class AppTheme {
     textPrimary: Color(0xFFF8FAFC),
     textSecondary: Color(0xFFCBD5E1),
     textTertiary: Color(0xFF94A3B8),
-    textOnPrimary: Color(0xFFFFFFFF),
+    // Deep navy on the light dark-mode primary: 8.6:1 (white was 2.49:1)
+    textOnPrimary: Color(0xFF0B1B36),
     success: Color(0xFF34D399),
     warning: Color(0xFFFBBF24),
     error: Color(0xFFF87171),
     info: Color(0xFF60A5FA),
     chartLine: Color(0xFF6FA4FF),
     chartBar: Color(0xFF2ED9D1),
-    divider: Color(0xFF24344F),
-    border: Color(0xFF314766),
+    divider: Color(0xFF5B7396),
+    border: Color(0xFF566D91),
     shadow: Color(0x66000000),
     cardBackground: Color(0xFF111A2C),
     navBackground: Color(0xFF0F1727),
     navSelected: Color(0xFF6FA4FF),
     navUnselected: Color(0xFF8FA2C0),
     inputBackground: Color(0xFF17243A),
-    inputBorder: Color(0xFF314766),
+    inputBorder: Color(0xFF566D91),
     inputFocusBorder: Color(0xFF6FA4FF),
   );
 

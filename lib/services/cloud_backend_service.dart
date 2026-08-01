@@ -1334,6 +1334,35 @@ class CloudBackendService {
   ) async {
     if (!isEnabled || postIds.isEmpty) return <String, int>{};
 
+    // Aggregate server-side: transferring every comment row just to count
+    // them grows with total community activity.
+    try {
+      final result = await _withRetry<List<dynamic>>(
+        'get community comment counts via rpc',
+        () async {
+          return await _client!.rpc(
+                'get_comment_counts',
+                params: {'p_post_ids': postIds},
+              )
+              as List<dynamic>;
+        },
+      );
+      final counts = <String, int>{};
+      for (final row in result) {
+        final postId = row['post_id']?.toString() ?? '';
+        if (postId.isEmpty) continue;
+        counts[postId] = (row['comment_count'] as num?)?.toInt() ?? 0;
+      }
+      return counts;
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Comment count RPC unavailable, falling back to row scan',
+        e,
+        stackTrace,
+      );
+    }
+
+    // Compatibility fallback for schemas without the RPC.
     try {
       final result = await _withRetry<List<dynamic>>(
         'get community comment counts',

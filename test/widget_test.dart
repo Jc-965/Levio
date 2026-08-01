@@ -470,6 +470,9 @@ void main() {
     expect(singleton.email, equals('alex@example.com'));
     expect(singleton.log.length, equals(1));
     expect(singleton.schedule.length, equals(1));
+    // Restored entities must be journaled for upload, or the next cloud
+    // load would clear local state and silently destroy the restore.
+    expect(singleton.pendingMutationCount, greaterThanOrEqualTo(2));
   });
 
   testWidgets('Manage and recovery screens expose core task flows', (

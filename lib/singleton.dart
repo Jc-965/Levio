@@ -1951,13 +1951,80 @@ class Singleton extends ChangeNotifier {
 
       _applyLocalCacheSnapshot(snapshot);
       _hasHydratedLocalCache = true;
+      // Restored entities must enter the mutation journal, or the next
+      // successful cloud load would clear local state, repopulate it from
+      // the server, and silently destroy everything just restored.
+      await _enqueueRestoredSnapshotMutations();
       await _persistLocalCache();
       await _markSyncPending('Backup restored locally');
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
       _logger.error('Backup import failed', e, stackTrace);
       return false;
+    }
+  }
+
+  Future<void> _enqueueRestoredSnapshotMutations() async {
+    for (var i = 0; i < log.length; i += 1) {
+      if (log[i].length < 3) continue;
+      if (i >= logIDs.length || logIDs[i].trim().isEmpty) {
+        while (logIDs.length <= i) {
+          logIDs.add('');
+        }
+        logIDs[i] = _uuid.v4();
+      }
+      await _queueHealthMutation(
+        entityType: SyncEntityType.log,
+        entityId: logIDs[i],
+        operation: SyncMutationOperation.upsert,
+        payload: <String, dynamic>{
+          'time': log[i][0],
+          'symptom': log[i][1],
+          'severity': log[i][2],
+        },
+      );
+    }
+    for (var i = 0; i < schedule.length; i += 1) {
+      if (schedule[i].length < 3) continue;
+      if (i >= scheduleIDs.length || scheduleIDs[i].trim().isEmpty) {
+        while (scheduleIDs.length <= i) {
+          scheduleIDs.add('');
+        }
+        scheduleIDs[i] = _uuid.v4();
+      }
+      await _queueHealthMutation(
+        entityType: SyncEntityType.schedule,
+        entityId: scheduleIDs[i],
+        operation: SyncMutationOperation.upsert,
+        payload: <String, dynamic>{
+          'name': schedule[i][0],
+          'details': schedule[i][1],
+          'days': schedule[i][2],
+          'times': schedule[i].length > 3 ? schedule[i][3] : '',
+        },
+      );
+    }
+    for (final session in recoverySessions) {
+      final id = session['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      await _queueHealthMutation(
+        entityType: SyncEntityType.recoverySession,
+        entityId: id,
+        operation: SyncMutationOperation.upsert,
+        payload: Map<String, dynamic>.from(session),
+      );
+    }
+    for (final event in medicationEvents) {
+      final id = event['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      await _queueHealthMutation(
+        entityType: SyncEntityType.medicationEvent,
+        entityId: id,
+        operation: SyncMutationOperation.upsert,
+        payload: Map<String, dynamic>.from(event),
+      );
     }
   }
 
@@ -2627,6 +2694,10 @@ class Singleton extends ChangeNotifier {
       notifyListenersSafe();
       return communityPosts;
     } catch (e, stackTrace) {
+      // Still return the cache so the feed renders, but record the
+      // failure: rendering stale data as fresh with no signal hides
+      // being offline from the user.
+      _lastCommunityError = 'Showing saved posts; could not refresh.';
       _logger.error('Error loading community posts', e, stackTrace);
       return communityPosts;
     }

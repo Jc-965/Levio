@@ -161,6 +161,12 @@ class _CommunityScreenState extends State<CommunityScreen>
         _postVersion++;
         _isLoadingFeed = false;
       });
+      // loadCommunityPosts reports refresh failures through the error
+      // mailbox instead of throwing, so the stale-feed case surfaces here.
+      final refreshError = singleton.consumeLastCommunityError();
+      if (refreshError != null && posts.isNotEmpty) {
+        _showFeedSnack(refreshError);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoadingFeed = false);
@@ -513,34 +519,39 @@ class _CommunityScreenState extends State<CommunityScreen>
                     itemBuilder: (context, index) {
                       final category = _postCategories[index];
                       final isSelected = selectedCategory == category;
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          HapticUtils.selectionClick();
-                          setModalState(() => selectedCategory = category);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? colors.primary
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
+                      return Semantics(
+                        button: true,
+                        selected: isSelected,
+                        label: '$category category',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            HapticUtils.selectionClick();
+                            setModalState(() => selectedCategory = category);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
                               color: isSelected
                                   ? colors.primary
-                                  : colors.border,
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isSelected
+                                    ? colors.primary
+                                    : colors.border,
+                              ),
                             ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            category,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : colors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
+                            alignment: Alignment.center,
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : colors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
@@ -1037,34 +1048,40 @@ class _CommunityScreenState extends State<CommunityScreen>
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final selected = _feedFilterCategory == category;
-                return GestureDetector(
-                  onTap: () {
-                    HapticUtils.selectionClick();
-                    setState(() => _feedFilterCategory = category);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? colors.primary
-                          : colors.surfaceVariant.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
+                return Semantics(
+                  button: true,
+                  selected: selected,
+                  label: 'Filter by $category',
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticUtils.selectionClick();
+                      setState(() => _feedFilterCategory = category);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
                         color: selected
                             ? colors.primary
-                            : colors.border.withValues(alpha: 0.7),
+                            : colors.surfaceVariant.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? colors.primary
+                              : colors.border.withValues(alpha: 0.7),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      category,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: selected
-                            ? colors.textOnPrimary
-                            : colors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                      child: Text(
+                        category,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: selected
+                                  ? colors.textOnPrimary
+                                  : colors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                       ),
                     ),
                   ),

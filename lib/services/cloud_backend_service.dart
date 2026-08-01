@@ -876,8 +876,11 @@ class CloudBackendService {
       }
       return <String>{};
     } catch (e, stackTrace) {
+      // Rethrow so the replay loop stops: an empty ack means "the server
+      // rejected this batch" (continue to the next batch), while a
+      // transport failure means every later batch would fail too.
       _logger.error('Cloud mutation batch failed', e, stackTrace);
-      return <String>{};
+      rethrow;
     }
   }
 

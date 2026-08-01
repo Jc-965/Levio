@@ -19,6 +19,7 @@ import 'motion_routine_catalog.dart';
 import 'motion_routine_controller.dart';
 import 'motion_routine_results_screen.dart';
 import 'motion_session_history.dart';
+import 'motion_skeleton_overlay.dart';
 
 enum _RoutineScreenPhase { initializing, ready, running, suspended, error }
 
@@ -440,7 +441,18 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                         child: SizedBox(
                           width: 260 / _driver!.aspectRatio,
                           height: 260,
-                          child: _driver!.buildPreview(),
+                          // The overlay shares the preview's exact coordinate
+                          // box so normalized landmarks map straight onto it.
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              _driver!.buildPreview(),
+                              MotionSkeletonOverlay(
+                                frame: _controller.skeleton,
+                                mirrored: true,
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : const SizedBox.expand(),

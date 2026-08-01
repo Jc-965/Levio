@@ -241,6 +241,7 @@ class MotionSessionStep {
     required this.tempoScore,
     required this.smoothnessScore,
     required this.symmetryScore,
+    this.repetitions = const <MotionSessionRep>[],
   });
 
   factory MotionSessionStep.fromEvaluation(Map<String, Object?> step) {
@@ -255,21 +256,35 @@ class MotionSessionStep {
       tempoScore: (score?['tempo'] as num?)?.toDouble(),
       smoothnessScore: (score?['smoothness'] as num?)?.toDouble(),
       symmetryScore: (score?['symmetry'] as num?)?.toDouble(),
+      repetitions: (step['repetitions'] as List<Object?>? ?? const <Object?>[])
+          .map(
+            (Object? value) =>
+                MotionSessionRep.fromEvaluation(value! as Map<String, Object?>),
+          )
+          .toList(growable: false),
     );
   }
 
-  factory MotionSessionStep.fromJson(Map<String, Object?> json) =>
-      MotionSessionStep(
-        exerciseId: json['exercise_id']! as String,
-        assessed: json['assessed']! as bool,
-        completedRepetitions: (json['completed_repetitions']! as num).toInt(),
-        targetRepetitions: (json['target_repetitions']! as num).toInt(),
-        overallScore: (json['overall_score'] as num?)?.toDouble(),
-        rangeScore: (json['range_score'] as num?)?.toDouble(),
-        tempoScore: (json['tempo_score'] as num?)?.toDouble(),
-        smoothnessScore: (json['smoothness_score'] as num?)?.toDouble(),
-        symmetryScore: (json['symmetry_score'] as num?)?.toDouble(),
-      );
+  factory MotionSessionStep.fromJson(
+    Map<String, Object?> json,
+  ) => MotionSessionStep(
+    exerciseId: json['exercise_id']! as String,
+    assessed: json['assessed']! as bool,
+    completedRepetitions: (json['completed_repetitions']! as num).toInt(),
+    targetRepetitions: (json['target_repetitions']! as num).toInt(),
+    overallScore: (json['overall_score'] as num?)?.toDouble(),
+    rangeScore: (json['range_score'] as num?)?.toDouble(),
+    tempoScore: (json['tempo_score'] as num?)?.toDouble(),
+    smoothnessScore: (json['smoothness_score'] as num?)?.toDouble(),
+    symmetryScore: (json['symmetry_score'] as num?)?.toDouble(),
+    // Absent in records written before per-rep evidence was stored.
+    repetitions: (json['repetitions'] as List<Object?>? ?? const <Object?>[])
+        .map(
+          (Object? value) =>
+              MotionSessionRep.fromJson(value! as Map<String, Object?>),
+        )
+        .toList(growable: false),
+  );
 
   final String exerciseId;
   final bool assessed;
@@ -281,6 +296,22 @@ class MotionSessionStep {
   final double? smoothnessScore;
   final double? symmetryScore;
 
+  /// Per-repetition engine evidence, oldest first. This is what makes the
+  /// post-session report evidence-based rather than a bare score: observed
+  /// movement size against the reference and whether amplitude held up
+  /// across the set are only visible at this granularity.
+  final List<MotionSessionRep> repetitions;
+
+  /// Last complete repetition's amplitude as a fraction of the first's, or
+  /// null with fewer than three reps (mirroring the engine's own rule that
+  /// a sequence needs at least three points to be worth reading).
+  double? get amplitudeLastFirstRatio {
+    if (repetitions.length < 3) return null;
+    final double first = repetitions.first.romPctOfReference;
+    if (first <= 0) return null;
+    return repetitions.last.romPctOfReference / first;
+  }
+
   Map<String, Object?> toJson() => <String, Object?>{
     'exercise_id': exerciseId,
     'assessed': assessed,
@@ -291,5 +322,60 @@ class MotionSessionStep {
     'tempo_score': tempoScore,
     'smoothness_score': smoothnessScore,
     'symmetry_score': symmetryScore,
+    'repetitions': <Object?>[
+      for (final MotionSessionRep rep in repetitions) rep.toJson(),
+    ],
+  };
+}
+
+/// One completed repetition's engine measurements.
+class MotionSessionRep {
+  const MotionSessionRep({
+    required this.index,
+    required this.side,
+    required this.romDeg,
+    required this.romPctOfReference,
+    required this.tempoSeconds,
+    required this.overallScore,
+  });
+
+  factory MotionSessionRep.fromEvaluation(Map<String, Object?> rep) =>
+      MotionSessionRep(
+        index: (rep['index']! as num).toInt(),
+        side: rep['side']! as String,
+        romDeg: (rep['rom_deg']! as num).toDouble(),
+        romPctOfReference: (rep['rom_pct_of_reference']! as num).toDouble(),
+        tempoSeconds: (rep['tempo_s']! as num).toDouble(),
+        overallScore:
+            ((rep['score']! as Map<String, Object?>)['overall']! as num)
+                .toDouble(),
+      );
+
+  factory MotionSessionRep.fromJson(Map<String, Object?> json) =>
+      MotionSessionRep(
+        index: (json['index']! as num).toInt(),
+        side: json['side']! as String,
+        romDeg: (json['rom_deg']! as num).toDouble(),
+        romPctOfReference: (json['rom_pct']! as num).toDouble(),
+        tempoSeconds: (json['tempo_s']! as num).toDouble(),
+        overallScore: (json['score']! as num).toDouble(),
+      );
+
+  final int index;
+
+  /// 'both' for bilateral exercises, 'left'/'right' for alternating ones.
+  final String side;
+  final double romDeg;
+  final double romPctOfReference;
+  final double tempoSeconds;
+  final double overallScore;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'index': index,
+    'side': side,
+    'rom_deg': romDeg,
+    'rom_pct': romPctOfReference,
+    'tempo_s': tempoSeconds,
+    'score': overallScore,
   };
 }

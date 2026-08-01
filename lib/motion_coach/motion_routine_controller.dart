@@ -5,6 +5,7 @@ import 'motion_analysis.dart';
 import 'motion_coach_session.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_reference_library.dart';
+import 'motion_skeleton_overlay.dart';
 
 enum MotionRoutinePhase {
   /// Waiting for framing to settle before the routine may be started.
@@ -37,6 +38,12 @@ class MotionRoutineController extends ChangeNotifier {
   final RoutineDefinition routine;
   final MotionReferenceLibrary _library;
   final String engineVersion;
+
+  /// Latest detected pose for the preview overlay. A separate listenable so
+  /// per-frame pose updates repaint only the overlay canvas; this
+  /// controller's own notifications stay gated on meaningful state changes.
+  final ValueNotifier<MotionSkeletonFrame?> skeleton =
+      ValueNotifier<MotionSkeletonFrame?>(null);
 
   RoutineSession? _session;
   bool _disposed = false;
@@ -126,6 +133,7 @@ class MotionRoutineController extends ChangeNotifier {
   void handleSample(MotionPoseSample sample) {
     if (_disposed) return;
     _lastSampleTimestampMs = sample.detection.timestampMs;
+    skeleton.value = MotionSkeletonFrame.fromDetection(sample.detection);
     final Object before = _observableState();
     _updateFraming(sample);
 
@@ -162,6 +170,7 @@ class MotionRoutineController extends ChangeNotifier {
 
   /// Abandon the run without an evaluation, e.g. the user backing out.
   void reset() {
+    if (!_disposed) skeleton.value = null;
     _session = null;
     _phase = MotionRoutinePhase.framing;
     _framingStatus = MotionFramingStatus.lookingForPerson;
@@ -245,6 +254,7 @@ class MotionRoutineController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    skeleton.dispose();
     super.dispose();
   }
 }

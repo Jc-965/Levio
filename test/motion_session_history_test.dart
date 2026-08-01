@@ -35,6 +35,34 @@ void main() {
       expect(entry.steps.last.overallScore, isNull);
     });
 
+    test('round-trips per-repetition evidence', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.record(
+        _evaluation(score: 82),
+        completedAt: DateTime.utc(2026, 7, 30),
+      );
+
+      final MotionSessionStep step =
+          (await MotionSessionHistory().load()).single.steps.first;
+
+      expect(step.repetitions, hasLength(3));
+      expect(step.repetitions.first.romPctOfReference, 96);
+      expect(step.repetitions.last.romPctOfReference, 72);
+      expect(step.repetitions.first.side, 'both');
+      expect(step.repetitions.first.tempoSeconds, 3.1);
+      expect(step.repetitions.first.overallScore, 84);
+      expect(step.amplitudeLastFirstRatio, closeTo(0.75, 1e-9));
+      // The unassessed step has no reps and therefore no sequence reading.
+      expect(
+        (await MotionSessionHistory().load())
+            .single
+            .steps
+            .last
+            .amplitudeLastFirstRatio,
+        isNull,
+      );
+    });
+
     test('keeps the newest sessions first', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(
@@ -198,7 +226,30 @@ Map<String, Object?> _evaluation({
         'smoothness': 100.0,
         'symmetry': 94.0,
       },
-      'repetitions': <Object?>[],
+      'repetitions': <Object?>[
+        for (final (int index, double rom) in <(int, double)>[
+          (1, 96.0),
+          (2, 88.0),
+          (3, 72.0),
+        ])
+          <String, Object?>{
+            'index': index,
+            'side': 'both',
+            'rom_deg': rom * 0.7,
+            'rom_pct_of_reference': rom,
+            'tempo_s': 3.1,
+            'extra_reversals': 0,
+            'left_rom_deg': rom * 0.7,
+            'right_rom_deg': rom * 0.68,
+            'score': <String, Object?>{
+              'overall': 84.0,
+              'range': 80.0,
+              'tempo': 95.0,
+              'smoothness': 100.0,
+              'symmetry': 92.0,
+            },
+          },
+      ],
       'cues': <Object?>[],
     },
     <String, Object?>{

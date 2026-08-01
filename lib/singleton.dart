@@ -42,6 +42,7 @@ class Singleton extends ChangeNotifier {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   static const String _localCacheKey = 'parkiwell_local_cache_v1';
+  static const String _communityCacheKey = 'parkiwell_community_cache_v1';
   static const String _syncStatusKey = 'parkiwell_last_sync_status_v1';
   static const String _syncTimestampKey = 'parkiwell_last_sync_time_v1';
 
@@ -293,7 +294,7 @@ class Singleton extends ChangeNotifier {
     _logger.info('Singleton initialized');
   }
 
-  void setFirstTime(b) {
+  void setFirstTime(bool b) {
     firstTime = b;
     _persistLocalCache();
     notifyListenersSafe();
@@ -1039,8 +1040,8 @@ class Singleton extends ChangeNotifier {
     return candidate;
   }
 
-  void setCurrentUrl(url) {
-    final normalized = normalizeYouTubeVideoId(url?.toString() ?? '');
+  void setCurrentUrl(String? url) {
+    final normalized = normalizeYouTubeVideoId(url ?? '');
     final next = normalized ?? '';
     if (next == currentURL) return;
     currentURL = next;
@@ -1119,6 +1120,13 @@ class Singleton extends ChangeNotifier {
       'medication_events': medicationEvents
           .map((event) => Map<String, dynamic>.from(event))
           .toList(),
+    };
+  }
+
+  /// Community content is cached under its own key so a symptom edit never
+  /// pays to re-serialize and re-encrypt the whole feed.
+  Map<String, dynamic> _buildCommunityCacheSnapshot() {
+    return <String, dynamic>{
       'community_posts': List<Map<String, dynamic>>.from(
         communityPosts.map((post) => Map<String, dynamic>.from(post)),
       ),
@@ -1131,6 +1139,33 @@ class Singleton extends ChangeNotifier {
         ),
       ),
     };
+  }
+
+  Future<void> _persistCommunityCache() async {
+    try {
+      final prefs = await _prefs;
+      final sealed = await _cacheStore.seal(
+        jsonEncode(_buildCommunityCacheSnapshot()),
+      );
+      await prefs.setString(_communityCacheKey, sealed);
+    } catch (e, stackTrace) {
+      _logger.warning('Unable to persist community cache', e, stackTrace);
+    }
+  }
+
+  Future<void> _hydrateCommunityCache() async {
+    try {
+      final prefs = await _prefs;
+      final raw = prefs.getString(_communityCacheKey);
+      if (raw == null || raw.isEmpty) return;
+      final opened = await _cacheStore.open(raw);
+      if (opened == null) return;
+      final decoded = jsonDecode(opened);
+      if (decoded is! Map<String, dynamic>) return;
+      _applyCommunitySnapshot(decoded);
+    } catch (e, stackTrace) {
+      _logger.warning('Unable to hydrate community cache', e, stackTrace);
+    }
   }
 
   void _applyLocalCacheSnapshot(Map<String, dynamic> snapshot) {
@@ -1243,6 +1278,17 @@ class Singleton extends ChangeNotifier {
             .map((event) => Map<String, dynamic>.from(event)),
       );
 
+    // Legacy snapshots carried community content inline; newer builds
+    // store it under its own key.
+    if (snapshot.containsKey('community_posts')) {
+      _applyCommunitySnapshot(snapshot);
+    }
+
+    calcMeds();
+    _invalidateAnalytics();
+  }
+
+  void _applyCommunitySnapshot(Map<String, dynamic> snapshot) {
     communityPosts
       ..clear()
       ..addAll(
@@ -1266,8 +1312,6 @@ class Singleton extends ChangeNotifier {
     }
 
     postNum = communityPosts.length;
-    calcMeds();
-    _invalidateAnalytics();
   }
 
   Future<void> _hydrateFromLocalCache() async {
@@ -1281,6 +1325,7 @@ class Singleton extends ChangeNotifier {
       final decoded = jsonDecode(opened);
       if (decoded is! Map<String, dynamic>) return;
       _applyLocalCacheSnapshot(decoded);
+      await _hydrateCommunityCache();
       _hasHydratedLocalCache = true;
       _logger.info('Local cache hydrated');
       if (wasPlaintext && !_cacheStore.keystoreUnavailable) {
@@ -2485,7 +2530,7 @@ class Singleton extends ChangeNotifier {
         ..clear()
         ..addAll(normalizedPosts);
       postNum = communityPosts.length;
-      await _persistLocalCache();
+      await _persistCommunityCache();
       notifyListenersSafe();
       return communityPosts;
     } catch (e, stackTrace) {
@@ -2572,7 +2617,7 @@ class Singleton extends ChangeNotifier {
         'updated_at': createdAt,
       });
       postNum = communityPosts.length;
-      await _persistLocalCache();
+      await _persistCommunityCache();
       await _markSyncSuccess('Community post synced');
       notifyListenersSafe();
       return true;
@@ -2639,7 +2684,7 @@ class Singleton extends ChangeNotifier {
         communityPosts[index]['updated_at'] = DateTime.now().toIso8601String();
       }
 
-      await _persistLocalCache();
+      await _persistCommunityCache();
       await _markSyncSuccess('Community post update synced');
       notifyListenersSafe();
       return true;
@@ -2667,7 +2712,7 @@ class Singleton extends ChangeNotifier {
       communityPosts.removeWhere((post) => post['id'] == postId);
       communityComments.remove(postId);
       postNum = communityPosts.length;
-      await _persistLocalCache();
+      await _persistCommunityCache();
       await _markSyncSuccess('Community post deletion synced');
       notifyListenersSafe();
       return true;
@@ -2714,7 +2759,7 @@ class Singleton extends ChangeNotifier {
         if (likeResult) communityPosts[idx]['likes'] = likes + 1;
         communityPosts[idx]['liked_by_me'] = true;
       }
-      await _persistLocalCache();
+      await _persistCommunityCache();
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2862,7 +2907,7 @@ class Singleton extends ChangeNotifier {
         if (result && likes > 0) communityPosts[idx]['likes'] = likes - 1;
         communityPosts[idx]['liked_by_me'] = false;
       }
-      await _persistLocalCache();
+      await _persistCommunityCache();
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2882,7 +2927,7 @@ class Singleton extends ChangeNotifier {
 
       final cloudComments = await _cloud.getCommunityComments(postId);
       communityComments[postId] = cloudComments;
-      await _persistLocalCache();
+      await _persistCommunityCache();
       notifyListenersSafe();
       return cloudComments;
     } catch (e, stackTrace) {
@@ -2972,7 +3017,7 @@ class Singleton extends ChangeNotifier {
         communityPosts[postIdx]['comment_count'] = current + 1;
       }
 
-      await _persistLocalCache();
+      await _persistCommunityCache();
       await _markSyncSuccess('Community comment synced');
       notifyListenersSafe();
       return true;

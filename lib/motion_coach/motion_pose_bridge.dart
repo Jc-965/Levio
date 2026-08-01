@@ -9,9 +9,9 @@ import 'package:path_provider/path_provider.dart';
 const String motionPoseModelName = 'pose_landmarker_lite';
 const String motionPoseModelVersion =
     'sha256:59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a';
-const String _modelAsset =
-    'packages/flutter_mediapipe_vision_platform_interface/'
-    'assets/models/pose_landmarker_lite.task';
+// Vendored into app assets: depending on another package's private asset
+// layout turned every dependency bump into a runtime integrity failure.
+const String _modelAsset = 'assets/motion/models/pose_landmarker_lite.task';
 const String _modelSha256 =
     '59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a';
 

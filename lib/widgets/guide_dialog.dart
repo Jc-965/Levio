@@ -17,7 +17,7 @@ Future<void> showGuideDialog(
     barrierDismissible: false,
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 240),
-    pageBuilder: (ctx, _, __) {
+    pageBuilder: (ctx, _, _) {
       final colors = ctx.colors;
       return GestureDetector(
         onTap: () => Navigator.of(ctx).pop(),

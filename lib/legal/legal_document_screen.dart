@@ -56,7 +56,7 @@ class LegalDocumentScreen extends StatelessWidget {
               ],
             );
           },
-          separatorBuilder: (_, __) => const SizedBox(height: 18),
+          separatorBuilder: (_, _) => const SizedBox(height: 18),
           itemCount: sections.length,
         ),
       ),

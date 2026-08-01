@@ -29,10 +29,7 @@ class StageTransitionSwitcher extends StatelessWidget {
       duration: reduceMotion ? Duration.zero : duration,
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.topCenter,
-        children: <Widget>[
-          ...previousChildren,
-          if (currentChild != null) currentChild,
-        ],
+        children: <Widget>[...previousChildren, ?currentChild],
       ),
       transitionBuilder: (stage, animation) {
         final incoming = stage.key == child.key;

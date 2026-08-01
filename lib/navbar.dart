@@ -479,7 +479,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
           fit: BoxFit.cover,
           width: 36,
           height: 36,
-          errorBuilder: (_, __, ___) => _buildInitialsAvatar(colors),
+          errorBuilder: (_, _, _) => _buildInitialsAvatar(colors),
         );
       }
       return Image.file(
@@ -487,7 +487,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         fit: BoxFit.cover,
         width: 36,
         height: 36,
-        errorBuilder: (_, __, ___) => _buildInitialsAvatar(colors),
+        errorBuilder: (_, _, _) => _buildInitialsAvatar(colors),
       );
     }
     return _buildInitialsAvatar(colors);
@@ -572,10 +572,7 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
                     layoutBuilder: (currentChild, previousChildren) {
                       return Stack(
                         alignment: Alignment.centerLeft,
-                        children: <Widget>[
-                          ...previousChildren,
-                          if (currentChild != null) currentChild,
-                        ],
+                        children: <Widget>[...previousChildren, ?currentChild],
                       );
                     },
                     transitionBuilder: (child, animation) {

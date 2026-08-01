@@ -451,7 +451,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _postCategories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    separatorBuilder: (_, _) => const SizedBox(width: 6),
                     itemBuilder: (context, index) {
                       final category = _postCategories[index];
                       final isSelected = selectedCategory == category;
@@ -734,7 +734,7 @@ class _CommunityScreenState extends State<CommunityScreen>
             width: size,
             height: size,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Center(
+            errorBuilder: (_, _, _) => Center(
               child: Text(
                 fallbackLabel,
                 style: TextStyle(
@@ -778,7 +778,7 @@ class _CommunityScreenState extends State<CommunityScreen>
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Center(
+          errorBuilder: (_, _, _) => Center(
             child: Text(
               fallbackLabel,
               style: TextStyle(
@@ -828,7 +828,7 @@ class _CommunityScreenState extends State<CommunityScreen>
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 48),
               sliver: SliverList.separated(
                 itemCount: visiblePosts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
                 itemBuilder: (context, index) =>
                     _buildPostCard(visiblePosts[index], colors),
               ),
@@ -973,7 +973,7 @@ class _CommunityScreenState extends State<CommunityScreen>
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final selected = _feedFilterCategory == category;
@@ -1502,7 +1502,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: post.comments.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 16),
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
                         itemBuilder: (context, index) {
                           final comment = post.comments[index];
                           return Row(

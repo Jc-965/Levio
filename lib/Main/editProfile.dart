@@ -1706,7 +1706,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? Image.file(
                     File(_imagePath),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildAvatarFallback(colors),
+                    errorBuilder: (_, _, _) => _buildAvatarFallback(colors),
                   )
                 : _buildAvatarFallback(colors),
           ),

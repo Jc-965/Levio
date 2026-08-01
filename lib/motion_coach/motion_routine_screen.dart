@@ -290,6 +290,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       );
 
   Future<void> _confirmExit() async {
+    // Completion navigation is already in flight; a concurrent pop here
+    // would race the pushReplacement onto a route being removed.
+    if (_finishing) return;
     if (_phase != _RoutineScreenPhase.running) {
       if (mounted) Navigator.of(context).pop();
       return;
@@ -321,7 +324,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   Widget build(BuildContext context) {
     final colors = context.colors;
     return PopScope(
-      canPop: _phase != _RoutineScreenPhase.running,
+      canPop: _phase != _RoutineScreenPhase.running && !_finishing,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) unawaited(_confirmExit());
       },

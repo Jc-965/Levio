@@ -200,8 +200,24 @@ class OfflineSyncEngine {
       clientUpdatedAt: (clientUpdatedAt ?? DateTime.now()).toUtc(),
       sequence: _nextSequence++,
     );
+    final SyncMutation? previous = _pendingByEntity[mutation.entityKey];
     _merge(mutation);
-    await _persist();
+    try {
+      await _persist();
+    } catch (error) {
+      // Undo the merge so the in-memory queue never holds a mutation the
+      // journal write rejected; otherwise a later unrelated persist would
+      // resurrect it and replay it to the backend even though the caller
+      // rolled its own state back.
+      if (identical(_pendingByEntity[mutation.entityKey], mutation)) {
+        if (previous == null) {
+          _pendingByEntity.remove(mutation.entityKey);
+        } else {
+          _pendingByEntity[mutation.entityKey] = previous;
+        }
+      }
+      rethrow;
+    }
     return mutation;
   }
 

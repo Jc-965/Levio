@@ -412,9 +412,17 @@ class Singleton extends ChangeNotifier {
 
   Map<String, dynamic>? _normalizedRecoverySession(Map entry) {
     final type = _normalizeRecoveryType(entry['type']?.toString());
-    final videoId = normalizeYouTubeVideoId(
-      (entry['video_id'] ?? entry['videoId'] ?? '').toString(),
-    );
+    final rawVideoId = (entry['video_id'] ?? entry['videoId'] ?? '')
+        .toString()
+        .trim();
+    // Motion coach sessions live in their own id namespace and must survive
+    // cache reloads, mutation replays, and cloud restores; only YouTube-style
+    // ids go through YouTube normalization.
+    final videoId =
+        rawVideoId.length > motionSessionIdPrefix.length &&
+            rawVideoId.startsWith(motionSessionIdPrefix)
+        ? rawVideoId
+        : normalizeYouTubeVideoId(rawVideoId);
     final completedAt =
         _parseRecoverySessionDate(entry['completed_at']) ?? DateTime.now();
 

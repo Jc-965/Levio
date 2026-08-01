@@ -7,6 +7,7 @@ import 'package:parkiwell/services/app_logger.dart';
 import 'package:parkiwell/services/cloud_backend_service.dart';
 import 'package:parkiwell/services/content_filter.dart';
 import 'package:parkiwell/services/encrypted_cache_store.dart';
+import 'package:parkiwell/services/encrypted_mutation_journal_store.dart';
 import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
@@ -50,7 +51,10 @@ class Singleton extends ChangeNotifier {
 
   Singleton._internal() {
     _offlineSyncEngine = OfflineSyncEngine(
-      SharedPreferencesMutationJournalStore(_prefs),
+      EncryptedMutationJournalStore(
+        SharedPreferencesMutationJournalStore(_prefs),
+        _cacheStore,
+      ),
     );
   }
 

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/parkiwell_mark.dart';
@@ -217,7 +216,8 @@ class _SplashScreenState extends State<SplashScreen>
                                   children: [
                                     Text(
                                       'ParkiWell',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: TextStyle(
+                                        fontFamily: 'PlusJakartaSans',
                                         fontSize: 44,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: -1.3,
@@ -228,7 +228,8 @@ class _SplashScreenState extends State<SplashScreen>
                                     Text(
                                       'Personalized Parkinson\'s care,\norganized every day.',
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: TextStyle(
+                                        fontFamily: 'PlusJakartaSans',
                                         fontSize: 16,
                                         height: 1.5,
                                         fontWeight: FontWeight.w500,
@@ -300,7 +301,8 @@ class _SplashScreenState extends State<SplashScreen>
       children: [
         Text(
           'Preparing your care workspace',
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(
+            fontFamily: 'PlusJakartaSans',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: colors.textTertiary,

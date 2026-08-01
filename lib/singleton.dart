@@ -668,10 +668,17 @@ class Singleton extends ChangeNotifier {
     if (log.length <= 1) return;
 
     try {
+      // Parse each timestamp once up front; the comparator otherwise
+      // re-parses strings O(n log n) times per sort.
+      final parsed = List<DateTime?>.generate(
+        log.length,
+        (i) => _parseLogTimestamp(log[i][0]),
+        growable: false,
+      );
       final order = List<int>.generate(log.length, (i) => i);
       order.sort((a, b) {
-        final dateA = _parseLogTimestamp(log[a][0]);
-        final dateB = _parseLogTimestamp(log[b][0]);
+        final dateA = parsed[a];
+        final dateB = parsed[b];
 
         if (dateA == null && dateB == null) return a.compareTo(b);
         if (dateA == null) return 1;
@@ -2543,15 +2550,13 @@ class Singleton extends ChangeNotifier {
         _lastCommunityError = 'Unable to like post right now.';
         return false;
       }
-      if (!likeResult) {
-        _lastCommunityError = 'You already liked this post.';
-        return false;
-      }
+      // likeResult false means the like already existed; treat as success
+      // so a tremor-induced double tap is never punished with an error.
 
       final idx = communityPosts.indexWhere((p) => p['id'] == postId);
       if (idx != -1) {
         final likes = (communityPosts[idx]['likes'] as num?)?.toInt() ?? 0;
-        communityPosts[idx]['likes'] = likes + 1;
+        if (likeResult) communityPosts[idx]['likes'] = likes + 1;
         communityPosts[idx]['liked_by_me'] = true;
       }
       await _persistLocalCache();
@@ -2560,6 +2565,45 @@ class Singleton extends ChangeNotifier {
     } catch (e, stackTrace) {
       _logger.error('Error liking post', e, stackTrace);
       _lastCommunityError = 'Unable to like post right now.';
+      return false;
+    }
+  }
+
+  Future<bool> unlikeCommunityPost(String postId) async {
+    try {
+      _lastCommunityError = null;
+      if (!_cloud.isEnabled) {
+        _lastCommunityError = 'Cloud sync unavailable.';
+        return false;
+      }
+
+      final uid = await _resolveUserId();
+      if (uid == null) {
+        _lastCommunityError = 'Complete profile setup first.';
+        return false;
+      }
+
+      final result = await _cloud.unlikeCommunityPost(
+        postId: postId,
+        userId: uid,
+      );
+      if (result == null) {
+        _lastCommunityError = 'Unable to update like right now.';
+        return false;
+      }
+
+      final idx = communityPosts.indexWhere((p) => p['id'] == postId);
+      if (idx != -1) {
+        final likes = (communityPosts[idx]['likes'] as num?)?.toInt() ?? 0;
+        if (result && likes > 0) communityPosts[idx]['likes'] = likes - 1;
+        communityPosts[idx]['liked_by_me'] = false;
+      }
+      await _persistLocalCache();
+      notifyListenersSafe();
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('Error unliking post', e, stackTrace);
+      _lastCommunityError = 'Unable to update like right now.';
       return false;
     }
   }

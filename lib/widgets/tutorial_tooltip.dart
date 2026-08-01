@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_theme.dart';
 
@@ -65,7 +64,8 @@ class TutorialTooltip extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               title,
-              style: GoogleFonts.plusJakartaSans(
+              style: TextStyle(
+                fontFamily: 'PlusJakartaSans',
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: colors.textPrimary,
@@ -75,7 +75,8 @@ class TutorialTooltip extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               description,
-              style: GoogleFonts.plusJakartaSans(
+              style: TextStyle(
+                fontFamily: 'PlusJakartaSans',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: colors.textSecondary,
@@ -94,9 +95,10 @@ class TutorialTooltip extends StatelessWidget {
                       vertical: 10,
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Skip tutorial',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(
+                      fontFamily: 'PlusJakartaSans',
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -118,7 +120,8 @@ class TutorialTooltip extends StatelessWidget {
                   ),
                   child: Text(
                     actionLabel,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: const TextStyle(
+                      fontFamily: 'PlusJakartaSans',
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),

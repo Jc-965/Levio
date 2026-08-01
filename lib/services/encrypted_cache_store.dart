@@ -2,10 +2,22 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app_logger.dart';
+
+/// Thrown when health data cannot be encrypted and the build refuses to
+/// write it as plaintext.
+class KeystoreUnavailableException implements Exception {
+  const KeystoreUnavailableException();
+
+  @override
+  String toString() =>
+      'KeystoreUnavailableException: secure keystore unavailable; '
+      'refusing to persist health data unencrypted';
+}
 
 /// Encrypts the local health cache at rest.
 ///
@@ -48,19 +60,32 @@ class EncryptedCacheStore {
       _dataKey = SecretKey(bytes);
       return _dataKey;
     } on MissingPluginException {
-      // No keystore in this environment; callers fall back to plaintext and
-      // the condition is surfaced through [keystoreUnavailable].
+      // No keystore in this environment (tests, desktop shells).
       _keystoreUnavailable = true;
       _logger.warning('Secure keystore unavailable; cache stays unencrypted');
+      return null;
+    } on PlatformException catch (e) {
+      // A wedged device keystore: treat as unavailable so release builds
+      // fail closed instead of crashing or silently degrading.
+      _keystoreUnavailable = true;
+      _logger.error('Secure keystore error', e);
       return null;
     }
   }
 
-  /// Seals [plaintext]; returns the plaintext unchanged when no keystore is
-  /// available so data is never lost.
+  /// Seals [plaintext]. Encryption fails closed in release builds: with no
+  /// keystore available a [KeystoreUnavailableException] is thrown rather
+  /// than writing health data as plaintext. Debug and test environments
+  /// (which have no platform keystore) fall back to plaintext so local
+  /// development keeps working.
   Future<String> seal(String plaintext) async {
     final key = await _obtainKey();
-    if (key == null) return plaintext;
+    if (key == null) {
+      if (kReleaseMode) {
+        throw const KeystoreUnavailableException();
+      }
+      return plaintext;
+    }
     final box = await _cipher.encrypt(utf8.encode(plaintext), secretKey: key);
     return '$payloadPrefix${base64Encode(box.concatenation())}';
   }

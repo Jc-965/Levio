@@ -91,7 +91,10 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
   }
 
   Uri _fullSessionEmbedUri(String videoId) {
-    return Uri.https('www.youtube.com', '/embed/$videoId', <String, String>{
+    // youtube-nocookie serves the same embed player without tracking
+    // cookies; installing this app already discloses a diagnosis, so the
+    // viewing signal stays out of ad profiles.
+    return Uri.https('www.youtube-nocookie.com', '/embed/$videoId', {
       'playsinline': '1',
       'controls': '1',
       'rel': '0',

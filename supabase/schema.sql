@@ -262,6 +262,30 @@ $$;
 revoke all on function public.increment_post_like(text) from public;
 grant execute on function public.increment_post_like(text) to authenticated;
 
+create or replace function public.refresh_post_like_count(p_post_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Recomputes the counter from like rows (the source of truth), so the
+  -- call is idempotent and cannot inflate counts. Used after unlike.
+  update public.community_posts
+    set likes = (
+          select count(*)
+          from public.community_post_likes l
+          where l.post_id = p_post_id
+        ),
+        updated_at = timezone('utc', now())
+  where id = p_post_id
+    and is_hidden = false;
+end;
+$$;
+
+revoke all on function public.refresh_post_like_count(text) from public;
+grant execute on function public.refresh_post_like_count(text) to authenticated;
+
 create or replace function public.apply_health_mutations(p_mutations jsonb)
 returns jsonb
 language plpgsql

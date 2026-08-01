@@ -15,6 +15,10 @@ analyzer:
     - "**/*.freezed.dart"
     - "build/**"
     - ".dart_tool/**"
+    # Analyzed separately with its own resolved dev dependencies (see CI);
+    # from the app root its test/ deps are unresolved and report phantom
+    # errors on fresh clones.
+    - "packages/motion_engine/**"
 
 linter:
   rules:

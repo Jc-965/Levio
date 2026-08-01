@@ -1143,36 +1143,30 @@ class _CommunityScreenState extends State<CommunityScreen>
                     : Icons.favorite_outline_rounded,
                 label: post.likes.toString(),
                 semanticLabel: post.isLiked
-                    ? 'Liked, ${post.likes} likes'
+                    ? 'Unlike, ${post.likes} likes'
                     : 'Like, ${post.likes} likes',
                 color: post.isLiked ? colors.error : colors.textSecondary,
                 onTap: () async {
-                  if (post.isLiked) {
-                    HapticUtils.lightImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('You already liked this post.'),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    );
-                    return;
-                  }
+                  // Tolerant toggle: a second tap unlikes instead of
+                  // scolding, which matters for tremor-induced double taps.
+                  final wasLiked = post.isLiked;
                   HapticUtils.success();
-                  final liked = await singleton.likeCommunityPost(post.id);
+                  final changed = wasLiked
+                      ? await singleton.unlikeCommunityPost(post.id)
+                      : await singleton.likeCommunityPost(post.id);
                   if (!mounted) return;
-                  if (liked) {
+                  if (changed) {
                     setState(() {
-                      post.isLiked = true;
-                      post.likes += 1;
+                      post.isLiked = !wasLiked;
+                      post.likes = wasLiked
+                          ? (post.likes > 0 ? post.likes - 1 : 0)
+                          : post.likes + 1;
                       _postVersion++;
                     });
                   } else {
                     final error =
                         singleton.consumeLastCommunityError() ??
-                        'Unable to like post.';
+                        'Unable to update like.';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(error),

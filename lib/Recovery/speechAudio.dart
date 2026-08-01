@@ -48,7 +48,15 @@ class _SpeechAudioState extends State<SpeechAudio> {
             },
           ),
         )
-        ..loadRequest(Uri.parse('https://m.youtube.com/watch?v=$_videoId'));
+        // The nocookie embed player avoids YouTube tracking cookies inside
+        // a disease-specific app.
+        ..loadRequest(
+          Uri.https('www.youtube-nocookie.com', '/embed/$_videoId', {
+            'playsinline': '1',
+            'controls': '1',
+            'rel': '0',
+          }),
+        );
     } else {
       _isVideoLoading = false;
     }

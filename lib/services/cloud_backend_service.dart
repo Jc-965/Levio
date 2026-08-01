@@ -1171,6 +1171,90 @@ class CloudBackendService {
     return true;
   }
 
+  /// Removes the caller's like. Returns true when a like was removed,
+  /// false when no like existed, and null on failure.
+  Future<bool?> unlikeCommunityPost({
+    required String postId,
+    required String userId,
+  }) async {
+    if (!isEnabled) return null;
+
+    List<dynamic> deleted;
+    try {
+      final effectiveUserId = _effectiveUserId(userId);
+      if (effectiveUserId == null) return null;
+
+      deleted = await _withRetry<List<dynamic>>(
+        'delete community post like',
+        () async {
+          return _client!
+              .from('community_post_likes')
+              .delete()
+              .eq('post_id', postId)
+              .eq('user_id', effectiveUserId)
+              .select('post_id');
+        },
+      );
+    } catch (e, stackTrace) {
+      _logger.error('Cloud unlike failed', e, stackTrace);
+      return null;
+    }
+    if (deleted.isEmpty) return false;
+
+    try {
+      await _withRetry<void>('refresh post like count via rpc', () async {
+        await _client!.rpc(
+          'refresh_post_like_count',
+          params: {'p_post_id': postId},
+        );
+      });
+      return true;
+    } catch (e, stackTrace) {
+      _logger.warning(
+        'Like refresh RPC failed, falling back to direct update',
+        e,
+        stackTrace,
+      );
+    }
+
+    // Compatibility fallback for schemas without the refresh RPC.
+    try {
+      final record = await _withRetry<Map<String, dynamic>?>(
+        'fetch post likes for unlike fallback',
+        () async {
+          return _client!
+              .from('community_posts')
+              .select('likes')
+              .eq('id', postId)
+              .maybeSingle();
+        },
+      );
+      if (record == null) return true;
+      final currentLikes = (record['likes'] as num?)?.toInt() ?? 0;
+      final nextLikes = currentLikes > 0 ? currentLikes - 1 : 0;
+      await _withRetry<Map<String, dynamic>?>(
+        'decrement post like fallback',
+        () async {
+          return _client!
+              .from('community_posts')
+              .update(<String, dynamic>{
+                'likes': nextLikes,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', postId)
+              .select('id')
+              .maybeSingle();
+        },
+      );
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('Cloud unlike fallback failed', e, stackTrace);
+      // The like row is already gone; report success so the UI stays
+      // consistent with the user's action.
+      return true;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getCommunityComments(String postId) async {
     if (!isEnabled) return <Map<String, dynamic>>[];
 

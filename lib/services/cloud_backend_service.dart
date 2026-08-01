@@ -321,7 +321,9 @@ class CloudBackendService {
         if (!launched) return null;
 
         profile = await completer.future.timeout(
-          const Duration(seconds: 25),
+          // Generous: typing a password in an external browser with
+          // bradykinesia routinely exceeds short timeouts.
+          const Duration(seconds: 180),
           onTimeout: () {
             final user = _client!.auth.currentUser;
             if (user != null && _isGoogleUser(user)) {

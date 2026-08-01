@@ -260,7 +260,10 @@ class OfflineSyncEngine {
           break;
         }
 
-        if (acknowledged.isEmpty) break;
+        // An empty acknowledgement (every mutation in the batch rejected,
+        // e.g. as stale) must not strand LATER batches; only an executor
+        // failure stops the replay loop.
+        if (acknowledged.isEmpty) continue;
         for (final mutation in batch) {
           if (!acknowledged.contains(mutation.mutationId)) continue;
           final current = _pendingByEntity[mutation.entityKey];

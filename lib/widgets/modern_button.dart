@@ -33,6 +33,7 @@ class ModernButton extends StatefulWidget {
 
 class _ModernButtonState extends State<ModernButton> {
   bool _isPressed = false;
+  bool _isFocused = false;
 
   void _handleTapDown(TapDownDetails details) {
     if (!widget.isLoading) {
@@ -68,103 +69,124 @@ class _ModernButtonState extends State<ModernButton> {
             ],
           );
 
+    void activate() {
+      if (widget.isLoading) return;
+      HapticUtils.lightImpact();
+      widget.onPressed();
+    }
+
     return Semantics(
       button: true,
       enabled: !widget.isLoading,
       label: widget.text,
-      child: GestureDetector(
-        onTapDown: _handleTapDown,
-        onTapUp: _handleTapUp,
-        onTapCancel: _handleTapCancel,
-        onTap: widget.isLoading
-            ? null
-            : () {
-                HapticUtils.lightImpact();
-                widget.onPressed();
-              },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: widget.width,
-          constraints: const BoxConstraints(minHeight: 48),
-          padding:
-              widget.padding ??
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-          transform: Matrix4.identity()
-            ..scaleByDouble(
-              _isPressed ? 0.985 : 1.0,
-              _isPressed ? 0.985 : 1.0,
-              1.0,
-              1.0,
-            ),
-          decoration: BoxDecoration(
-            color: widget.isOutlined
-                ? (_isPressed
-                      ? colors.surface.blend(colors.primary, 0.08)
-                      : colors.surfaceVariant)
-                : null,
-            gradient: widget.isOutlined
-                ? null
-                : (_isPressed
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            pressedBackground,
-                            pressedBackground.blend(colors.primaryLight, 0.18),
-                          ],
-                        )
-                      : gradient),
-            borderRadius: BorderRadius.circular(14),
-            border: widget.isOutlined
-                ? Border.all(
-                    color: colors.border.blend(colors.primary, 0.12),
-                    width: 1,
-                  )
-                : null,
-            boxShadow: widget.isOutlined
-                ? null
-                : [
-                    BoxShadow(
-                      color: colors.shadow.blend(backgroundColor, 0.18),
-                      blurRadius: _isPressed ? 8 : 16,
-                      offset: Offset(0, _isPressed ? 4 : 8),
-                    ),
-                  ],
+      // FocusableActionDetector gives keyboard and switch-access users a
+      // way to reach and activate the app's primary control; a bare
+      // GestureDetector was tap-only.
+      child: FocusableActionDetector(
+        enabled: !widget.isLoading,
+        onShowFocusHighlight: (focused) => setState(() => _isFocused = focused),
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              activate();
+              return null;
+            },
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (widget.isLoading)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(
-                      widget.isOutlined ? colors.textSecondary : textColor,
+        },
+        child: GestureDetector(
+          onTapDown: _handleTapDown,
+          onTapUp: _handleTapUp,
+          onTapCancel: _handleTapCancel,
+          onTap: widget.isLoading ? null : activate,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: widget.width,
+            constraints: const BoxConstraints(minHeight: 48),
+            padding:
+                widget.padding ??
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            transform: Matrix4.identity()
+              ..scaleByDouble(
+                _isPressed ? 0.985 : 1.0,
+                _isPressed ? 0.985 : 1.0,
+                1.0,
+                1.0,
+              ),
+            decoration: BoxDecoration(
+              color: widget.isOutlined
+                  ? (_isPressed
+                        ? colors.surface.blend(colors.primary, 0.08)
+                        : colors.surfaceVariant)
+                  : null,
+              gradient: widget.isOutlined
+                  ? null
+                  : (_isPressed
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              pressedBackground,
+                              pressedBackground.blend(
+                                colors.primaryLight,
+                                0.18,
+                              ),
+                            ],
+                          )
+                        : gradient),
+              borderRadius: BorderRadius.circular(14),
+              border: _isFocused
+                  ? Border.all(color: colors.primaryLight, width: 2)
+                  : widget.isOutlined
+                  ? Border.all(
+                      color: colors.border.blend(colors.primary, 0.12),
+                      width: 1,
+                    )
+                  : null,
+              boxShadow: widget.isOutlined
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: colors.shadow.blend(backgroundColor, 0.18),
+                        blurRadius: _isPressed ? 8 : 16,
+                        offset: Offset(0, _isPressed ? 4 : 8),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.isLoading)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(
+                        widget.isOutlined ? colors.textSecondary : textColor,
+                      ),
+                    ),
+                  )
+                else ...[
+                  if (widget.icon != null) ...[
+                    Icon(
+                      widget.icon,
+                      color: widget.isOutlined ? colors.textPrimary : textColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    widget.text,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: widget.isOutlined ? colors.textPrimary : textColor,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                )
-              else ...[
-                if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    color: widget.isOutlined ? colors.textPrimary : textColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
                 ],
-                Text(
-                  widget.text,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: widget.isOutlined ? colors.textPrimary : textColor,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -42,6 +42,43 @@ void main() {
       expect(restored.pendingMutations.single.mutationId, 'second');
     });
 
+    test('an empty acknowledgement does not strand later batches', () async {
+      final store = _MemoryMutationJournalStore();
+      final engine = OfflineSyncEngine(store);
+      await engine.initialize();
+      final timestamp = DateTime.utc(2026, 1, 1);
+
+      await engine.enqueueAll(<SyncMutation>[
+        for (var i = 0; i < 6; i += 1)
+          SyncMutation(
+            mutationId: 'mutation-$i',
+            entityType: SyncEntityType.log,
+            entityId: 'log-$i',
+            operation: SyncMutationOperation.upsert,
+            payload: <String, dynamic>{'index': i},
+            clientUpdatedAt: timestamp.add(Duration(microseconds: i)),
+            sequence: i + 1,
+          ),
+      ]);
+
+      // The first batch is rejected wholesale (acked empty); later batches
+      // succeed and must still be replayed in the same pass.
+      var batchIndex = 0;
+      final acknowledgedCount = await engine.replay((batch) async {
+        batchIndex += 1;
+        if (batchIndex == 1) return const <String>{};
+        return batch.map((mutation) => mutation.mutationId).toSet();
+      }, batchSize: 2);
+
+      expect(batchIndex, 3);
+      expect(acknowledgedCount, 4);
+      expect(engine.pendingCount, 2);
+      expect(
+        engine.pendingMutations.map((mutation) => mutation.mutationId),
+        <String>['mutation-0', 'mutation-1'],
+      );
+    });
+
     test(
       'serializes overlapping journal writes without stale overwrite',
       () async {

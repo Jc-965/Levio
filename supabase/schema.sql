@@ -875,7 +875,15 @@ begin
   -- avatar may only reference a bundled app asset, never an arbitrary URL
   -- or device path delivered by a modified client.
   new.user_name := left(trim(coalesce(new.user_name, '')), 40);
-  if new.user_name = '' then
+  -- Identity may only be the caller's own profile name or their private
+  -- alias; anything else (a clinician's name, another member's alias)
+  -- is collapsed to a neutral label, killing scripted impersonation.
+  if new.user_name = ''
+     or (new.user_name is distinct from (
+           select u.name from public.users u
+           where u.id = public.current_uid()
+         )
+         and new.user_name !~ '^Member-[0-9]{4,6}$') then
     new.user_name := 'Member';
   end if;
   if new.profile_image is not null

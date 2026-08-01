@@ -585,6 +585,12 @@ begin
     select value from jsonb_array_elements(p_mutations)
   loop
     v_mutation_id := trim(coalesce(v_mutation ->> 'mutation_id', ''));
+
+    -- Per-mutation isolation: EVERYTHING fallible - parsing, validation,
+    -- the timestamptz cast, and the writes - runs inside this block. A
+    -- malformed element must reject only itself; aborting the batch would
+    -- read as a transport failure client-side and wedge sync forever.
+    begin
     v_entity_type := trim(coalesce(v_mutation ->> 'entity_type', ''));
     v_entity_id := trim(coalesce(v_mutation ->> 'entity_id', ''));
     v_operation := trim(coalesce(v_mutation ->> 'operation', ''));
@@ -609,12 +615,6 @@ begin
       raise exception 'Unsupported mutation operation: %', v_operation;
     end if;
 
-    -- Per-mutation isolation: a constraint violation on one mutation
-    -- (for example an oversized field from an older client) must not
-    -- abort the whole batch and wedge sync for the account forever. The
-    -- failed mutation is simply not acknowledged; the client dead-letters
-    -- it after repeated rejections.
-    begin
     if v_operation = 'delete' then
       insert into public.sync_tombstones (
         entity_type,

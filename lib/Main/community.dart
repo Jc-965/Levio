@@ -530,7 +530,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                             setModalState(() => selectedCategory = category);
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            constraints: const BoxConstraints(minWidth: 48),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? colors.primary
@@ -1096,13 +1097,15 @@ class _CommunityScreenState extends State<CommunityScreen>
                   selected: selected,
                   label: 'Filter by $category',
                   child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () {
                       HapticUtils.selectionClick();
                       setState(() => _feedFilterCategory = category);
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      constraints: const BoxConstraints(minWidth: 48),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: selected

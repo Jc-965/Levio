@@ -1294,7 +1294,10 @@ class CloudBackendService {
               .from('community_comments')
               .select()
               .eq('post_id', postId)
-              .order('created_at', ascending: true);
+              .order('created_at', ascending: true)
+              // Bounded like every other fetch; an unbounded thread is a
+              // memory and transfer cliff on a viral post.
+              .limit(500);
         },
       );
       return List<Map<String, dynamic>>.from(result);

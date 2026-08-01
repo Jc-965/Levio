@@ -632,7 +632,7 @@ class Singleton extends ChangeNotifier {
     exerNum = totalRecoverySessions;
     _invalidateAnalytics();
     await _persistLocalCache();
-    await syncPendingMutations();
+    unawaited(syncPendingMutations());
     notifyListenersSafe();
     return true;
   }
@@ -850,6 +850,10 @@ class Singleton extends ChangeNotifier {
   }
 
   bool get isCloudConnected => _cloud.isEnabled;
+
+  /// True only under a real signed-in account (not the anonymous
+  /// bootstrap session). Community features require this.
+  bool get hasFullAccount => _cloud.hasFullAccount;
   bool get isCloudConfigured => _cloud.isConfigured;
   String? get lastCloudError => _cloud.lastInitializationError;
   String get backendStatusDescription => _cloud.statusDescription;
@@ -2125,7 +2129,10 @@ class Singleton extends ChangeNotifier {
       sortTime();
       _invalidateAnalytics();
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2165,7 +2172,10 @@ class Singleton extends ChangeNotifier {
       sortTime();
       _invalidateAnalytics();
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2190,7 +2200,10 @@ class Singleton extends ChangeNotifier {
       logIDs.removeAt(index);
       _invalidateAnalytics();
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2232,7 +2245,10 @@ class Singleton extends ChangeNotifier {
       calcMeds();
       unawaited(_syncMedicationReminders());
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2277,7 +2293,10 @@ class Singleton extends ChangeNotifier {
       calcMeds();
       unawaited(_syncMedicationReminders());
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2303,7 +2322,10 @@ class Singleton extends ChangeNotifier {
       calcMeds();
       unawaited(_syncMedicationReminders());
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2340,7 +2362,10 @@ class Singleton extends ChangeNotifier {
       medicationEvents.add(event);
       _invalidateAnalytics();
       await _persistLocalCache();
-      await syncPendingMutations();
+      // Local persistence is the durability guarantee (mutation journal);
+      // the network replay must not hold the save button hostage on a
+      // flaky connection.
+      unawaited(syncPendingMutations());
       notifyListenersSafe();
       return true;
     } catch (e, stackTrace) {
@@ -2384,24 +2409,26 @@ class Singleton extends ChangeNotifier {
         // identity (email, OAuth linkage) as well as the data rows, which
         // the client cannot do with the publishable key alone.
         final viaFunction = await _cloud.deleteAccountViaFunction();
-        if (viaFunction == false) {
-          _logger.error('Server-side account deletion failed');
-          return false;
-        }
-        if (viaFunction == null) {
-          // Function not deployed: fall back to row-level deletion. The
-          // auth identity survives in this mode; surface that honestly
-          // instead of claiming full deletion.
-          _logger.warning(
-            'delete_account function unavailable; deleting rows only',
-          );
-          if (!await _cloud.deleteUser(uid)) {
-            _logger.error('Failed to delete user from cloud database');
+        switch (viaFunction) {
+          case AccountDeletionResult.failed:
+            _logger.error('Server-side account deletion failed');
             return false;
-          }
-          accountDeletionWasPartial = true;
-        } else {
-          accountDeletionWasPartial = false;
+          case AccountDeletionResult.unavailable:
+            // Function not deployed: fall back to row-level deletion. The
+            // auth identity survives in this mode; surface that honestly
+            // instead of claiming full deletion.
+            _logger.warning(
+              'delete_account function unavailable; deleting rows only',
+            );
+            if (!await _cloud.deleteUser(uid)) {
+              _logger.error('Failed to delete user from cloud database');
+              return false;
+            }
+            accountDeletionWasPartial = true;
+          case AccountDeletionResult.partial:
+            accountDeletionWasPartial = true;
+          case AccountDeletionResult.deleted:
+            accountDeletionWasPartial = false;
         }
       }
 
@@ -2929,6 +2956,36 @@ class Singleton extends ChangeNotifier {
     } catch (e, stackTrace) {
       _logger.error('Error reporting post', e, stackTrace);
       _lastCommunityError = 'Unable to report post right now.';
+      return false;
+    }
+  }
+
+  Future<bool> reportCommunityComment(
+    String commentId, {
+    String? reason,
+  }) async {
+    try {
+      _lastCommunityError = null;
+      if (!_cloud.isEnabled) {
+        _lastCommunityError = 'Cloud sync unavailable.';
+        return false;
+      }
+      final uid = await _resolveUserId();
+      if (uid == null) {
+        _lastCommunityError = 'Complete profile setup first.';
+        return false;
+      }
+      final reported = await _cloud.reportCommunityComment(
+        commentId: commentId,
+        reason: reason,
+      );
+      if (!reported) {
+        _lastCommunityError = 'Unable to report comment right now.';
+      }
+      return reported;
+    } catch (e, stackTrace) {
+      _logger.error('Error reporting comment', e, stackTrace);
+      _lastCommunityError = 'Unable to report comment right now.';
       return false;
     }
   }

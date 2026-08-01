@@ -48,10 +48,13 @@ Deno.serve(async (req) => {
 
   const { error: authError } = await admin.auth.admin.deleteUser(user.id);
   if (authError) {
-    return new Response(JSON.stringify({ error: "auth_deletion_failed" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    // The data rows are already gone; a blanket 500 here would tell the
+    // user that nothing was deleted when everything but the auth identity
+    // was. Report partial success distinctly so the client can be honest.
+    return new Response(
+      JSON.stringify({ ok: true, partial: true, error: "auth_deletion_failed" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   return new Response(JSON.stringify({ ok: true }), {

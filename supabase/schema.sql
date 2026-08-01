@@ -401,6 +401,83 @@ $$;
 revoke all on function public.report_post(text, text) from public;
 grant execute on function public.report_post(text, text) to authenticated;
 
+create table if not exists public.community_comment_reports (
+  comment_id text not null references public.community_comments(id)
+    on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
+  reason text,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (comment_id, user_id)
+);
+
+alter table public.community_comment_reports enable row level security;
+
+drop policy if exists comment_reports_insert_own
+  on public.community_comment_reports;
+create policy comment_reports_insert_own on public.community_comment_reports
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()::text
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
+
+drop policy if exists comment_reports_select_own
+  on public.community_comment_reports;
+create policy comment_reports_select_own on public.community_comment_reports
+  for select to authenticated
+  using (user_id = auth.uid()::text);
+
+create or replace function public.report_comment(
+  p_comment_id text,
+  p_reason text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_report_count integer;
+  v_recent_reports integer;
+begin
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'full account required to report comments';
+  end if;
+
+  -- Reports of posts and comments share one hourly budget per user.
+  select
+    (select count(*) from public.community_post_reports r
+      where r.user_id = auth.uid()::text
+        and r.created_at > timezone('utc', now()) - interval '1 hour')
+    + (select count(*) from public.community_comment_reports r
+      where r.user_id = auth.uid()::text
+        and r.created_at > timezone('utc', now()) - interval '1 hour')
+  into v_recent_reports;
+  if v_recent_reports >= 10 then
+    raise exception 'report rate limit exceeded';
+  end if;
+
+  insert into public.community_comment_reports (comment_id, user_id, reason)
+  values (p_comment_id, auth.uid()::text, left(coalesce(p_reason, ''), 500))
+  on conflict (comment_id, user_id) do nothing;
+
+  select count(*) into v_report_count
+  from public.community_comment_reports r
+  where r.comment_id = p_comment_id;
+
+  -- Same threshold as posts: three unique reporters hide the comment
+  -- pending review.
+  update public.community_comments
+    set reports = v_report_count,
+        is_flagged = is_flagged or v_report_count >= 3,
+        updated_at = timezone('utc', now())
+  where id = p_comment_id;
+end;
+$$;
+
+revoke all on function public.report_comment(text, text) from public;
+grant execute on function public.report_comment(text, text) to authenticated;
+
 create or replace function public.get_comment_counts(p_post_ids text[])
 returns table(post_id text, comment_count bigint)
 language sql
@@ -896,7 +973,13 @@ begin
       where p.user_id = new.user_id
         and p.created_at > timezone('utc', now()) - interval '1 hour';
     end if;
-    if v_recent >= 30 then
+    -- Posts match the client-side product rule (10/hour); comments allow
+    -- more because replying in a support thread is higher-frequency.
+    if tg_table_name = 'community_comments' then
+      if v_recent >= 30 then
+        raise exception 'rate limit exceeded';
+      end if;
+    elsif v_recent >= 10 then
       raise exception 'rate limit exceeded';
     end if;
   end if;

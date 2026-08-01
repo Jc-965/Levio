@@ -220,6 +220,39 @@ class _CommunityScreenState extends State<CommunityScreen>
     );
   }
 
+  Future<void> _reportComment(PostComment comment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Report Comment'),
+        content: const Text(
+          'Report this comment to the ParkiWell team? Comments reported by '
+          'several members are hidden automatically pending review.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final reported = await singleton.reportCommunityComment(comment.id);
+    if (!mounted) return;
+    _showFeedSnack(
+      reported
+          ? 'Thanks for the report. Our team will review this comment.'
+          : singleton.consumeLastCommunityError() ??
+                'Unable to report comment.',
+    );
+  }
+
   Future<void> _blockAuthor(CommunityPost post) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1155,6 +1188,43 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
   Widget _buildEmptyFeedState(AppColors colors) {
+    // RLS returns zero community rows to anonymous sessions, so without
+    // this branch a signed-out user sees "No posts yet" and cannot tell
+    // they are not entitled rather than the feed being empty.
+    if (!singleton.hasFullAccount) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 40, color: colors.textTertiary),
+              const SizedBox(height: 16),
+              Text(
+                'Community is for members',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Create a free account to read and share with other '
+                'members. Your posts use a private alias by default.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => singleton.setPage(4),
+                child: const Text('Go to Profile to sign in'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -1575,6 +1645,26 @@ class _CommunityScreenState extends State<CommunityScreen>
                                           style: TextStyle(
                                             color: colors.textTertiary,
                                             fontSize: 13,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Semantics(
+                                          button: true,
+                                          label: 'Report comment',
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            onTap: () =>
+                                                _reportComment(comment),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(6),
+                                              child: Icon(
+                                                Icons.flag_outlined,
+                                                size: 16,
+                                                color: colors.textTertiary,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],

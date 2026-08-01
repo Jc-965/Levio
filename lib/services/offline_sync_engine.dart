@@ -237,6 +237,17 @@ class OfflineSyncEngine {
     if (persist) await _persist();
   }
 
+  /// Server-visible rejection tallies per mutation. Only passes where the
+  /// executor succeeded count: an unreachable server must never advance a
+  /// mutation toward the dead-letter threshold.
+  final Map<String, int> _rejectionCounts = <String, int>{};
+
+  /// Mutations dropped after [maxRejectedPasses] server rejections, kept
+  /// for surfacing "N changes could not be synced" to the user.
+  final List<SyncMutation> deadLetteredMutations = <SyncMutation>[];
+
+  static const int maxRejectedPasses = 3;
+
   Future<int> replay(
     MutationBatchExecutor executor, {
     int batchSize = 500,
@@ -263,13 +274,29 @@ class OfflineSyncEngine {
         // An empty acknowledgement (every mutation in the batch rejected,
         // e.g. as stale) must not strand LATER batches; only an executor
         // failure stops the replay loop.
-        if (acknowledged.isEmpty) continue;
         for (final mutation in batch) {
-          if (!acknowledged.contains(mutation.mutationId)) continue;
-          final current = _pendingByEntity[mutation.entityKey];
-          if (current?.mutationId == mutation.mutationId) {
-            _pendingByEntity.remove(mutation.entityKey);
-            acknowledgedCount += 1;
+          if (acknowledged.contains(mutation.mutationId)) {
+            _rejectionCounts.remove(mutation.mutationId);
+            final current = _pendingByEntity[mutation.entityKey];
+            if (current?.mutationId == mutation.mutationId) {
+              _pendingByEntity.remove(mutation.entityKey);
+              acknowledgedCount += 1;
+            }
+            continue;
+          }
+          // The server processed the batch but rejected this mutation
+          // (constraint violation, squatted id). Retrying identical input
+          // cannot succeed; after a few passes, quarantine it so one bad
+          // mutation never wedges sync for the account forever.
+          final failures = (_rejectionCounts[mutation.mutationId] ?? 0) + 1;
+          _rejectionCounts[mutation.mutationId] = failures;
+          if (failures >= maxRejectedPasses) {
+            final current = _pendingByEntity[mutation.entityKey];
+            if (current?.mutationId == mutation.mutationId) {
+              _pendingByEntity.remove(mutation.entityKey);
+              deadLetteredMutations.add(mutation);
+            }
+            _rejectionCounts.remove(mutation.mutationId);
           }
         }
         await _persist();

@@ -42,6 +42,66 @@ void main() {
       expect(restored.pendingMutations.single.mutationId, 'second');
     });
 
+    test(
+      'a repeatedly rejected mutation is quarantined, not a wedge',
+      () async {
+        final store = _MemoryMutationJournalStore();
+        final engine = OfflineSyncEngine(store);
+        await engine.initialize();
+
+        await engine.enqueueAll(<SyncMutation>[
+          SyncMutation(
+            mutationId: 'poison',
+            entityType: SyncEntityType.log,
+            entityId: 'log-poison',
+            operation: SyncMutationOperation.upsert,
+            payload: const <String, dynamic>{'symptom': 'x'},
+            clientUpdatedAt: DateTime.utc(2026, 1, 1),
+            sequence: 1,
+          ),
+        ]);
+
+        // The server processes each pass but never acknowledges the
+        // mutation (e.g. a constraint violation). It must not stay pending
+        // forever; after maxRejectedPasses it is dead-lettered.
+        for (var pass = 0; pass < OfflineSyncEngine.maxRejectedPasses; pass++) {
+          expect(engine.pendingCount, 1, reason: 'pass $pass');
+          await engine.replay((_) async => const <String>{});
+        }
+
+        expect(engine.pendingCount, 0);
+        expect(engine.deadLetteredMutations.single.mutationId, 'poison');
+      },
+    );
+
+    test(
+      'executor failures never advance a mutation toward dead-letter',
+      () async {
+        final store = _MemoryMutationJournalStore();
+        final engine = OfflineSyncEngine(store);
+        await engine.initialize();
+
+        await engine.enqueueAll(<SyncMutation>[
+          SyncMutation(
+            mutationId: 'offline-edit',
+            entityType: SyncEntityType.log,
+            entityId: 'log-1',
+            operation: SyncMutationOperation.upsert,
+            payload: const <String, dynamic>{'symptom': 'Tremor'},
+            clientUpdatedAt: DateTime.utc(2026, 1, 1),
+            sequence: 1,
+          ),
+        ]);
+
+        for (var pass = 0; pass < 10; pass++) {
+          await engine.replay((_) async => throw Exception('offline'));
+        }
+
+        expect(engine.pendingCount, 1);
+        expect(engine.deadLetteredMutations, isEmpty);
+      },
+    );
+
     test('an empty acknowledgement does not strand later batches', () async {
       final store = _MemoryMutationJournalStore();
       final engine = OfflineSyncEngine(store);

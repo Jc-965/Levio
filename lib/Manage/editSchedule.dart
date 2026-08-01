@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../singleton.dart';
 import '../services/tutorial_targets.dart';
@@ -368,6 +369,12 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                           child: ModernTextField(
                             controller: _nameController,
                             hint: 'e.g., Levodopa 100mg',
+                            // Stay under the 200-char server cap for
+                            // medication_events.medication_name; exceeding
+                            // it would poison the sync journal.
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(120),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -381,6 +388,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen>
                           controller: _detailsController,
                           hint: 'Dosage notes or instructions',
                           maxLines: 2,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(500),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Divider(color: colors.border, height: 1),

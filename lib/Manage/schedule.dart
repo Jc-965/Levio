@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../singleton.dart';
 import '../services/tutorial_targets.dart';
@@ -244,6 +245,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
+                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
                   decoration: const InputDecoration(
                     labelText: 'Medication Name',
                   ),
@@ -251,11 +253,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: detailsController,
+                  inputFormatters: [LengthLimitingTextInputFormatter(500)],
                   decoration: const InputDecoration(labelText: 'Details'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: daysController,
+                  inputFormatters: [LengthLimitingTextInputFormatter(120)],
                   decoration: const InputDecoration(labelText: 'Schedule'),
                 ),
                 const SizedBox(height: 14),

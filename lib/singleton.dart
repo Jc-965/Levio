@@ -1532,7 +1532,15 @@ class Singleton extends ChangeNotifier {
         mutations.map((mutation) => mutation.toRpcJson()).toList(),
       ),
     );
-    if (_offlineSyncEngine.pendingCount == 0) {
+    final deadLettered = _offlineSyncEngine.deadLetteredMutations.length;
+    if (deadLettered > 0) {
+      // Quarantined after repeated server rejections: unblocks the rest
+      // of the journal, but the loss must never be silent.
+      await _markSyncFailure(
+        '$deadLettered ${deadLettered == 1 ? 'change' : 'changes'} could '
+        'not be synced',
+      );
+    } else if (_offlineSyncEngine.pendingCount == 0) {
       await _markSyncSuccess('All changes synced');
     } else {
       await _markSyncPending(
@@ -2547,6 +2555,9 @@ class Singleton extends ChangeNotifier {
       await SecureSessionStorage().removePersistedSession();
       await MedicationReminderService().cancelAll();
       await _deleteStoredAvatarFiles();
+      _blockedUserIds = null;
+      _blockedUsersSynced = false;
+      _lastCommunitySupportMessage = null;
       _lastSyncAt = null;
       _lastSyncStatus = 'Not synced yet';
       _hasHydratedLocalCache = false;
@@ -2591,8 +2602,18 @@ class Singleton extends ChangeNotifier {
       await prefs.remove('userID');
       await prefs.remove('community_alias');
       await prefs.remove(_localCacheKey);
+      await prefs.remove(_communityCacheKey);
       await prefs.remove(_syncStatusKey);
       await prefs.remove(_syncTimestampKey);
+      // Account-scoped community state: leaving any of it behind leaks
+      // the previous member's feed, likes, identity preference, and
+      // block list into the next sign-in on a shared device.
+      await prefs.remove(_blockedUsersKey);
+      await prefs.remove(_postTimesKey);
+      await prefs.remove(_useRealNameKey);
+      _blockedUserIds = null;
+      _blockedUsersSynced = false;
+      _lastCommunitySupportMessage = null;
       // Health traces beyond the cache: pending reminders would name the
       // signed-out user's medications to the next device user, and the
       // avatar file lives outside prefs entirely.

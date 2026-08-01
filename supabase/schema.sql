@@ -601,6 +601,12 @@ begin
       raise exception 'Unsupported mutation operation: %', v_operation;
     end if;
 
+    -- Per-mutation isolation: a constraint violation on one mutation
+    -- (for example an oversized field from an older client) must not
+    -- abort the whole batch and wedge sync for the account forever. The
+    -- failed mutation is simply not acknowledged; the client dead-letters
+    -- it after repeated rejections.
+    begin
     if v_operation = 'delete' then
       insert into public.sync_tombstones (
         entity_type,
@@ -837,6 +843,11 @@ begin
     end if;
 
     v_acknowledged := v_acknowledged || jsonb_build_array(v_mutation_id);
+    exception
+      when check_violation or string_data_right_truncation
+        or not_null_violation or invalid_text_representation then
+        raise warning 'mutation % rejected: %', v_mutation_id, sqlerrm;
+    end;
   end loop;
 
   return v_acknowledged;
@@ -1085,6 +1096,14 @@ begin
     where u.id = public.current_uid();
 
     if new.user_name = '' then
+      new.user_name := coalesce(v_own_alias, 'Member');
+    elsif new.user_name ~*
+      '(parkiwell|admin|moderator|official|staff|support|helpline|doctor|nurse|neurolog|therapist|clinic)'
+      or new.user_name ~* '\mdr\M\.?'
+    then
+      -- Authority-figure and staff impersonation is the top abuse vector
+      -- in a patient community; profile names containing these terms are
+      -- never shown as community identity, even if they match users.name.
       new.user_name := coalesce(v_own_alias, 'Member');
     elsif new.user_name is not distinct from v_own_name then
       null; -- posting under own profile name

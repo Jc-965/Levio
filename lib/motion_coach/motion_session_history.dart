@@ -84,6 +84,43 @@ class MotionSessionHistory {
     return scores;
   }
 
+  /// Consecutive calendar days with at least one completed session, ending
+  /// today or yesterday. A streak survives until a full day is missed, so
+  /// this morning's not-yet-done session does not read as a broken streak.
+  int currentStreakDays({DateTime? now}) {
+    if (_entries.isEmpty) return 0;
+    final Set<DateTime> days = <DateTime>{
+      for (final MotionSessionRecord entry in _entries)
+        DateTime(
+          entry.completedAt.toLocal().year,
+          entry.completedAt.toLocal().month,
+          entry.completedAt.toLocal().day,
+        ),
+    };
+    final DateTime local = (now ?? DateTime.now()).toLocal();
+    DateTime cursor = DateTime(local.year, local.month, local.day);
+    if (!days.contains(cursor)) {
+      cursor = cursor.subtract(const Duration(days: 1));
+      if (!days.contains(cursor)) return 0;
+    }
+    int streak = 0;
+    while (days.contains(cursor)) {
+      streak += 1;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  /// Sessions completed in the seven days ending [now], inclusive.
+  int sessionsInLastWeek({DateTime? now}) {
+    final DateTime end = (now ?? DateTime.now()).toLocal();
+    final DateTime start = end.subtract(const Duration(days: 7));
+    return _entries.where((MotionSessionRecord entry) {
+      final DateTime completed = entry.completedAt.toLocal();
+      return completed.isAfter(start) && !completed.isAfter(end);
+    }).length;
+  }
+
   /// Mean overall score across the [count] most recent scored sessions.
   double? recentAverageScore({int count = 5}) {
     final List<double> scores = <double>[

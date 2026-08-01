@@ -165,6 +165,29 @@ void main() {
       expect(history.scoreTrendFor('sit_to_stand'), isEmpty);
     });
 
+    test('computes day streaks that survive an incomplete today', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final DateTime now = DateTime(2026, 7, 31, 9);
+      for (int daysAgo = 1; daysAgo <= 3; daysAgo += 1) {
+        await history.record(
+          _evaluation(score: 80),
+          completedAt: now.subtract(Duration(days: daysAgo)),
+        );
+      }
+
+      // Yesterday through three days ago: streak holds at 3 before today's
+      // session, grows to 4 after it, and a two-day-old gap breaks it.
+      expect(history.currentStreakDays(now: now), 3);
+      await history.record(_evaluation(score: 90), completedAt: now);
+      expect(history.currentStreakDays(now: now), 4);
+      expect(
+        history.currentStreakDays(now: now.add(const Duration(days: 2))),
+        0,
+      );
+      expect(history.sessionsInLastWeek(now: now), 4);
+      expect(MotionSessionHistory().currentStreakDays(now: now), 0);
+    });
+
     test('clear removes every stored session', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(

@@ -167,9 +167,14 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
                 ),
                 Expanded(
                   child: _Statistic(
-                    label: 'Movements',
-                    value:
-                        '${entries.fold<int>(0, (int total, MotionSessionRecord entry) => total + entry.completedRepetitions)}',
+                    label: 'Day streak',
+                    value: '${widget.history.currentStreakDays()}',
+                  ),
+                ),
+                Expanded(
+                  child: _Statistic(
+                    label: 'This week',
+                    value: '${widget.history.sessionsInLastWeek()}',
                   ),
                 ),
               ],

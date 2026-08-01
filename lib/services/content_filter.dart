@@ -113,8 +113,8 @@ class ContentModerationService {
   // Crisis resources to show when concerning content is detected
   static const String crisisMessage =
       'You are not alone. If you are thinking about suicide or self-harm, '
-      'help is available right now: call or text 988 (Suicide and Crisis '
-      'Lifeline, US), or contact your local emergency services.';
+      'help is available right now: contact your local emergency number or '
+      'a suicide prevention helpline (in the US, call or text 988).';
 
   ContentModerationService._internal() {
     // Initialize with the default LDNOOBW word list only. Crisis terms are

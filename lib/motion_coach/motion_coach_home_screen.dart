@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
@@ -33,6 +34,7 @@ class MotionCoachHomeScreen extends StatefulWidget {
 }
 
 class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
+  final AppLogger _logger = AppLogger();
   late final MotionReferenceLibrary _library =
       widget.library ?? MotionReferenceLibrary.shared;
   late final MotionSessionHistory _history =
@@ -100,7 +102,12 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         ),
       );
       await _loadHistory();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Routine ${description.routineAssetId} failed to open',
+        error,
+        stackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -139,7 +146,12 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         ),
       );
       await _loadHistory();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Exercise ${exercise.exerciseId} failed to open',
+        error,
+        stackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

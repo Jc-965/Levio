@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_card.dart';
 import 'motion_demonstration_view.dart';
@@ -68,8 +69,9 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
           .loadDemonstration(widget.exercises[index].exerciseId);
       if (!mounted || _previewIndex != index) return;
       setState(() => _loop = loop);
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // The written instructions below remain the fallback.
+      AppLogger().warning('Intro demonstration failed', error, stackTrace);
       if (!mounted || _previewIndex != index) return;
       setState(() => _loop = null);
     }

@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/app_logger.dart';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
@@ -64,6 +65,7 @@ class MotionRoutineScreen extends StatefulWidget {
 
 class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     with WidgetsBindingObserver {
+  final AppLogger _logger = AppLogger();
   late final MotionRoutineController _controller;
   late final MotionCueSpeaker _cueSpeaker;
   late final MotionCoachPreferences _preferences;
@@ -143,10 +145,15 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
           .loadDemonstration(exerciseId);
       if (!mounted || _demonstrationExerciseId != exerciseId) return;
       setState(() => _demonstration = loop);
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // The written instruction is the fallback; a missing guide animation
       // must not stop the routine. Guarded like the success path so a stale
       // failure can never clobber a newer step's loaded guide.
+      _logger.warning(
+        'Demonstration loop failed to load for $exerciseId',
+        error,
+        stackTrace,
+      );
       if (!mounted || _demonstrationExerciseId != exerciseId) return;
       setState(() => _demonstration = null);
     }
@@ -222,6 +229,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
   Future<void> _suspend() async {
     if (_phase == _RoutineScreenPhase.suspended) return;
+    // Completion already owns the driver and navigation; suspending now
+    // would only flash a spurious paused screen under the results push.
+    if (_finishing) return;
     ++_generation;
     _controller.reset();
     final MotionCaptureDriver? driver = _driver;
@@ -261,22 +271,31 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         evaluation,
         completedAt: DateTime.now(),
       );
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      // The engine emitted a document this build cannot parse; that is a
+      // defect worth hearing about, not a user-facing condition.
+      _logger.error(
+        'Session evaluation could not be parsed',
+        error,
+        stackTrace,
+      );
       if (mounted) Navigator.of(context).pop();
       return;
     }
     bool saved = true;
     try {
       await (widget.history ?? MotionSessionHistory()).add(record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning('Session history write failed', error, stackTrace);
       saved = false;
     }
     // Count the completed session in the app's shared recovery tracking.
     // Best effort: a logging failure must not block the results screen.
     try {
       await (widget.onSessionLogged ?? _logToRecoveryTracking)(record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // The coach's own history above is the authoritative record.
+      _logger.warning('Recovery tracking log failed', error, stackTrace);
     }
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(

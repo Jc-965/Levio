@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/app_logger.dart';
+
 /// On-device history of completed motion routines.
 ///
 /// Only derived numbers are kept — scores, repetition counts, and the
@@ -167,7 +169,12 @@ class MotionSessionHistory {
         entries.add(
           MotionSessionRecord.fromJson(value! as Map<String, Object?>),
         );
-      } on Object {
+      } on Object catch (error, stackTrace) {
+        AppLogger().warning(
+          'Dropped one unreadable motion session record',
+          error,
+          stackTrace,
+        );
         continue;
       }
     }

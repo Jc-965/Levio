@@ -499,12 +499,18 @@ class Singleton extends ChangeNotifier {
   }) async {
     final trimmedRoutineId = routineId.trim();
     final trimmedTitle = title.trim();
-    if (trimmedRoutineId.isEmpty || trimmedTitle.isEmpty) return;
+    if (trimmedRoutineId.isEmpty || trimmedTitle.isEmpty) {
+      _logger.warning('Dropped motion session with blank identity');
+      return;
+    }
 
     final completionTime = (completedAt ?? DateTime.now()).toLocal();
     if (completionTime.isAfter(
       DateTime.now().add(const Duration(minutes: 1)),
     )) {
+      _logger.warning(
+        'Dropped motion session with future completion time $completionTime',
+      );
       return;
     }
 

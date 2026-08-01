@@ -188,6 +188,22 @@ void main() {
       expect(MotionSessionHistory().currentStreakDays(now: now), 0);
     });
 
+    test('streaks span a month boundary with calendar arithmetic', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final DateTime now = DateTime(2026, 8, 1, 8);
+      await history.record(_evaluation(score: 80), completedAt: now);
+      await history.record(
+        _evaluation(score: 80),
+        completedAt: DateTime(2026, 7, 31, 21),
+      );
+      await history.record(
+        _evaluation(score: 80),
+        completedAt: DateTime(2026, 7, 30, 7),
+      );
+
+      expect(history.currentStreakDays(now: now), 3);
+    });
+
     test('clear removes every stored session', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(

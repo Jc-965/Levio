@@ -98,15 +98,21 @@ class MotionSessionHistory {
         ),
     };
     final DateTime local = (now ?? DateTime.now()).toLocal();
+    // Calendar-safe decrement: the constructor normalizes day 0 to the last
+    // day of the previous month and always lands on that day's real local
+    // midnight. Subtracting a flat 24 hours would drift across daylight
+    // saving transitions and read an unbroken streak as ended.
+    DateTime previousDay(DateTime day) =>
+        DateTime(day.year, day.month, day.day - 1);
     DateTime cursor = DateTime(local.year, local.month, local.day);
     if (!days.contains(cursor)) {
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = previousDay(cursor);
       if (!days.contains(cursor)) return 0;
     }
     int streak = 0;
     while (days.contains(cursor)) {
       streak += 1;
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = previousDay(cursor);
     }
     return streak;
   }

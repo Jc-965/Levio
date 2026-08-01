@@ -701,6 +701,14 @@ class CloudBackendService {
 
   Future<bool> deleteUser(String id) async {
     if (!isEnabled) return false;
+    // A degraded session (anonymous bootstrap after a failed token
+    // refresh) makes every RLS-guarded delete a silent no-op; reporting
+    // success then tells the patient their data was destroyed while all
+    // of it survives server-side.
+    if (!hasFullAccount) {
+      _logger.error('Refusing account data deletion without a full session');
+      return false;
+    }
 
     try {
       final userId = _effectiveUser;
@@ -722,7 +730,21 @@ class CloudBackendService {
       await _deleteByUserIfExists('recovery_sessions', userId);
       await _deleteByUserIfExists('logs', userId);
       await _deleteByUserIfExists('schedules', userId);
-      await _client!.from('users').delete().eq('id', userId);
+      // Verify the terminal delete actually removed the profile row; a
+      // zero-row result means RLS filtered us out and nothing above can
+      // be trusted to have run as the right identity either.
+      final deletedRows = await _client!
+          .from('users')
+          .delete()
+          .eq('id', userId)
+          .select('id');
+      if (deletedRows.isEmpty) {
+        _logger.error(
+          'Account deletion removed no profile row; session identity '
+          'likely degraded',
+        );
+        return false;
+      }
       return true;
     } catch (e, stackTrace) {
       _logger.error('Cloud delete user failed', e, stackTrace);

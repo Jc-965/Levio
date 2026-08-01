@@ -856,7 +856,11 @@ begin
       -- row, tombstone uniqueness) rejects only that mutation; aborting
       -- the batch would wedge every other pending change behind it.
       when others then
-        raise warning 'mutation % rejected: %', v_mutation_id, sqlerrm;
+        -- Log the id and error class only: sqlerrm can embed row values
+        -- (symptom text, medication names) and Postgres logs are not a
+        -- place for health data.
+        raise warning 'mutation % rejected (sqlstate %)',
+          v_mutation_id, sqlstate;
     end;
   end loop;
 
@@ -1051,6 +1055,8 @@ create table if not exists public.community_write_audit (
 
 create index if not exists idx_write_audit_user_kind_created
   on public.community_write_audit (user_id, kind, created_at desc);
+create index if not exists idx_write_audit_created
+  on public.community_write_audit (created_at);
 
 alter table public.community_write_audit enable row level security;
 -- No policies: only the security definer trigger touches this table.
@@ -1143,9 +1149,16 @@ begin
         from public.users u
         where u.community_alias = new.user_name;
         if v_alias_owner is null and v_own_alias is null then
-          update public.users
-            set community_alias = new.user_name
-            where id = public.current_uid();
+          begin
+            update public.users
+              set community_alias = new.user_name
+              where id = public.current_uid();
+          exception
+            -- Two devices can race for the same fresh alias; losing the
+            -- unique index must not fail the whole post insert.
+            when unique_violation then
+              new.user_name := 'Member';
+          end;
         else
           new.user_name := coalesce(v_own_alias, 'Member');
         end if;

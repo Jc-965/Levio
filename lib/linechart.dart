@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'barchart.dart';
 import 'singleton.dart';
+import 'utils/log_timestamp.dart';
 import 'theme/app_theme.dart';
 import 'widgets/modern_card.dart';
 import 'utils/haptic_utils.dart';
@@ -66,30 +67,7 @@ class LineChartSample1State extends State<LineChartSample1>
 
   bool get _medicationChartHasData => singleton.schedule.isNotEmpty;
 
-  DateTime? _parseLogTimestamp(String value) {
-    final parts = value.split(',');
-    if (parts.length != 2) return null;
-
-    final timePart = parts.first.trim().split(':');
-    final datePart = parts.last.trim().split(' ');
-    if (timePart.length != 2 || datePart.length != 3) return null;
-
-    final hour = int.tryParse(timePart[0]);
-    final minute = int.tryParse(timePart[1]);
-    final day = int.tryParse(datePart[0]);
-    final month = monthToIndex[datePart[1]];
-    final year = int.tryParse(datePart[2]);
-
-    if (hour == null ||
-        minute == null ||
-        day == null ||
-        month == null ||
-        year == null) {
-      return null;
-    }
-
-    return DateTime(year, month, day, hour, minute);
-  }
+  DateTime? _parseLogTimestamp(String value) => parseLogTimestamp(value);
 
   void _rebuildChartData() {
     final logs = singleton.log;

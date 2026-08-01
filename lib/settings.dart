@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _useRealNameInCommunity = false;
   final _reminders = MedicationReminderService();
   bool _remindersEnabled = false;
+  bool _exactRemindersAvailable = true;
   TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
 
   @override
@@ -46,10 +47,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadReminderPreferences() async {
     final enabled = await _reminders.remindersEnabled();
     final time = await _reminders.reminderTime();
+    final exact = await _reminders.exactRemindersAvailable();
     if (!mounted) return;
     setState(() {
       _remindersEnabled = enabled;
       _reminderTime = time;
+      _exactRemindersAvailable = exact;
     });
   }
 
@@ -537,9 +540,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SettingsTile(
                 icon: Icons.notifications_active_outlined,
                 title: 'Medication Reminders',
-                subtitle: _remindersEnabled
+                subtitle: !_remindersEnabled
+                    ? 'Get notified on medication days'
+                    : _exactRemindersAvailable
                     ? 'On, at scheduled days'
-                    : 'Get notified on medication days',
+                    : 'On. Exact timing is off in system settings, so '
+                          'reminders may arrive a few minutes late.',
                 trailing: Switch(
                   value: _remindersEnabled,
                   activeThumbColor: colors.primary,

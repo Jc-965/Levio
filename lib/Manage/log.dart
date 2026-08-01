@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../singleton.dart';
+import '../utils/log_timestamp.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/date_time_controls.dart';
@@ -43,34 +44,9 @@ class _LogScreenState extends State<LogScreen> {
   String _symptom(int index) => singleton.log[index][1];
   String _severity(int index) => singleton.log[index][2];
 
-  DateTime? _parseStorageTime(String value) {
-    final parts = value.split(',');
-    if (parts.length != 2) return null;
-    final timePart = parts.first.trim().split(':');
-    final datePart = parts.last.trim().split(' ');
-    if (timePart.length != 2 || datePart.length != 3) return null;
+  DateTime? _parseStorageTime(String value) => parseLogTimestamp(value);
 
-    final hour = int.tryParse(timePart[0]);
-    final minute = int.tryParse(timePart[1]);
-    final day = int.tryParse(datePart[0]);
-    final month = int.tryParse(singleton.monthMap[datePart[1]] ?? '');
-    final year = int.tryParse(datePart[2]);
-    if (hour == null ||
-        minute == null ||
-        day == null ||
-        month == null ||
-        year == null) {
-      return null;
-    }
-    return DateTime(year, month, day, hour, minute);
-  }
-
-  String _formatStorageTime(DateTime value) {
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    return '$hour:$minute, $day ${_monthNames[value.month - 1]} ${value.year}';
-  }
+  String _formatStorageTime(DateTime value) => formatLogTimestamp(value);
 
   String _formatTime(DateTime? value) {
     if (value == null) return 'Time unavailable';

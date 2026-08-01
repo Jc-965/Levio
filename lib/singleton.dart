@@ -15,6 +15,7 @@ import 'package:parkiwell/services/longitudinal_analytics.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
 import 'package:parkiwell/services/secure_session_storage.dart';
+import 'package:parkiwell/utils/log_timestamp.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'theme/app_theme.dart';
@@ -706,34 +707,7 @@ class Singleton extends ChangeNotifier {
     'December': "12",
   };
 
-  DateTime? _parseLogTimestamp(String value) {
-    final parts = value.split(',');
-    if (parts.length != 2) return null;
-
-    final timePart = parts.first.trim();
-    final datePart = parts.last.trim();
-
-    final timeSegments = timePart.split(':');
-    final dateSegments = datePart.split(' ');
-
-    if (timeSegments.length != 2 || dateSegments.length != 3) return null;
-
-    final hour = int.tryParse(timeSegments[0]);
-    final minute = int.tryParse(timeSegments[1]);
-    final day = int.tryParse(dateSegments[0]);
-    final month = int.tryParse(monthMap[dateSegments[1]] ?? '');
-    final year = int.tryParse(dateSegments[2]);
-
-    if (hour == null ||
-        minute == null ||
-        day == null ||
-        month == null ||
-        year == null) {
-      return null;
-    }
-
-    return DateTime(year, month, day, hour, minute);
-  }
+  DateTime? _parseLogTimestamp(String value) => parseLogTimestamp(value);
 
   void sortTime({bool descending = true}) {
     if (log.length <= 1) return;

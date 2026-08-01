@@ -12,10 +12,9 @@ import 'app_logger.dart';
 
 /// Weekly local notifications for medication schedules.
 ///
-/// Schedule entries carry days of the week but no time of day, so all
-/// reminders fire at one user-configurable time (default 9:00). Reminders
-/// are opt-in from Settings; enabling them requests notification
-/// permission.
+/// Each medication may carry its own dose times; entries without them fall
+/// back to one user-configurable time (default 9:00). Reminders are opt-in
+/// from Settings; enabling them requests notification permission.
 class MedicationReminderService {
   MedicationReminderService._internal();
   static final MedicationReminderService _instance =
@@ -96,6 +95,23 @@ class MedicationReminderService {
     } catch (e) {
       _logger.warning('Notification permission request failed');
       return false;
+    }
+  }
+
+  /// False when Android has revoked the exact-alarm permission, meaning
+  /// reminders may arrive minutes late; Settings surfaces this so the
+  /// degradation is never silent.
+  Future<bool> exactRemindersAvailable() async {
+    if (!await _ensureInitialized()) return true;
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) return true;
+      return await android.canScheduleExactNotifications() ?? true;
+    } catch (_) {
+      return true;
     }
   }
 

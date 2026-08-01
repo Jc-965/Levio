@@ -798,6 +798,8 @@ class _CommunityScreenState extends State<CommunityScreen>
       backgroundColor: backgroundColor,
       child: ClipOval(
         child: Image.file(
+          // Decode at display size, not photo size.
+          cacheWidth: 144,
           File(imagePath),
           width: size,
           height: size,

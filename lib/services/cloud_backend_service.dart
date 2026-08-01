@@ -671,6 +671,13 @@ class CloudBackendService {
       final userId = _effectiveUserId(id);
       if (userId == null) return false;
 
+      // Block rows reference the user from both directions.
+      try {
+        await _client!
+            .from('community_user_blocks')
+            .delete()
+            .eq('blocker_id', userId);
+      } on PostgrestException catch (_) {}
       await _deleteByUserIfExists('community_group_memberships', userId);
       await _deleteByUserIfExists('community_post_likes', userId);
       await _deleteByUserIfExists('community_comments', userId);

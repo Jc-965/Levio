@@ -483,6 +483,8 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
         );
       }
       return Image.file(
+        // Decode at display size, not photo size.
+        cacheWidth: 108,
         File(singleton.image),
         fit: BoxFit.cover,
         width: 36,

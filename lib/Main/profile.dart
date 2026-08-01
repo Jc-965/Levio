@@ -27,7 +27,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> updateImage() async {
     HapticUtils.lightImpact();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      imageQuality: 85,
+    );
     if (!mounted) return;
 
     if (pickedFile != null) {
@@ -116,6 +120,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } else {
       return Image.file(
+        // Decode at display size, not photo size.
+        cacheWidth: 384,
         File(singleton.image),
         fit: BoxFit.cover,
         width: 86,

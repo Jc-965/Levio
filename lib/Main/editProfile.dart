@@ -523,7 +523,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickProfileImage() async {
     HapticUtils.lightImpact();
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      imageQuality: 85,
+    );
     if (!mounted || picked == null) return;
     final storedPath = await persistPickedImage(picked);
     if (!mounted) return;

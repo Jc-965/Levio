@@ -71,6 +71,12 @@ void main() {
 
         expect(engine.pendingCount, 0);
         expect(engine.deadLetteredMutations.single.mutationId, 'poison');
+
+        // The loss record must survive a process restart: "could not be
+        // synced" evaporating with the process would be silent data loss.
+        final restored = OfflineSyncEngine(store);
+        await restored.initialize();
+        expect(restored.deadLetteredMutations.single.mutationId, 'poison');
       },
     );
 

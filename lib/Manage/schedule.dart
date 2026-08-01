@@ -201,6 +201,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     String scheduleId,
     String status,
   ) async {
+    if (status == 'skipped') {
+      // Skips get the same tremor-guard as deletes: a mis-tap here writes
+      // a wrong entry into the adherence record.
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Skip this dose?'),
+          content: Text(
+            'Record that you did not take ${name(index)} for this dose? '
+            'You can correct it later by marking the dose as taken.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Skip dose'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    if (!mounted || !sheetContext.mounted) return;
     HapticUtils.success();
     final saved = await singleton.recordMedicationTakenById(
       scheduleId,
@@ -217,9 +243,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ? (status == 'taken'
                     ? '$medName recorded'
                     : '$medName marked as skipped')
-              // recordMedicationTakenById refuses duplicates for the same
-              // dose slot, so "false" here usually means already recorded.
-              : 'This dose is already recorded for this time.',
+              // False now only means an identical record already exists;
+              // corrections (skipped -> taken) update in place and
+              // return true.
+              : 'This dose is already recorded exactly like this.',
         ),
         behavior: SnackBarBehavior.floating,
       ),

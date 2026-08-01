@@ -1741,7 +1741,18 @@ class Singleton extends ChangeNotifier {
     return value.startsWith('images/') ? value : 'images/711128.png';
   }
 
+  String? _ensuredUserRecordUid;
+
   Future<bool> _ensureCloudUserRecord(String uid) async {
+    // Existence only needs proving once per session per uid; re-upserting
+    // on every like and comment is a wasted round-trip.
+    if (_ensuredUserRecordUid == uid) return true;
+    final ensured = await _ensureCloudUserRecordUncached(uid);
+    if (ensured) _ensuredUserRecordUid = uid;
+    return ensured;
+  }
+
+  Future<bool> _ensureCloudUserRecordUncached(String uid) async {
     return _cloud.upsertUser(
       id: uid,
       name: _normalizedDisplayName(name == '[Name]' ? '' : name),
@@ -2485,11 +2496,21 @@ class Singleton extends ChangeNotifier {
       final hour = int.tryParse(parts[0]);
       final minute = int.tryParse(parts[1]);
       if (hour == null || minute == null) continue;
-      final slot = DateTime(local.year, local.month, local.day, hour, minute);
-      final distance = local.difference(slot).abs();
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = slot;
+      // Check the adjacent days too: a 23:00 dose taken at 00:30 must
+      // bind to yesterday's slot, not one 22.5 hours in the future.
+      for (var dayOffset = -1; dayOffset <= 1; dayOffset += 1) {
+        final slot = DateTime(
+          local.year,
+          local.month,
+          local.day + dayOffset,
+          hour,
+          minute,
+        );
+        final distance = local.difference(slot).abs();
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = slot;
+        }
       }
     }
     return best?.toUtc();
@@ -2504,20 +2525,30 @@ class Singleton extends ChangeNotifier {
   static const Duration _slotlessDoseDedupeWindow = Duration(minutes: 10);
 
   bool hasRecordedDoseFor(String scheduleId, DateTime scheduledAt) {
+    return _recordedDoseEventFor(scheduleId, scheduledAt) != null;
+  }
+
+  Map<String, dynamic>? _recordedDoseEventFor(
+    String scheduleId,
+    DateTime scheduledAt,
+  ) {
     final slotIso = scheduledAt.toUtc().toIso8601String();
     final slotUtc = scheduledAt.toUtc();
     final slotless = nearestDoseSlot(scheduleId, DateTime.now()) == null;
-    return medicationEvents.any((event) {
-      if (event['schedule_id']?.toString() != scheduleId) return false;
-      if (event['scheduled_at']?.toString() == slotIso) return true;
-      if (!slotless) return false;
+    for (final event in medicationEvents) {
+      if (event['schedule_id']?.toString() != scheduleId) continue;
+      if (event['scheduled_at']?.toString() == slotIso) return event;
+      if (!slotless) continue;
       final eventScheduled = DateTime.tryParse(
         event['scheduled_at']?.toString() ?? '',
       );
-      if (eventScheduled == null) return false;
-      return eventScheduled.toUtc().difference(slotUtc).abs() <
-          _slotlessDoseDedupeWindow;
-    });
+      if (eventScheduled == null) continue;
+      if (eventScheduled.toUtc().difference(slotUtc).abs() <
+          _slotlessDoseDedupeWindow) {
+        return event;
+      }
+    }
+    return null;
   }
 
   Future<bool> recordMedicationTakenById(
@@ -2531,9 +2562,26 @@ class Singleton extends ChangeNotifier {
       if (scheduleIndex < 0) return false;
       final now = (takenAt ?? DateTime.now()).toUtc();
       final slot = scheduledAt ?? nearestDoseSlot(scheduleId, now) ?? now;
-      if (hasRecordedDoseFor(scheduleId, slot)) {
-        _lastCommunityError = null;
-        return false;
+      final existing = _recordedDoseEventFor(scheduleId, slot);
+      if (existing != null) {
+        // A mis-tap must be correctable: marking a slot taken after it was
+        // recorded as skipped (or vice versa) updates the same event
+        // instead of refusing, so one tremor tap can never permanently
+        // falsify the adherence record.
+        if (existing['status'] == status) return false;
+        existing['status'] = status;
+        existing['taken_at'] = status == 'taken' ? now.toIso8601String() : null;
+        await _queueHealthMutation(
+          entityType: SyncEntityType.medicationEvent,
+          entityId: existing['id'].toString(),
+          operation: SyncMutationOperation.upsert,
+          payload: Map<String, dynamic>.from(existing),
+        );
+        _invalidateAnalytics();
+        await _persistLocalCache();
+        unawaited(syncPendingMutations());
+        notifyListenersSafe();
+        return true;
       }
       final eventId = _uuid.v4();
       final event = <String, dynamic>{
@@ -2707,6 +2755,7 @@ class Singleton extends ChangeNotifier {
       // the previous member's feed, likes, identity preference, and
       // block list into the next sign-in on a shared device.
       await prefs.remove(_blockedUsersKey);
+      await prefs.remove(_pendingBlockOpsKey);
       await prefs.remove(_postTimesKey);
       await prefs.remove(_useRealNameKey);
       _blockedUserIds = null;
@@ -3166,18 +3215,66 @@ class Singleton extends ChangeNotifier {
 
   bool _blockedUsersSynced = false;
 
+  static const String _pendingBlockOpsKey = 'community_pending_block_ops_v1';
+
+  /// Retries block/unblock writes that failed (offline, transient). Runs
+  /// before adopting the server list so a subway-tunnel block of a
+  /// harasser can never be silently reverted by the next session's fetch.
+  Future<void> _flushPendingBlockOps(String uid) async {
+    final prefs = await _prefs;
+    final pending = prefs.getStringList(_pendingBlockOpsKey);
+    if (pending == null || pending.isEmpty) return;
+    final remaining = <String>[];
+    for (final op in pending) {
+      final parts = op.split('|');
+      if (parts.length != 2) continue;
+      final ok = await _cloud.setUserBlock(
+        blockerId: uid,
+        blockedId: parts[1],
+        blocked: parts[0] == 'block',
+      );
+      if (!ok) remaining.add(op);
+    }
+    await prefs.setStringList(_pendingBlockOpsKey, remaining);
+  }
+
+  Future<void> _writeBlockOp(String userId, {required bool blocked}) async {
+    final uid = await _resolveUserId();
+    final prefs = await _prefs;
+    final op = '${blocked ? 'block' : 'unblock'}|$userId';
+    if (uid == null) {
+      final pending = prefs.getStringList(_pendingBlockOpsKey) ?? <String>[];
+      await prefs.setStringList(_pendingBlockOpsKey, [...pending, op]);
+      return;
+    }
+    final ok = await _cloud.setUserBlock(
+      blockerId: uid,
+      blockedId: userId,
+      blocked: blocked,
+    );
+    if (!ok) {
+      final pending = prefs.getStringList(_pendingBlockOpsKey) ?? <String>[];
+      await prefs.setStringList(_pendingBlockOpsKey, [...pending, op]);
+    }
+  }
+
   Future<Set<String>> blockedUserIds() async {
     final prefs = await _prefs;
     _blockedUserIds ??=
         (prefs.getStringList(_blockedUsersKey) ?? const <String>[]).toSet();
     // The server list is authoritative once per session: replacing (not
     // unioning) means an unblock made on another device actually takes
-    // effect here. On fetch failure the local set is kept untouched.
+    // effect here. Pending local ops are flushed first so an offline
+    // block survives; on fetch failure the local set is kept untouched.
     if (!_blockedUsersSynced && _cloud.isEnabled) {
       final uid = await _resolveUserId();
       if (uid != null) {
+        await _flushPendingBlockOps(uid);
+        final stillPending =
+            (prefs.getStringList(_pendingBlockOpsKey) ?? const <String>[])
+                .isNotEmpty;
         final remote = await _cloud.getBlockedUserIds(uid);
-        if (remote != null) {
+        if (remote != null && !stillPending) {
           _blockedUsersSynced = true;
           _blockedUserIds = {...remote};
           await prefs.setStringList(
@@ -3197,12 +3294,7 @@ class Singleton extends ChangeNotifier {
     if (userId.trim().isEmpty || !blocked.add(userId)) return;
     final prefs = await _prefs;
     await prefs.setStringList(_blockedUsersKey, blocked.toList());
-    final uid = await _resolveUserId();
-    if (uid != null) {
-      unawaited(
-        _cloud.setUserBlock(blockerId: uid, blockedId: userId, blocked: true),
-      );
-    }
+    unawaited(_writeBlockOp(userId, blocked: true));
     notifyListenersSafe();
   }
 
@@ -3211,12 +3303,7 @@ class Singleton extends ChangeNotifier {
     if (!blocked.remove(userId)) return;
     final prefs = await _prefs;
     await prefs.setStringList(_blockedUsersKey, blocked.toList());
-    final uid = await _resolveUserId();
-    if (uid != null) {
-      unawaited(
-        _cloud.setUserBlock(blockerId: uid, blockedId: userId, blocked: false),
-      );
-    }
+    unawaited(_writeBlockOp(userId, blocked: false));
     notifyListenersSafe();
   }
 

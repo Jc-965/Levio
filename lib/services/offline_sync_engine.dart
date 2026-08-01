@@ -320,6 +320,12 @@ class OfflineSyncEngine {
       'mutations': pendingMutations
           .map((mutation) => mutation.toJson())
           .toList(),
+      // Dead letters survive restarts: a record the server refused is
+      // still the user's health data, and the "could not be synced"
+      // message must not evaporate with the process.
+      'dead_lettered': deadLetteredMutations
+          .map((mutation) => mutation.toJson())
+          .toList(),
     });
   }
 
@@ -333,6 +339,16 @@ class OfflineSyncEngine {
     final rawMutations = journal['mutations'];
     _pendingByEntity.clear();
     _nextSequence = 1;
+    deadLetteredMutations.clear();
+
+    final rawDeadLetters = journal['dead_lettered'];
+    if (rawDeadLetters is List) {
+      for (final raw in rawDeadLetters) {
+        if (raw is! Map) continue;
+        final mutation = SyncMutation.fromJson(Map<String, dynamic>.from(raw));
+        if (mutation != null) deadLetteredMutations.add(mutation);
+      }
+    }
 
     if (rawMutations is List) {
       for (final rawMutation in rawMutations) {
@@ -362,7 +378,9 @@ class OfflineSyncEngine {
   }
 
   Future<void> _persist() async {
-    final encoded = _pendingByEntity.isEmpty ? null : encodeJournal();
+    final encoded = _pendingByEntity.isEmpty && deadLetteredMutations.isEmpty
+        ? null
+        : encodeJournal();
     await _schedulePersist(encoded);
   }
 

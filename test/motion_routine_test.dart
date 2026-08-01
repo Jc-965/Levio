@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motion_engine/motion_engine.dart';
 import 'package:parkiwell/motion_coach/motion_coach_home_screen.dart';
+import 'package:parkiwell/motion_coach/motion_coach_preferences.dart';
 import 'package:parkiwell/motion_coach/motion_coach_session.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
@@ -245,6 +246,25 @@ void main() {
       );
       expect(history.entries, hasLength(1));
       expect(history.entries.single.steps.single.repetitions, isNotEmpty);
+    });
+  });
+
+  group('MotionCoachPreferences', () {
+    test('persists toggles and defaults to everything on', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final MotionCoachPreferences preferences = MotionCoachPreferences();
+      await preferences.load();
+
+      expect(preferences.speechEnabled, isTrue);
+      expect(preferences.hapticsEnabled, isTrue);
+
+      await preferences.setSpeechEnabled(false);
+      await preferences.setHapticsEnabled(false);
+
+      final MotionCoachPreferences reloaded = MotionCoachPreferences();
+      await reloaded.load();
+      expect(reloaded.speechEnabled, isFalse);
+      expect(reloaded.hapticsEnabled, isFalse);
     });
   });
 

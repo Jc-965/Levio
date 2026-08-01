@@ -10,6 +10,7 @@ import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_capture_driver.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_coach_screen.dart' show MotionCaptureDriverFactory;
 import 'motion_coach_session.dart';
 import 'motion_cue_speaker.dart';
@@ -39,6 +40,7 @@ class MotionRoutineScreen extends StatefulWidget {
     this.cueSpeaker,
     this.history,
     this.onSessionLogged,
+    this.preferences,
   });
 
   final MotionRoutineDescription description;
@@ -53,6 +55,9 @@ class MotionRoutineScreen extends StatefulWidget {
   /// default logs through the app [Singleton].
   final Future<void> Function(MotionSessionRecord record)? onSessionLogged;
 
+  /// Cue delivery preferences; defaults to the shared app-wide instance.
+  final MotionCoachPreferences? preferences;
+
   @override
   State<MotionRoutineScreen> createState() => _MotionRoutineScreenState();
 }
@@ -61,6 +66,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     with WidgetsBindingObserver {
   late final MotionRoutineController _controller;
   late final MotionCueSpeaker _cueSpeaker;
+  late final MotionCoachPreferences _preferences;
   MotionCaptureDriver? _driver;
   _RoutineScreenPhase _phase = _RoutineScreenPhase.initializing;
   MotionDemonstrationLoop? _demonstration;
@@ -80,8 +86,10 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       library: widget.library,
     );
     _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
+    _preferences = widget.preferences ?? MotionCoachPreferences.shared;
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onControllerChanged);
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_cueSpeaker.initialize());
     unawaited(_loadDemonstration());
     unawaited(_initialize());
@@ -111,12 +119,12 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     if (!mounted) return;
     if (_controller.repSerial > _handledRepSerial) {
       _handledRepSerial = _controller.repSerial;
-      HapticUtils.selectionClick();
+      if (_preferences.hapticsEnabled) HapticUtils.selectionClick();
     }
     final LiveExerciseCue? cue = _controller.cue;
     if (_controller.cueSerial > _handledCueSerial && cue != null) {
       _handledCueSerial = _controller.cueSerial;
-      unawaited(_cueSpeaker.speak(cue.text));
+      if (_preferences.speechEnabled) unawaited(_cueSpeaker.speak(cue.text));
     }
     if (_demonstrationExerciseId != _controller.currentStep.exerciseId) {
       unawaited(_loadDemonstration());

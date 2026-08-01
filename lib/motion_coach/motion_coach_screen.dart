@@ -12,6 +12,7 @@ import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_analysis.dart';
 import 'motion_capture_driver.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
 import 'motion_cue_speaker.dart';
@@ -46,6 +47,7 @@ class MotionCoachScreen extends StatefulWidget {
     this.analyzer = const MotionCoachAnalyzer(),
     this.exercise = seatedArmRaiseExercise,
     this.cueSpeaker,
+    this.preferences,
   });
 
   final MotionReferenceLibrary library;
@@ -53,6 +55,9 @@ class MotionCoachScreen extends StatefulWidget {
   final MotionCoachAnalyzer analyzer;
   final MotionExerciseDefinition exercise;
   final MotionCueSpeaker? cueSpeaker;
+
+  /// Cue delivery preferences; defaults to the shared app-wide instance.
+  final MotionCoachPreferences? preferences;
 
   @override
   State<MotionCoachScreen> createState() => _MotionCoachScreenState();
@@ -64,6 +69,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   late final MotionCoachSession _session;
   late final MotionCueSpeaker _cueSpeaker;
+  late final MotionCoachPreferences _preferences;
   final Stopwatch _recordingClock = Stopwatch();
   MotionCaptureDriver? _driver;
   Timer? _timer;
@@ -89,6 +95,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       ),
     );
     _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
+    _preferences = widget.preferences ?? MotionCoachPreferences.shared;
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_onSessionChanged);
     unawaited(_cueSpeaker.initialize());
@@ -128,12 +136,14 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     final LiveExerciseCue? liveCue = _session.liveCue;
     if (_session.liveRepSerial > _handledLiveRepSerial) {
       _handledLiveRepSerial = _session.liveRepSerial;
-      HapticUtils.selectionClick();
+      if (_preferences.hapticsEnabled) HapticUtils.selectionClick();
     }
     if (_session.liveCueSerial > _handledLiveCueSerial && liveCue != null) {
       _handledLiveCueSerial = _session.liveCueSerial;
       _spokenCue = liveCue;
-      unawaited(_cueSpeaker.speak(liveCue.text));
+      if (_preferences.speechEnabled) {
+        unawaited(_cueSpeaker.speak(liveCue.text));
+      }
     } else if (liveCue == null && _spokenCue != null) {
       _spokenCue = null;
       unawaited(_cueSpeaker.stop());

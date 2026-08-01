@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_progress_screen.dart';
 import 'motion_reference_library.dart';
@@ -40,10 +41,24 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
   int _sessionCount = 0;
   double? _recentAverage;
 
+  final MotionCoachPreferences _preferences = MotionCoachPreferences.shared;
+
   @override
   void initState() {
     super.initState();
+    _preferences.addListener(_onPreferencesChanged);
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_loadHistory());
+  }
+
+  @override
+  void dispose() {
+    _preferences.removeListener(_onPreferencesChanged);
+    super.dispose();
+  }
+
+  void _onPreferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadHistory() async {
@@ -259,6 +274,43 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     enabled: !_opening,
                     onTap: () => unawaited(_openSingleExercise(exercise)),
                   ),
+                const SizedBox(height: 20),
+                const SectionHeading(
+                  title: 'Coaching preferences',
+                  description:
+                      'On-screen guidance always stays on; choose how else '
+                      'cues are delivered.',
+                ),
+                const SizedBox(height: 12),
+                ModernCard(
+                  margin: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    children: <Widget>[
+                      SwitchListTile.adaptive(
+                        value: _preferences.speechEnabled,
+                        onChanged: (bool enabled) =>
+                            unawaited(_preferences.setSpeechEnabled(enabled)),
+                        title: const Text('Spoken cues'),
+                        subtitle: const Text(
+                          'Read short coaching cues aloud during a session.',
+                        ),
+                      ),
+                      SwitchListTile.adaptive(
+                        value: _preferences.hapticsEnabled,
+                        onChanged: (bool enabled) =>
+                            unawaited(_preferences.setHapticsEnabled(enabled)),
+                        title: const Text('Vibration on each movement'),
+                        subtitle: const Text(
+                          'A light tap confirms every counted movement.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

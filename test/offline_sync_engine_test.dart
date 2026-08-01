@@ -76,9 +76,9 @@ void main() {
     );
 
     test(
-      'preserves final state across 100k fault-injected writes',
+      'preserves final state across 1M fault-injected writes',
       () async {
-        const mutationCount = 100000;
+        const mutationCount = 1000000;
         const entityCount = 10000;
         const checkpointSize = 10000;
         final baseTime = DateTime.utc(2026, 1, 1);
@@ -153,7 +153,7 @@ void main() {
           'injected_failures=${backend.injectedFailures}',
         );
       },
-      timeout: const Timeout(Duration(minutes: 2)),
+      timeout: const Timeout(Duration(minutes: 10)),
     );
 
     test('recovers a 10k-record mutation journal under 100ms p95', () async {

@@ -151,6 +151,7 @@ jobs:
       - name: Build App Bundle (Production)
         run: |
           flutter build appbundle --release \
+            --obfuscate --split-debug-info=build/symbols/android \
             --build-name=${{ steps.version.outputs.version }} \
             --build-number=${{ github.run_number }} \
             --dart-define=ENVIRONMENT=production \
@@ -316,6 +317,7 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --release \
+            --obfuscate --split-debug-info=build/symbols/ios \
             --build-name=${{ steps.version.outputs.version }} \
             --build-number=${{ github.run_number }} \
             --dart-define=ENVIRONMENT=production \

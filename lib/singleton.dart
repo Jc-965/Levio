@@ -10,6 +10,7 @@ import 'package:parkiwell/services/encrypted_cache_store.dart';
 import 'package:parkiwell/services/encrypted_mutation_journal_store.dart';
 import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
+import 'package:parkiwell/services/medication_reminder_service.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -2135,6 +2136,7 @@ class Singleton extends ChangeNotifier {
       schedule.add(<String>[medName, details, days]);
       scheduleIDs.add(scheduleId);
       calcMeds();
+      unawaited(MedicationReminderService().syncFromSchedule(schedule));
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();
@@ -2173,6 +2175,7 @@ class Singleton extends ChangeNotifier {
 
       schedule[index] = <String>[medName, details, days];
       calcMeds();
+      unawaited(MedicationReminderService().syncFromSchedule(schedule));
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();
@@ -2200,6 +2203,7 @@ class Singleton extends ChangeNotifier {
       schedule.removeAt(index);
       scheduleIDs.removeAt(index);
       calcMeds();
+      unawaited(MedicationReminderService().syncFromSchedule(schedule));
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();

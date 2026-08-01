@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:terminate_restart/terminate_restart.dart';
 
 import 'legal/legal_document_screen.dart';
+import 'services/medication_reminder_service.dart';
 import 'services/tutorial_service.dart';
 import 'singleton.dart';
 import 'theme/app_theme.dart';
@@ -29,6 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = 'Loading...';
   bool _isSyncing = false;
   bool _useRealNameInCommunity = false;
+  final _reminders = MedicationReminderService();
+  bool _remindersEnabled = false;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
 
   @override
   void initState() {
@@ -36,6 +40,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     theme = singleton.colorMode == 1;
     _loadAppVersion();
     _loadCommunityIdentityPreference();
+    _loadReminderPreferences();
+  }
+
+  Future<void> _loadReminderPreferences() async {
+    final enabled = await _reminders.remindersEnabled();
+    final time = await _reminders.reminderTime();
+    if (!mounted) return;
+    setState(() {
+      _remindersEnabled = enabled;
+      _reminderTime = time;
+    });
+  }
+
+  Future<void> _toggleReminders(bool value) async {
+    HapticUtils.selectionClick();
+    if (value) {
+      final granted = await _reminders.requestPermission();
+      if (!granted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Notifications are turned off for ParkiWell in system '
+              'settings. Enable them to receive reminders.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    await _reminders.setRemindersEnabled(value);
+    await _reminders.syncFromSchedule(singleton.schedule);
+    if (!mounted) return;
+    setState(() => _remindersEnabled = value);
+  }
+
+  Future<void> _pickReminderTime() async {
+    HapticUtils.lightImpact();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+      helpText: 'Medication reminder time',
+    );
+    if (picked == null) return;
+    await _reminders.setReminderTime(picked);
+    await _reminders.syncFromSchedule(singleton.schedule);
+    if (!mounted) return;
+    setState(() => _reminderTime = picked);
   }
 
   Future<void> _loadCommunityIdentityPreference() async {
@@ -452,6 +504,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'Restore from backup JSON',
                 onTap: _showImportBackupDialog,
               ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Reminders',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _SettingsTile(
+                icon: Icons.notifications_active_outlined,
+                title: 'Medication Reminders',
+                subtitle: _remindersEnabled
+                    ? 'On, at scheduled days'
+                    : 'Get notified on medication days',
+                trailing: Switch(
+                  value: _remindersEnabled,
+                  activeThumbColor: colors.primary,
+                  onChanged: _toggleReminders,
+                ),
+              ),
+              if (_remindersEnabled) ...[
+                const SizedBox(height: 8),
+                _SettingsTile(
+                  icon: Icons.schedule_outlined,
+                  title: 'Reminder Time',
+                  subtitle: _reminderTime.format(context),
+                  onTap: _pickReminderTime,
+                ),
+              ],
               const SizedBox(height: 24),
 
               Text(

@@ -611,8 +611,11 @@ class CloudBackendService {
     }
   }
 
+  /// The authenticated cloud identity is the only acceptable row owner;
+  /// caller-supplied IDs are ignored so a bug can never attempt writes as
+  /// another user (RLS would reject them, but the client should not try).
   String? _effectiveUserId(String? fallbackId) {
-    return _cloudUserId ?? fallbackId;
+    return _cloudUserId;
   }
 
   Future<void> _deleteByUserIfExists(String table, String userId) async {

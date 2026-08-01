@@ -85,10 +85,7 @@ void main() {
       final result = moderation.moderateContent('   ');
 
       expect(result.isApproved, isFalse);
-      expect(
-        result.violations.single.type,
-        ViolationType.emptyContent,
-      );
+      expect(result.violations.single.type, ViolationType.emptyContent);
     });
 
     test('overlong content is rejected with the length reason', () {

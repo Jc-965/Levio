@@ -60,7 +60,6 @@ class MotionCoachSession extends ChangeNotifier {
   int _lastDecisionMicros = 0;
   int _maximumDecisionMicros = 0;
 
-  ExerciseSpec get exerciseSpec => _liveCoach.spec;
   bool get isRecording => _recording;
   bool get isReady => _ready;
   int get bufferedFrameCount => _frames.length;
@@ -92,9 +91,6 @@ class MotionCoachSession extends ChangeNotifier {
     }
     return total / reps.length;
   }
-
-  /// Fraction of processed frames the coach could actually measure.
-  double get trackingCoverage => _liveCoach.coverage;
 
   /// Feed one camera sample.
   ///

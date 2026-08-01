@@ -356,6 +356,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (deleted) {
       HapticUtils.lightImpact();
+      if (singleton.accountDeletionWasPartial) {
+        // Be honest: rows are gone but the sign-in identity survives until
+        // the server-side deletion function is deployed.
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your health data was deleted. Your sign-in record will be '
+              'removed by our team shortly.',
+            ),
+            duration: Duration(seconds: 8),
+          ),
+        );
+        await Future<void>.delayed(const Duration(seconds: 3));
+      }
       await TerminateRestart.instance.restartApp(
         options: const TerminateRestartOptions(terminate: false),
       );

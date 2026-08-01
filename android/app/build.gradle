@@ -77,6 +77,16 @@ android {
         release {
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
+            } else {
+                // Fail loudly: a silently unsigned "release" build wastes a
+                // full CI/store round trip before anyone notices.
+                gradle.taskGraph.whenReady { graph ->
+                    if (graph.allTasks.any { it.name.contains("Release") }) {
+                        throw new GradleException(
+                            "Release build requires android/key.properties " +
+                            "(keystore config). See key.properties.example.")
+                    }
+                }
             }
             minifyEnabled true
             shrinkResources true

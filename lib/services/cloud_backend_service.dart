@@ -74,6 +74,12 @@ class CloudBackendService {
   }
 
   bool get isConfigured => BackendConfig.isCloudBackendEnabled;
+
+  /// True only when the session belongs to a real, explicitly created
+  /// account. Health data must never sync under the anonymous bootstrap
+  /// session: it is unconsented and unrecoverable after reinstall.
+  bool get hasFullAccount =>
+      isEnabled && (_client?.auth.currentUser?.isAnonymous == false);
   bool get hasActiveSession => _client?.auth.currentSession != null;
   bool get isEnabled =>
       _enabled && _client != null && _cloudUserId != null && hasActiveSession;

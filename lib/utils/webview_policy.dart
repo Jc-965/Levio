@@ -4,11 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 const Set<String> _allowedEmbedHosts = {
+  // nocookie only: allowing youtube.com here let one tap on the player's
+  // title navigate the in-app WebView to full-tracking YouTube, defeating
+  // the whole point of the nocookie embed.
   'www.youtube-nocookie.com',
   'youtube-nocookie.com',
-  'www.youtube.com',
-  'm.youtube.com',
-  'youtube.com',
 };
 
 /// Allows only YouTube embed hosts inside the in-app player. Anything else
@@ -21,7 +21,13 @@ NavigationDecision decideEmbedNavigation(NavigationRequest request) {
     return NavigationDecision.navigate;
   }
   if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
-    unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
+    unawaited(
+      launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+        // Launcher unavailable (tests, restricted profiles): the
+        // navigation stays blocked either way.
+        return false;
+      }),
+    );
   }
   return NavigationDecision.prevent;
 }

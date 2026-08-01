@@ -876,7 +876,13 @@ class Singleton extends ChangeNotifier {
   // Theme management
   int colorMode = 0;
 
+  /// False until the user explicitly picks a theme; the app follows the OS
+  /// light/dark setting in the meantime, which matters for the light
+  /// sensitivity common in this population.
+  bool hasExplicitTheme = false;
+
   void switchColorTheme(bool isDark) {
+    hasExplicitTheme = true;
     colorMode = isDark ? 1 : 0;
     setTheme(isDark);
     notifyListenersSafe();
@@ -1480,6 +1486,10 @@ class Singleton extends ChangeNotifier {
   }
 
   Future<int> _replayPendingMutations() async {
+    // Health mutations stay queued locally until a real account exists;
+    // replaying them under the anonymous bootstrap session would upload
+    // unconsented health data to an unrecoverable identity.
+    if (!_cloud.hasFullAccount) return 0;
     if (!_cloud.isEnabled || _offlineSyncEngine.pendingCount == 0) return 0;
 
     final uid = await _resolveUserId();
@@ -2320,6 +2330,11 @@ class Singleton extends ChangeNotifier {
   }
 
   /// Delete entire account and all associated data
+  /// True when the last account deletion removed data rows but could not
+  /// remove the auth sign-in identity (edge function not deployed). The UI
+  /// reads this to tell the user the truth about what was deleted.
+  bool accountDeletionWasPartial = false;
+
   /// Removes stored avatar files; prefs.clear() cannot touch the
   /// filesystem, so sign-out and deletion clean these explicitly.
   Future<void> _deleteStoredAvatarFiles() async {
@@ -2348,7 +2363,8 @@ class Singleton extends ChangeNotifier {
         }
         if (viaFunction == null) {
           // Function not deployed: fall back to row-level deletion. The
-          // auth identity survives in this mode.
+          // auth identity survives in this mode; surface that honestly
+          // instead of claiming full deletion.
           _logger.warning(
             'delete_account function unavailable; deleting rows only',
           );
@@ -2356,6 +2372,9 @@ class Singleton extends ChangeNotifier {
             _logger.error('Failed to delete user from cloud database');
             return false;
           }
+          accountDeletionWasPartial = true;
+        } else {
+          accountDeletionWasPartial = false;
         }
       }
 

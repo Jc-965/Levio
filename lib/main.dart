@@ -99,9 +99,8 @@ Future<void> _bootstrap(
 
       if (prefs.containsKey('theme')) {
         singleton.switchColorTheme(await singleton.getTheme());
-      } else {
-        singleton.switchColorTheme(false);
       }
+      // No saved preference: follow the OS theme instead of forcing light.
     });
   } catch (e, stackTrace) {
     logger.fatal('Critical initialization error', e, stackTrace);
@@ -292,7 +291,9 @@ class _MyAppState extends State<MyApp> {
       ),
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
-      themeMode: singleton.colorMode == 0 ? ThemeMode.light : ThemeMode.dark,
+      themeMode: !singleton.hasExplicitTheme
+          ? ThemeMode.system
+          : (singleton.colorMode == 0 ? ThemeMode.light : ThemeMode.dark),
       debugShowCheckedModeBanner: false,
     );
   }

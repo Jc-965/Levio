@@ -401,6 +401,11 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required';
   end if;
+  -- Health data may only sync under a real account: anonymous bootstrap
+  -- sessions are unconsented and unrecoverable after reinstall.
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'Anonymous sessions may not sync health data';
+  end if;
   if p_mutations is null or jsonb_typeof(p_mutations) <> 'array' then
     raise exception 'p_mutations must be a JSON array';
   end if;

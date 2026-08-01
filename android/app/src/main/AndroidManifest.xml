@@ -19,8 +19,9 @@
         </intent>
     </queries>
     
-    <!-- Backups are disabled: the local cache holds unencrypted health data
-         and must not leave the device via cloud backup or device transfer. -->
+    <!-- Backups are disabled: the local health cache (encrypted with a
+         device-keystore key that backups cannot carry) must not leave the
+         device via cloud backup or device transfer. -->
     <application
         android:label="ParkiWell"
         android:name="${applicationName}"

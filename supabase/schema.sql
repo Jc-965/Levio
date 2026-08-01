@@ -762,9 +762,14 @@ drop policy if exists posts_insert_own on public.community_posts;
 drop policy if exists posts_update_own on public.community_posts;
 drop policy if exists posts_delete_own on public.community_posts;
 
+-- Anonymous bootstrap sessions must not read member health disclosures;
+-- the feed is for full accounts only.
 create policy posts_select_all on public.community_posts
   for select to authenticated
-  using (is_hidden = false);
+  using (
+    is_hidden = false
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 create policy posts_insert_own on public.community_posts
   for insert to authenticated
@@ -772,6 +777,50 @@ create policy posts_insert_own on public.community_posts
     user_id = public.current_uid()
     and length(trim(content)) > 0
   );
+
+-- Server-side content guard: the client-side moderation pass can be
+-- bypassed by any REST client holding the anon key, so the length cap and
+-- rate limit are enforced here too.
+create or replace function public.enforce_community_content()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_recent integer;
+begin
+  if length(trim(new.content)) = 0 or length(new.content) > 2000 then
+    raise exception 'content length out of bounds';
+  end if;
+
+  select count(*) into v_recent
+  from public.community_posts p
+  where p.user_id = new.user_id
+    and p.created_at > timezone('utc', now()) - interval '1 hour';
+  if tg_table_name = 'community_comments' then
+    select count(*) into v_recent
+    from public.community_comments c
+    where c.user_id = new.user_id
+      and c.created_at > timezone('utc', now()) - interval '1 hour';
+  end if;
+  if v_recent >= 30 then
+    raise exception 'rate limit exceeded';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_posts_content_guard on public.community_posts;
+create trigger trg_posts_content_guard
+before insert on public.community_posts
+for each row execute function public.enforce_community_content();
+
+drop trigger if exists trg_comments_content_guard on public.community_comments;
+create trigger trg_comments_content_guard
+before insert on public.community_comments
+for each row execute function public.enforce_community_content();
 
 create policy posts_update_own on public.community_posts
   for update to authenticated
@@ -789,7 +838,10 @@ drop policy if exists comments_delete_own on public.community_comments;
 
 create policy comments_select_all on public.community_comments
   for select to authenticated
-  using (is_flagged = false);
+  using (
+    is_flagged = false
+    and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
+  );
 
 create policy comments_insert_own on public.community_comments
   for insert to authenticated

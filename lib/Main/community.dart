@@ -447,7 +447,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 32,
+                  height: 48,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _postCategories.length,
@@ -456,7 +456,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                       final category = _postCategories[index];
                       final isSelected = selectedCategory == category;
                       return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () {
+                          HapticUtils.selectionClick();
                           setModalState(() => selectedCategory = category);
                         },
                         child: Container(
@@ -480,7 +482,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                                   ? Colors.white
                                   : colors.textSecondary,
                               fontWeight: FontWeight.w500,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -947,7 +949,7 @@ class _CommunityScreenState extends State<CommunityScreen>
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 34,
+            height: 48,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
@@ -982,7 +984,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                             ? colors.textOnPrimary
                             : colors.textSecondary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -1023,7 +1025,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: colors.textTertiary,
                           fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(width: 2),
@@ -1046,7 +1048,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: _feedOnlyMine ? colors.primary : colors.textTertiary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -1170,7 +1172,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                     post.category!,
                     style: TextStyle(
                       color: colors.primary,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1471,7 +1473,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                               'Be the first to comment!',
                               style: TextStyle(
                                 color: colors.textTertiary,
-                                fontSize: 12,
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -1506,7 +1508,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                                           _formatTimestamp(comment.timestamp),
                                           style: TextStyle(
                                             color: colors.textTertiary,
-                                            fontSize: 12,
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ],

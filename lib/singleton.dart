@@ -1623,7 +1623,7 @@ class Singleton extends ChangeNotifier {
       id: uid,
       name: _normalizedDisplayName(name == '[Name]' ? '' : name),
       age: age,
-      profileImage: _effectiveProfileImage(image),
+      profileImage: _cloudSafeProfileImage(image),
       email: email == '[Email]' ? null : email,
     );
   }
@@ -1665,7 +1665,14 @@ class Singleton extends ChangeNotifier {
       name = userName.isEmpty ? '[Name]' : userName;
       email = userEmail.isEmpty ? '[Email]' : userEmail;
       age = (userData['age'] as num?)?.toInt() ?? 0;
-      image = userImage.isEmpty ? 'images/711128.png' : userImage;
+      final cloudImage = userImage.isEmpty ? 'images/711128.png' : userImage;
+      // The cloud row never stores device file paths, so a locally picked
+      // photo must survive sync instead of being reset to the default.
+      final localIsDevicePhoto =
+          image.isNotEmpty && !image.startsWith('images/');
+      if (!(cloudImage == 'images/711128.png' && localIsDevicePhoto)) {
+        image = cloudImage;
+      }
 
       _observeCloudVersions(snapshot.logs);
       _observeCloudVersions(snapshot.schedules);
@@ -1941,7 +1948,7 @@ class Singleton extends ChangeNotifier {
         id: uid,
         name: normalizedName,
         age: age,
-        profileImage: _effectiveProfileImage(image),
+        profileImage: _cloudSafeProfileImage(image),
         email: email == '[Email]' ? null : email,
       );
       if (!created) return false;
@@ -1985,12 +1992,13 @@ class Singleton extends ChangeNotifier {
       final nextImage = profileImage != null
           ? _effectiveProfileImage(profileImage)
           : _effectiveProfileImage(image);
-
       final updated = await _cloud.upsertUser(
         id: uid,
         name: nextName,
         age: nextAge,
-        profileImage: nextImage,
+        // Device file paths stay local; the cloud row only ever holds
+        // bundled asset references.
+        profileImage: _cloudSafeProfileImage(nextImage),
         email: nextEmail == '[Email]' ? null : nextEmail,
       );
       if (!updated) return false;

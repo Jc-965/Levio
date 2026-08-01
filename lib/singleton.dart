@@ -1525,6 +1525,14 @@ class Singleton extends ChangeNotifier {
     return trimmed.isEmpty ? 'images/711128.png' : trimmed;
   }
 
+  /// Only bundled asset references may be published to shared tables.
+  /// Device file paths leak app sandbox identifiers to every reader, break
+  /// on other devices, and go stale when the OS purges the picker cache.
+  String _cloudSafeProfileImage(String? candidate) {
+    final value = _effectiveProfileImage(candidate);
+    return value.startsWith('images/') ? value : 'images/711128.png';
+  }
+
   Future<bool> _ensureCloudUserRecord(String uid) async {
     return _cloud.upsertUser(
       id: uid,
@@ -2383,7 +2391,7 @@ class Singleton extends ChangeNotifier {
         userName: displayName,
         content: safeContent,
         category: category,
-        profileImage: image,
+        profileImage: _cloudSafeProfileImage(image),
       );
       if (!saved) {
         _lastCommunityError = 'Unable to share post right now.';
@@ -2394,7 +2402,7 @@ class Singleton extends ChangeNotifier {
         'id': postId,
         'user_id': uid,
         'user_name': displayName,
-        'profile_image': image,
+        'profile_image': _cloudSafeProfileImage(image),
         'content': safeContent,
         'category': category,
         'likes': 0,
@@ -2628,7 +2636,7 @@ class Singleton extends ChangeNotifier {
         userId: uid,
         userName: displayName,
         content: safeContent,
-        profileImage: image,
+        profileImage: _cloudSafeProfileImage(image),
       );
       if (!saved) {
         _lastCommunityError = 'Unable to add comment right now.';
@@ -2644,7 +2652,7 @@ class Singleton extends ChangeNotifier {
         'post_id': postId,
         'user_id': uid,
         'user_name': displayName,
-        'profile_image': image,
+        'profile_image': _cloudSafeProfileImage(image),
         'content': safeContent,
         'created_at': createdAt,
       });

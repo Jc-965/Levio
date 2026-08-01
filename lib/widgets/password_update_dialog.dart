@@ -37,8 +37,8 @@ class _PasswordUpdateDialogState extends State<_PasswordUpdateDialog> {
     if (_saving) return;
     final password = _passwordController.text;
     final confirmation = _confirmationController.text;
-    final error = password.length < 6
-        ? 'Use at least 6 characters.'
+    final error = password.length < 8
+        ? 'Use at least 8 characters.'
         : password != confirmation
         ? 'Passwords do not match.'
         : null;

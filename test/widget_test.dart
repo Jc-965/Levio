@@ -223,7 +223,7 @@ void main() {
     await tester.tap(find.text('Update password'));
     await tester.pump();
 
-    expect(find.text('Use at least 6 characters.'), findsOneWidget);
+    expect(find.text('Use at least 8 characters.'), findsOneWidget);
   });
 
   testWidgets('Dashboard icons are not wrapped in decorative tiles', (

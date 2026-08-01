@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:terminate_restart/terminate_restart.dart';
@@ -166,11 +168,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportBackup() async {
+    // Confirm first: the backup contains the full health record.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Export Health Data'),
+        content: const Text(
+          'The backup file contains your full health record: symptoms, '
+          'medications, and profile details. Only share it with apps and '
+          'people you trust.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Export'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     final payload = singleton.exportBackupJson();
     try {
+      // Share as a file, not raw text: text payloads land in clipboard
+      // histories and message previews.
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/parkiwell-backup.json');
+      await file.writeAsString(payload);
       await SharePlus.instance.share(
-        ShareParams(text: payload, subject: 'ParkiWell backup'),
+        ShareParams(files: [XFile(file.path)], subject: 'ParkiWell backup'),
       );
+      await file.delete();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

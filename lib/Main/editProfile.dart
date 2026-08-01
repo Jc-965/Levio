@@ -147,9 +147,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final emailError = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)
         ? null
         : 'Enter a valid email address.';
-    final passwordError = password.length >= 6
+    // New accounts guard health data: require 8+. Sign-in keeps the legacy
+    // floor so existing shorter passwords still work.
+    final minPasswordLength = _mode == _AuthMode.signUp ? 8 : 6;
+    final passwordError = password.length >= minPasswordLength
         ? null
-        : 'Use at least 6 characters.';
+        : 'Use at least $minPasswordLength characters.';
     final confirmPasswordError =
         _mode == _AuthMode.signUp && _confirmPasswordController.text != password
         ? 'Passwords do not match.'
@@ -905,7 +908,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _buildInputField(
                           controller: _passwordController,
                           hintText: _mode == _AuthMode.signUp
-                              ? 'At least 6 characters'
+                              ? 'At least 8 characters'
                               : 'Enter your password',
                           icon: Icons.lock_outline_rounded,
                           obscureText: !_passwordVisible,

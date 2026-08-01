@@ -1083,16 +1083,32 @@ class _CommunityScreenState extends State<CommunityScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  setState(() => _feedOnlyMine = !_feedOnlyMine);
-                },
-                child: Text(
-                  _feedOnlyMine ? 'My posts' : 'All posts',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _feedOnlyMine ? colors.primary : colors.textTertiary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+              Semantics(
+                button: true,
+                toggled: _feedOnlyMine,
+                label: _feedOnlyMine ? 'Showing my posts' : 'Showing all posts',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticUtils.selectionClick();
+                    setState(() => _feedOnlyMine = !_feedOnlyMine);
+                  },
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 48,
+                      minWidth: 48,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _feedOnlyMine ? 'My posts' : 'All posts',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _feedOnlyMine
+                            ? colors.primary
+                            : colors.textTertiary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1376,6 +1392,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                   const SizedBox(width: 8),
                   Expanded(
                     child: RichText(
+                      // RichText defaults to no scaling; honor the user's
+                      // system text size like every other Text in the app.
+                      textScaler: MediaQuery.textScalerOf(context),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       text: TextSpan(

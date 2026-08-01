@@ -395,14 +395,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.3"
-  flutter_mediapipe_vision_platform_interface:
-    dependency: "direct main"
-    description:
-      name: flutter_mediapipe_vision_platform_interface
-      sha256: "8748df5198451a0da4487a17779d84a0633d11ab46fcc9ce4a18a114e3f2fa05"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   flutter_native_splash:
     dependency: "direct dev"
     description:

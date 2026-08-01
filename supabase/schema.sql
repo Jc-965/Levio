@@ -864,6 +864,40 @@ begin
 end;
 $$;
 
+create or replace function public.enforce_community_identity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Display identity hardening: names are capped and non-empty, and the
+  -- avatar may only reference a bundled app asset, never an arbitrary URL
+  -- or device path delivered by a modified client.
+  new.user_name := left(trim(coalesce(new.user_name, '')), 40);
+  if new.user_name = '' then
+    new.user_name := 'Member';
+  end if;
+  if new.profile_image is not null
+     and new.profile_image not like 'images/%' then
+    new.profile_image := null;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_posts_identity_guard on public.community_posts;
+create trigger trg_posts_identity_guard
+before insert or update of user_name, profile_image
+on public.community_posts
+for each row execute function public.enforce_community_identity();
+
+drop trigger if exists trg_comments_identity_guard on public.community_comments;
+create trigger trg_comments_identity_guard
+before insert or update of user_name, profile_image
+on public.community_comments
+for each row execute function public.enforce_community_identity();
+
 -- Guard both insert and update: without the update trigger, benign content
 -- could be inserted and then rewritten to arbitrary text.
 drop trigger if exists trg_posts_content_guard on public.community_posts;

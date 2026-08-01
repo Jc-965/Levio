@@ -260,7 +260,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
       HapticUtils.error();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Recording failed: $e'),
+          content: const Text('Recording failed. Please try again.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: context.colors.error,
         ),

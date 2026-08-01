@@ -47,7 +47,7 @@ class AppLogger {
 
   /// Log warnings
   void warning(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.w(message, error: error, stackTrace: stackTrace);
+    _logger.w(message, error: _releaseSafe(error), stackTrace: stackTrace);
   }
 
   /// Redacts exception payloads in release: PostgrestException and friends

@@ -48,12 +48,8 @@ class EnvironmentConfig {
   /// Enable debug features only in non-production environments
   static bool get enableDebugFeatures => !isProduction;
 
-  /// Enable analytics only in production
-  static bool get enableAnalytics => isProduction;
-
-  /// Enable crash reporting in staging and production
-  static bool get enableCrashReporting =>
-      isTesting || isStaging || isProduction;
+  // Note: the app deliberately ships no analytics or crash reporting
+  // SDKs; adding one is a privacy decision, not a config flip.
 
   /// Show environment banner in non-production builds
   static bool get showEnvironmentBanner =>

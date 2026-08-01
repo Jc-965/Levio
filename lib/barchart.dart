@@ -79,8 +79,8 @@ class BarChartSample3State extends State<BarChartSample3> {
             alignment: BarChartAlignment.spaceAround,
             maxY: singleton.barY,
           ),
-          swapAnimationDuration: const Duration(milliseconds: 300),
-          swapAnimationCurve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
         ),
       ),
     );
@@ -90,7 +90,6 @@ class BarChartSample3State extends State<BarChartSample3> {
     enabled: true,
     touchTooltipData: BarTouchTooltipData(
       getTooltipColor: (group) => colors.surface,
-      tooltipRoundedRadius: 12,
       tooltipPadding: const EdgeInsets.all(12),
       getTooltipItem: (group, groupIndex, rod, rodIndex) {
         final days = [
@@ -154,7 +153,7 @@ class BarChartSample3State extends State<BarChartSample3> {
         break;
     }
     return SideTitleWidget(
-      axisSide: meta.axisSide,
+      meta: meta,
       space: 8,
       child: Text(text, style: style),
     );

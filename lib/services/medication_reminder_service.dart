@@ -145,8 +145,10 @@ class MedicationReminderService {
     if (!await _ensureInitialized()) return;
     try {
       await _plugin.cancelAll();
-    } catch (_) {
-      // Plugin unavailable in this environment.
+    } catch (e) {
+      // Surfacing matters: failing to cancel means the next device user
+      // could see the previous user's medication names.
+      _logger.warning('Unable to cancel medication reminders');
     }
   }
 

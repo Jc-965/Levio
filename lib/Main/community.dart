@@ -104,31 +104,55 @@ class _CommunityScreenState extends State<CommunityScreen>
     return DateTime.now();
   }
 
+  List<CommunityPost> _postsFromRows(
+    List<Map<String, dynamic>> rows,
+    Set<String> blocked,
+  ) {
+    return rows
+        .where((row) => !blocked.contains(row['user_id']?.toString()))
+        .map(
+          (row) => CommunityPost(
+            id: row['id']?.toString() ?? '',
+            authorId: row['user_id']?.toString() ?? '',
+            authorName: row['user_name']?.toString() ?? 'Community Member',
+            authorImage:
+                row['profile_image']?.toString() ?? 'images/711128.png',
+            content: row['content']?.toString() ?? '',
+            timestamp: _parseTimestamp(row['created_at']),
+            category: row['category']?.toString(),
+            likes: (row['likes'] as num?)?.toInt() ?? 0,
+            commentCount: (row['comment_count'] as num?)?.toInt() ?? 0,
+            isLiked: row['liked_by_me'] == true,
+          ),
+        )
+        .toList();
+  }
+
   Future<void> _loadFeedData() async {
     if (!mounted) return;
-    setState(() => _isLoadingFeed = true);
+    // Cache-first: returning to the tab renders the hydrated cache
+    // immediately and refreshes quietly, instead of a spinner and a lost
+    // scroll position on every visit.
+    final cached = singleton.communityPosts;
+    if (cached.isNotEmpty && _posts.isEmpty) {
+      final blocked = await singleton.blockedUserIds();
+      if (!mounted) return;
+      setState(() {
+        _posts = _postsFromRows(
+          cached.map((row) => Map<String, dynamic>.from(row)).toList(),
+          blocked,
+        );
+        _postVersion++;
+        _isLoadingFeed = false;
+      });
+    } else {
+      setState(() => _isLoadingFeed = true);
+    }
 
     try {
       final rawPosts = await singleton.loadCommunityPosts(limit: 100);
       final blocked = await singleton.blockedUserIds();
-      final posts = rawPosts
-          .where((row) => !blocked.contains(row['user_id']?.toString()))
-          .map((row) {
-            return CommunityPost(
-              id: row['id']?.toString() ?? '',
-              authorId: row['user_id']?.toString() ?? '',
-              authorName: row['user_name']?.toString() ?? 'Community Member',
-              authorImage:
-                  row['profile_image']?.toString() ?? 'images/711128.png',
-              content: row['content']?.toString() ?? '',
-              timestamp: _parseTimestamp(row['created_at']),
-              category: row['category']?.toString(),
-              likes: (row['likes'] as num?)?.toInt() ?? 0,
-              commentCount: (row['comment_count'] as num?)?.toInt() ?? 0,
-              isLiked: row['liked_by_me'] == true,
-            );
-          })
-          .toList();
+      final posts = _postsFromRows(rawPosts, blocked);
 
       if (!mounted) return;
       setState(() {

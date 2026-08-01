@@ -208,7 +208,6 @@ class LineChartSample1State extends State<LineChartSample1>
       },
       touchTooltipData: LineTouchTooltipData(
         getTooltipColor: (spot) => colors.surface,
-        tooltipRoundedRadius: 12,
         tooltipPadding: const EdgeInsets.all(12),
         getTooltipItems: (touchedSpots) {
           return touchedSpots.map((spot) {
@@ -302,7 +301,7 @@ class LineChartSample1State extends State<LineChartSample1>
       }
     }
 
-    return SideTitleWidget(axisSide: meta.axisSide, space: 10, child: text);
+    return SideTitleWidget(meta: meta, space: 10, child: text);
   }
 
   SideTitles get bottomTitles => SideTitles(

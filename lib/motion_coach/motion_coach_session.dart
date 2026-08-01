@@ -57,7 +57,7 @@ class MotionCoachSession extends ChangeNotifier {
   int _liveRepSerial = 0;
   int _liveCueSerial = 0;
   ExerciseRepScore? _lastRepScore;
-  int _lastDecisionMicros = 0;
+  final Stopwatch _decisionClock = Stopwatch();
   int _maximumDecisionMicros = 0;
 
   bool get isRecording => _recording;
@@ -70,12 +70,14 @@ class MotionCoachSession extends ChangeNotifier {
   int get liveRepCount => _liveRepCount;
   int get liveRepSerial => _liveRepSerial;
   int get liveCueSerial => _liveCueSerial;
-  int get lastDecisionMicros => _lastDecisionMicros;
-  int get maximumDecisionMicros => _maximumDecisionMicros;
 
   /// Score for the most recently completed repetition, or null before the
   /// first one completes.
   ExerciseRepScore? get lastRepScore => _lastRepScore;
+
+  /// Worst-case per-frame coaching decision latency; the perf regression
+  /// test budgets this under 100ms.
+  int get maximumDecisionMicros => _maximumDecisionMicros;
 
   List<LiveExerciseRepetition> get completedRepetitions =>
       _liveCoach.completedRepetitions;
@@ -132,13 +134,14 @@ class MotionCoachSession extends ChangeNotifier {
       _lastTimestampMs = sample.detection.timestampMs;
       final PoseFrame frame = poseFrameFromDetection(sample.detection);
       _frames.add(frame);
-      final Stopwatch decisionClock = Stopwatch()..start();
+      _decisionClock
+        ..reset()
+        ..start();
       final LiveExerciseDecision? decision = _liveCoach.addFrame(frame);
-      decisionClock.stop();
-      _lastDecisionMicros = decisionClock.elapsedMicroseconds;
+      _decisionClock.stop();
       _maximumDecisionMicros = math.max(
         _maximumDecisionMicros,
-        _lastDecisionMicros,
+        _decisionClock.elapsedMicroseconds,
       );
       if (decision != null) {
         _liveRepCount = decision.repetition.index;
@@ -233,7 +236,6 @@ class MotionCoachSession extends ChangeNotifier {
     _liveRepSerial = 0;
     _liveCueSerial = 0;
     _lastRepScore = null;
-    _lastDecisionMicros = 0;
     _maximumDecisionMicros = 0;
   }
 }

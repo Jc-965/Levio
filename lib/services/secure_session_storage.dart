@@ -12,7 +12,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// migrated on first launch and removed from SharedPreferences.
 class SecureSessionStorage extends LocalStorage {
   SecureSessionStorage({FlutterSecureStorage? secureStorage})
-    : _secure = secureStorage ?? const FlutterSecureStorage();
+    : _secure =
+          secureStorage ??
+          const FlutterSecureStorage(
+            // Keys must never leave the device: first_unlock_this_device
+            // keeps them out of encrypted iCloud/iTunes backups, matching
+            // the Android backup exclusion.
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
+          );
 
   static const String _key = 'parkiwell_supabase_session_v1';
   final FlutterSecureStorage _secure;

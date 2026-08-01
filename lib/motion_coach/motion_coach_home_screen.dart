@@ -40,7 +40,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
   late final MotionReferenceLibrary _library =
       widget.library ?? MotionReferenceLibrary.shared;
   late final MotionSessionHistory _history =
-      widget.history ?? MotionSessionHistory();
+      widget.history ?? MotionSessionHistory.shared;
   bool _opening = false;
   int _sessionCount = 0;
   double? _recentAverage;

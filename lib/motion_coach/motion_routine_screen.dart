@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:parkiwell/utils/session_wakelock.dart';
 import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
@@ -90,7 +90,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     super.initState();
     // Keep the screen awake during a guided session; users with impaired
     // fine motor control cannot quickly re-wake a locked device mid-set.
-    WakelockPlus.enable();
+    unawaited(acquireSessionWakelock());
     // The pose templates only allow portrait capture; hold the UI to the
     // same orientation so the preview, overlay, and landmarks always agree.
     unawaited(
@@ -114,7 +114,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
   @override
   void dispose() {
-    WakelockPlus.disable();
+    unawaited(releaseSessionWakelock());
     unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _controller
@@ -129,7 +129,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (_phase == _RoutineScreenPhase.suspended) unawaited(_initialize());
-    } else {
+      return;
+    }
+    // Ignore transient inactive (Control Center swipe, permission dialog,
+    // incoming call banner): tearing the camera down there forces a
+    // multi-second reinitialize and resets the routine for nothing.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
       unawaited(_suspend());
     }
   }
@@ -327,7 +334,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     }
     bool saved = true;
     try {
-      await (widget.history ?? MotionSessionHistory()).add(record);
+      await (widget.history ?? MotionSessionHistory.shared).add(record);
     } on Object catch (error, stackTrace) {
       _logger.warning('Session history write failed', error, stackTrace);
       saved = false;
@@ -595,10 +602,15 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                           child: Stack(
                             fit: StackFit.expand,
                             children: <Widget>[
-                              _driver!.buildPreview(),
-                              MotionSkeletonOverlay(
-                                frame: _controller.skeleton,
-                                mirrored: true,
+                              // RepaintBoundary keeps camera-rate skeleton
+                              // repaints from dirtying the surrounding
+                              // cards and gradients.
+                              RepaintBoundary(child: _driver!.buildPreview()),
+                              RepaintBoundary(
+                                child: MotionSkeletonOverlay(
+                                  frame: _controller.skeleton,
+                                  mirrored: true,
+                                ),
                               ),
                             ],
                           ),

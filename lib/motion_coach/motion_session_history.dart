@@ -13,6 +13,10 @@ import '../services/app_logger.dart';
 /// export/deletion/RLS work is done. [clear] exists so the record is always
 /// removable from inside the app.
 class MotionSessionHistory {
+  /// Shared instance so screens reuse one decoded history instead of
+  /// re-reading and re-parsing the store per screen visit.
+  static final MotionSessionHistory shared = MotionSessionHistory();
+
   MotionSessionHistory({SharedPreferences? preferences})
     : _preferences = preferences;
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:camera/camera.dart';
 import 'package:crypto/crypto.dart';
@@ -74,12 +75,27 @@ class MotionPoseBridge {
     await _channel.invokeMethod<void>('dispose');
   }
 
+  /// Path of the last successfully verified model file. Session restarts
+  /// and lifecycle resumes reuse it instead of re-hashing several MB.
+  static String? _verifiedModelPath;
+
   Future<String> _ensureModelFile() async {
+    final String? verified = _verifiedModelPath;
+    if (verified != null && await File(verified).exists()) {
+      return verified;
+    }
+
     final Directory directory = await getApplicationSupportDirectory();
     final File file = File('${directory.path}/$motionPoseModelName.task');
     if (await file.exists()) {
       final Uint8List existing = await file.readAsBytes();
-      if (sha256.convert(existing).toString() == _modelSha256) {
+      // Hash off the UI isolate: the model is several MB and this runs
+      // during camera startup.
+      final String digest = await Isolate.run(
+        () => sha256.convert(existing).toString(),
+      );
+      if (digest == _modelSha256) {
+        _verifiedModelPath = file.path;
         return file.path;
       }
     }
@@ -89,11 +105,14 @@ class MotionPoseBridge {
       asset.offsetInBytes,
       asset.lengthInBytes,
     );
-    final String digest = sha256.convert(bytes).toString();
+    final String digest = await Isolate.run(
+      () => sha256.convert(bytes).toString(),
+    );
     if (digest != _modelSha256) {
       throw StateError('Bundled pose model failed its integrity check');
     }
     await file.writeAsBytes(bytes, flush: true);
+    _verifiedModelPath = file.path;
     return file.path;
   }
 }
@@ -138,11 +157,12 @@ class MotionPoseDetection {
 
   static List<MotionPoseLandmark>? _landmarks(Object? value) {
     if (value is! List<Object?> || value.length != 33) return null;
+    // Read fields directly: copying each landmark map allocated 66 extra
+    // maps per frame in the hottest loop of the app.
     return value
         .map(
-          (Object? entry) => MotionPoseLandmark.fromMap(
-            Map<Object?, Object?>.from(entry! as Map<Object?, Object?>),
-          ),
+          (Object? entry) =>
+              MotionPoseLandmark.fromMap(entry! as Map<Object?, Object?>),
         )
         .toList(growable: false);
   }

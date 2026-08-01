@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:parkiwell/utils/session_wakelock.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:parkiwell/motion_coach/motion_analysis.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
@@ -63,7 +63,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     super.initState();
     // Keep the screen awake during a guided session; users with impaired
     // fine motor control cannot quickly re-wake a locked device mid-set.
-    WakelockPlus.enable();
+    unawaited(acquireSessionWakelock());
     _videoId = singleton.normalizeYouTubeVideoId(singleton.currentURL);
     _motionExercise = motionExerciseForVideo(_videoId);
     if (_videoId != null && !kIsWeb) {
@@ -146,7 +146,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
 
   @override
   void dispose() {
-    WakelockPlus.disable();
+    unawaited(releaseSessionWakelock());
     _recordingController?.dispose();
     unawaited(_deleteRecordingFile(_recordedVideoPath));
     super.dispose();

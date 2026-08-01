@@ -4,7 +4,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:parkiwell/utils/session_wakelock.dart';
 import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
@@ -94,7 +94,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     super.initState();
     // Keep the screen awake during a guided session; users with impaired
     // fine motor control cannot quickly re-wake a locked device mid-set.
-    WakelockPlus.enable();
+    unawaited(acquireSessionWakelock());
     // The pose templates only allow portrait capture; hold the UI to the
     // same orientation so the preview, overlay, and landmarks always agree.
     unawaited(
@@ -119,7 +119,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   @override
   void dispose() {
-    WakelockPlus.disable();
+    unawaited(releaseSessionWakelock());
     unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
@@ -139,8 +139,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       }
       return;
     }
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
+    // Transient inactive (permission dialogs, Control Center) must not
+    // tear down and reinitialize the camera pipeline.
+    if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||
         state == AppLifecycleState.hidden) {
       unawaited(_suspend());

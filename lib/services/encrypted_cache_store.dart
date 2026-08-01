@@ -27,7 +27,16 @@ class KeystoreUnavailableException implements Exception {
 /// flutter_secure_storage; only ciphertext reaches SharedPreferences.
 class EncryptedCacheStore {
   EncryptedCacheStore({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage =
+          secureStorage ??
+          const FlutterSecureStorage(
+            // Keys must never leave the device: first_unlock_this_device
+            // keeps them out of encrypted iCloud/iTunes backups, matching
+            // the Android backup exclusion.
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
+          );
 
   static const String _keyName = 'parkiwell_cache_data_key_v1';
 

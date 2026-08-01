@@ -250,11 +250,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // histories and message previews.
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/parkiwell-backup.json');
-      await file.writeAsString(payload);
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], subject: 'ParkiWell backup'),
-      );
-      await file.delete();
+      try {
+        await file.writeAsString(payload);
+        await SharePlus.instance.share(
+          ShareParams(files: [XFile(file.path)], subject: 'ParkiWell backup'),
+        );
+      } finally {
+        // Never leave a plaintext health record in the temp directory,
+        // even when the share sheet throws.
+        if (await file.exists()) await file.delete();
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

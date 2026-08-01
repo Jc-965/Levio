@@ -13,9 +13,11 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-  // Resolve the caller from their JWT; only a user may delete themself.
-  const userClient = createClient(supabaseUrl, serviceRoleKey, {
+  // Resolve the caller from their JWT with the anon key; the privileged
+  // client below is used only after the identity is proven.
+  const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
   const {

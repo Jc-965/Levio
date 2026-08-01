@@ -337,6 +337,88 @@ void main() {
     });
   });
 
+  group('MotionRoutineScreen skip race', () {
+    late MotionReferenceLibrary raceLibrary;
+    setUpAll(() async {
+      raceLibrary = MotionReferenceLibrary();
+      await raceLibrary.templateFor('seated_bilateral_lateral_arm_raise');
+      await raceLibrary.templateFor('seated_bilateral_forward_reach');
+    });
+
+    testWidgets('confirming a skip after the step ended is a no-op', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final _FakeRoutineDriver driver = _FakeRoutineDriver();
+      final MotionSessionHistory history = MotionSessionHistory();
+      final RoutineDefinition routine = RoutineDefinition(
+        routineId: 'race_test',
+        routineVersion: 1,
+        displayName: 'Race test',
+        steps: <RoutineStepDefinition>[
+          RoutineStepDefinition(
+            exerciseId: 'seated_bilateral_lateral_arm_raise',
+            targetRepetitions: 1,
+            maximumDurationS: 600,
+            restDurationS: 1,
+          ),
+          RoutineStepDefinition(
+            exerciseId: 'seated_bilateral_forward_reach',
+            targetRepetitions: 5,
+            maximumDurationS: 600,
+            restDurationS: 0,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme(),
+          home: MotionRoutineScreen(
+            description: fullBodyRoutine,
+            routine: routine,
+            library: raceLibrary,
+            driverFactory: () => driver,
+            cueSpeaker: _SilentCueSpeaker(),
+            history: history,
+            onSessionLogged: (MotionSessionRecord record) async {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(armRaiseSample(10, index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start routine'));
+      await tester.tap(find.text('Start routine'));
+      await tester.pump();
+
+      // Open the skip dialog for step 0.
+      await tester.ensureVisible(find.text('Skip this exercise'));
+      await tester.tap(find.text('Skip this exercise'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Skip Seated bilateral'), findsOneWidget);
+
+      // Behind the dialog, step 0 completes on its own and, after the one
+      // second rest, step 1 becomes active.
+      int timestampMs = 600;
+      for (final double phase in repPhase) {
+        driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
+        timestampMs += 200;
+      }
+      driver.emit(armRaiseSample(10, timestampMs + 1200));
+      await tester.pump();
+
+      // Confirming now must not skip the newly active step.
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine summary'), findsNothing);
+      expect(find.textContaining('Seated forward reach'), findsWidgets);
+    });
+  });
+
   group('single-exercise practice', () {
     test('is a one-step routine over the same engine path', () {
       final RoutineDefinition routine = singleExerciseRoutine(

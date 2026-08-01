@@ -349,7 +349,10 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         ],
       ),
     );
-    if (leave == true && mounted) Navigator.of(context).pop();
+    // Re-checked after the dialog await: the routine can complete while the
+    // dialog is open, and popping then would tear the screen out from under
+    // the in-flight completion save.
+    if (leave == true && mounted && !_finishing) Navigator.of(context).pop();
   }
 
   @override
@@ -560,6 +563,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   }
 
   Future<void> _confirmSkipStep() async {
+    final int stepIndex = _controller.stepIndex;
     final MotionExerciseDefinition exercise = _controller.currentExercise;
     final bool? skip = await showDialog<bool>(
       context: context,
@@ -581,7 +585,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         ],
       ),
     );
-    if (skip == true && mounted) {
+    // The routine keeps running behind the dialog; the step the person
+    // agreed to skip may have finished on its own. Skipping is only honored
+    // while that same step is still the active one, otherwise a confirm
+    // would silently skip the following exercise instead.
+    if (skip == true &&
+        mounted &&
+        _controller.stepIndex == stepIndex &&
+        _controller.phase == MotionRoutinePhase.active) {
       HapticUtils.lightImpact();
       _controller.skipCurrentStep();
     }

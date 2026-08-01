@@ -246,8 +246,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Export Health Data'),
         content: const Text(
           'The backup file contains your full health record: symptoms, '
-          'medications, and profile details. Only share it with apps and '
-          'people you trust.',
+          'medications, and profile details. The file is NOT encrypted: '
+          'anyone who gets it can read everything. Only share it with '
+          'apps and people you trust, and delete it after restoring.',
         ),
         actions: [
           TextButton(

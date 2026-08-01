@@ -884,8 +884,11 @@ class CloudBackendService {
     }
   }
 
+  /// [before] pages backward through the feed (keyset on created_at), so
+  /// older posts stay reachable instead of dying at a fixed window.
   Future<List<Map<String, dynamic>>> getCommunityPosts({
     int limit = 100,
+    DateTime? before,
   }) async {
     if (!isEnabled) return <Map<String, dynamic>>[];
 
@@ -893,17 +896,36 @@ class CloudBackendService {
       final result = await _withRetry<List<dynamic>>(
         'get community posts',
         () async {
-          return _client!
-              .from('community_posts')
-              .select()
-              .order('created_at', ascending: false)
-              .limit(limit);
+          var query = _client!.from('community_posts').select();
+          if (before != null) {
+            query = query.lt('created_at', before.toUtc().toIso8601String());
+          }
+          return query.order('created_at', ascending: false).limit(limit);
         },
       );
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
       _logger.error('Cloud get posts failed', e, stackTrace);
       return <Map<String, dynamic>>[];
+    }
+  }
+
+  /// Server-side count of the caller's own posts, so the profile stat is
+  /// exact instead of derived from whatever feed window happens to be
+  /// loaded. Returns null on failure.
+  Future<int?> getOwnPostCount(String userId) async {
+    if (!isEnabled) return null;
+    try {
+      final count = await _withRetry<int>('count own posts', () async {
+        return _client!
+            .from('community_posts')
+            .count(CountOption.exact)
+            .eq('user_id', userId);
+      });
+      return count;
+    } catch (e, stackTrace) {
+      _logger.error('Cloud own post count failed', e, stackTrace);
+      return null;
     }
   }
 

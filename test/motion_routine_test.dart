@@ -20,6 +20,22 @@ import 'motion_pose_fixtures.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('MotionRoutineCatalog', () {
+    test('every routine id fits the synced video_id length cap', () {
+      // recovery_sessions.video_id is capped at 32 chars in schema.sql;
+      // 'motion:' + an oversized routine id would dead-letter every
+      // completed session for that routine.
+      for (final routine in motionRoutineCatalog) {
+        final videoId = 'motion:${routine.routineAssetId}';
+        expect(
+          videoId.length,
+          lessThanOrEqualTo(32),
+          reason: '${routine.routineAssetId} exceeds the schema cap',
+        );
+      }
+    });
+  });
+
   group('MotionReferenceLibrary', () {
     test('loads a template for every catalog exercise', () async {
       final MotionReferenceLibrary library = MotionReferenceLibrary();

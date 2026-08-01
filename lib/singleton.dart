@@ -520,10 +520,18 @@ class Singleton extends ChangeNotifier {
       return;
     }
 
+    final videoId = '$motionSessionIdPrefix$trimmedRoutineId';
+    // schema.sql caps recovery_sessions.video_id at 32 chars; an oversized
+    // routine id would dead-letter every completed session for that
+    // routine, so refuse loudly here instead of failing quietly in sync.
+    assert(
+      videoId.length <= 32,
+      'Routine id "$trimmedRoutineId" exceeds the synced video_id cap',
+    );
     final session = <String, dynamic>{
       'id': _uuid.v4(),
       'type': recoveryTypePhysical,
-      'video_id': '$motionSessionIdPrefix$trimmedRoutineId',
+      'video_id': videoId.length <= 32 ? videoId : videoId.substring(0, 32),
       'title': trimmedTitle,
       'completed_at': completionTime.toIso8601String(),
     };
@@ -1020,8 +1028,19 @@ class Singleton extends ChangeNotifier {
   Future<String?> _resolveUserId() async {
     final storedUid = await getUID();
     final cloudUid = _cloud.cloudUserId;
-    final resolvedUid = cloudUid ?? storedUid;
 
+    // A stored real account ID must never be displaced by an anonymous
+    // bootstrap session: a failed token refresh at boot falls back to
+    // signInAnonymously, and adopting that uid here used to cascade into
+    // deleting the stored ID and dumping the patient into onboarding.
+    if (storedUid != null &&
+        cloudUid != null &&
+        cloudUid != storedUid &&
+        !_cloud.hasFullAccount) {
+      return storedUid;
+    }
+
+    final resolvedUid = cloudUid ?? storedUid;
     if (resolvedUid != null && storedUid != resolvedUid) {
       await setUID(resolvedUid);
     }
@@ -1745,8 +1764,10 @@ class Singleton extends ChangeNotifier {
       final userData = snapshot.user;
       if (userData == null) {
         // getUser rethrows on failure, so reaching null here means the
-        // query succeeded and the row genuinely does not exist.
-        profileConfirmedAbsent = true;
+        // query succeeded and the row genuinely does not exist. Only a
+        // full-account session can confirm absence: an anonymous session
+        // querying a real account's row always sees nothing (RLS).
+        profileConfirmedAbsent = _cloud.hasFullAccount;
         _logger.debug('User not found in cloud database');
         await _markSyncFailure('Cloud user profile not found');
         return false;
@@ -2710,7 +2731,14 @@ class Singleton extends ChangeNotifier {
       communityPosts
         ..clear()
         ..addAll(normalizedPosts);
+      hasMoreCommunityPosts = cloudPosts.length >= limit;
       _recalculateOwnPostCount();
+      if (uid != null) {
+        // Exact server-side count: the feed-window-derived number both
+        // undercounts and fluctuates as the window moves.
+        final ownCount = await _cloud.getOwnPostCount(uid);
+        if (ownCount != null) postNum = ownCount;
+      }
       await _persistCommunityCache();
       notifyListenersSafe();
       return communityPosts;
@@ -2721,6 +2749,72 @@ class Singleton extends ChangeNotifier {
       _lastCommunityError = 'Showing saved posts; could not refresh.';
       _logger.error('Error loading community posts', e, stackTrace);
       return communityPosts;
+    }
+  }
+
+  /// True when the last feed page came back full, meaning older posts
+  /// likely exist beyond the loaded window.
+  bool hasMoreCommunityPosts = false;
+
+  /// Appends the next (older) page of the feed below the loaded window.
+  /// Returns the number of posts added.
+  Future<int> loadOlderCommunityPosts({int limit = 50}) async {
+    try {
+      if (!_cloud.isEnabled || communityPosts.isEmpty) return 0;
+      final oldest = communityPosts
+          .map(
+            (post) => DateTime.tryParse(post['created_at']?.toString() ?? ''),
+          )
+          .whereType<DateTime>()
+          .fold<DateTime?>(
+            null,
+            (min, value) => min == null || value.isBefore(min) ? value : min,
+          );
+      if (oldest == null) return 0;
+
+      final page = await _cloud.getCommunityPosts(limit: limit, before: oldest);
+      hasMoreCommunityPosts = page.length >= limit;
+      if (page.isEmpty) {
+        notifyListenersSafe();
+        return 0;
+      }
+
+      final uid = await _resolveUserId();
+      final postIds = page
+          .map((post) => post['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+      Set<String> likedPostIds = <String>{};
+      Map<String, int> commentCounts = <String, int>{};
+      if (postIds.isNotEmpty) {
+        final metadata = await Future.wait<dynamic>(<Future<dynamic>>[
+          uid == null
+              ? Future<Set<String>>.value(<String>{})
+              : _cloud.getLikedPostIds(userId: uid, postIds: postIds),
+          _cloud.getCommunityCommentCounts(postIds),
+        ]);
+        likedPostIds = Set<String>.from(metadata[0] as Set);
+        commentCounts = Map<String, int>.from(metadata[1] as Map);
+      }
+
+      final existingIds = communityPosts
+          .map((post) => post['id']?.toString() ?? '')
+          .toSet();
+      var added = 0;
+      for (final post in page) {
+        final copy = Map<String, dynamic>.from(post);
+        final postId = copy['id']?.toString() ?? '';
+        if (postId.isEmpty || existingIds.contains(postId)) continue;
+        copy['liked_by_me'] = likedPostIds.contains(postId);
+        copy['comment_count'] = commentCounts[postId] ?? 0;
+        communityPosts.add(copy);
+        added += 1;
+      }
+      notifyListenersSafe();
+      return added;
+    } catch (e, stackTrace) {
+      _logger.error('Error loading older community posts', e, stackTrace);
+      return 0;
     }
   }
 

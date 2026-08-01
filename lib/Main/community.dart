@@ -904,9 +904,52 @@ class _CommunityScreenState extends State<CommunityScreen>
                     _buildPostCard(visiblePosts[index], colors),
               ),
             ),
+          if (singleton.hasMoreCommunityPosts && visiblePosts.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
+                child: Center(
+                  child: _isLoadingOlderPosts
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : TextButton.icon(
+                          onPressed: _loadOlderPosts,
+                          icon: const Icon(Icons.history, size: 18),
+                          label: const Text('Load older posts'),
+                        ),
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  bool _isLoadingOlderPosts = false;
+
+  Future<void> _loadOlderPosts() async {
+    if (_isLoadingOlderPosts) return;
+    setState(() => _isLoadingOlderPosts = true);
+    await singleton.loadOlderCommunityPosts();
+    if (!mounted) return;
+    final blocked = await singleton.blockedUserIds();
+    if (!mounted) return;
+    setState(() {
+      _posts = _postsFromRows(
+        singleton.communityPosts
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList(),
+        blocked,
+      );
+      _postVersion++;
+      _isLoadingOlderPosts = false;
+    });
   }
 
   Widget _buildPostAuthorAvatar(

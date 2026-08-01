@@ -4,6 +4,7 @@ import 'dart:io';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/profile_image_store.dart';
 import '../widgets/modern_card.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -31,9 +32,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (pickedFile != null) {
       final previousImage = singleton.image;
-      singleton.setImage(pickedFile.path);
+      final storedPath = await persistPickedImage(pickedFile);
+      if (!mounted) return;
+      singleton.setImage(storedPath);
 
-      final updated = await singleton.updateUser(profileImage: pickedFile.path);
+      final updated = await singleton.updateUser(profileImage: storedPath);
       if (!mounted) return;
       if (!updated) {
         singleton.setImage(previousImage);

@@ -9,6 +9,7 @@ import '../services/tutorial_service.dart';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/profile_image_store.dart';
 import '../widgets/modern_button.dart';
 import '../widgets/stage_transition_switcher.dart';
 import '../legal/legal_document_screen.dart';
@@ -524,7 +525,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     HapticUtils.lightImpact();
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (!mounted || picked == null) return;
-    setState(() => _imagePath = picked.path);
+    final storedPath = await persistPickedImage(picked);
+    if (!mounted) return;
+    setState(() => _imagePath = storedPath);
   }
 
   void _continueFromProfileSetup() {

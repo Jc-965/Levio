@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -152,29 +153,57 @@ class MedicationReminderService {
         final name = entry[0];
         final daysText = entry.length > 2 ? entry[2] : 'Everyday';
         for (final weekday in weekdaysFromScheduleText(daysText)) {
-          await _plugin.zonedSchedule(
-            notificationId++,
-            'Medication reminder',
-            'Time to take $name',
-            _nextInstanceOf(weekday, time),
-            const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'medication_reminders',
-                'Medication reminders',
-                channelDescription:
-                    'Reminders for scheduled medications in ParkiWell',
-                importance: Importance.high,
-                priority: Priority.high,
-              ),
-              iOS: DarwinNotificationDetails(),
-            ),
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+          await _scheduleWeekly(
+            id: notificationId++,
+            body: 'Time to take $name',
+            at: _nextInstanceOf(weekday, time),
           );
         }
       }
     } catch (e) {
       _logger.warning('Unable to schedule medication reminders');
+    }
+  }
+
+  static const NotificationDetails _details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'medication_reminders',
+      'Medication reminders',
+      channelDescription: 'Reminders for scheduled medications in ParkiWell',
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
+
+  /// Medication timing is clinically minute-sensitive, so exact delivery is
+  /// attempted first; devices that deny the exact-alarm permission fall
+  /// back to inexact scheduling rather than losing the reminder.
+  Future<void> _scheduleWeekly({
+    required int id,
+    required String body,
+    required tz.TZDateTime at,
+  }) async {
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        'Medication reminder',
+        body,
+        at,
+        _details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    } on PlatformException {
+      await _plugin.zonedSchedule(
+        id,
+        'Medication reminder',
+        body,
+        at,
+        _details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
     }
   }
 

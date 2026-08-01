@@ -12,6 +12,7 @@ import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
+import 'package:parkiwell/services/secure_session_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'theme/app_theme.dart';
@@ -2308,8 +2309,10 @@ class Singleton extends ChangeNotifier {
       await _offlineSyncEngine.clear();
       await prefs.clear();
       // Rotate away the encryption key so any surviving ciphertext copies
-      // are permanently unreadable.
+      // are permanently unreadable, and drop the keystore-held auth session
+      // for the deleted identity.
       await _cacheStore.destroyKey();
+      await SecureSessionStorage().removePersistedSession();
       _lastSyncAt = null;
       _lastSyncStatus = 'Not synced yet';
       _hasHydratedLocalCache = false;

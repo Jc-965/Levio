@@ -80,6 +80,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   int _generation = 0;
   int _handledLiveRepSerial = 0;
   int _handledLiveCueSerial = 0;
+  bool _finishingRecording = false;
   LiveExerciseCue? _spokenCue;
 
   bool get _isBusy =>
@@ -153,6 +154,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   Future<void> _initialize() async {
     final int generation = ++_generation;
+    _finishingRecording = false;
     _timer?.cancel();
     _recordingClock
       ..stop()
@@ -238,6 +240,10 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   Future<void> _suspend() async {
     if (_phase == _CapturePhase.suspended) return;
+    // A finish already owns the driver and is about to drain the session's
+    // frames; resetting or disposing here would wipe the just-completed
+    // recording mid-finalization and delete its file under the analyzer.
+    if (_finishingRecording) return;
     ++_generation;
     _timer?.cancel();
     _recordingClock
@@ -299,6 +305,11 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   Future<void> _finishRecording() async {
     final MotionCaptureDriver? driver = _driver;
     if (driver == null || _phase != _CapturePhase.recording) return;
+    // Claim the driver and mark the finish before the first await so a
+    // concurrent lifecycle suspend can neither reset the buffered frames
+    // nor double-stop and delete the recording being finalized.
+    _finishingRecording = true;
+    _driver = null;
     _timer?.cancel();
     _recordingClock.stop();
     setState(() => _phase = _CapturePhase.analyzing);
@@ -310,7 +321,6 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       final int width = _session.frameWidth;
       final int height = _session.frameHeight;
       await driver.dispose();
-      _driver = null;
       final MotionAnalysisResult analysis = await widget.analyzer.analyze(
         frames: frames,
         width: width,
@@ -340,8 +350,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     } catch (_) {
       _session.finishAndDrain();
       await driver.dispose();
-      _driver = null;
       if (videoPath != null) await _deleteVideo(videoPath);
+      _finishingRecording = false;
       if (!mounted) return;
       setState(() {
         _phase = _CapturePhase.error;

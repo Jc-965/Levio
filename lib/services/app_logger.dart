@@ -1,5 +1,7 @@
 import 'package:logger/logger.dart';
 
+import '../config/environment.dart';
+
 /// Production-grade logging service
 ///
 /// Provides structured logging with different levels for debugging,
@@ -21,7 +23,7 @@ class AppLogger {
         printEmojis: true,
         dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
       ),
-      filter: _ProductionFilter(),
+      filter: _EnvironmentLogFilter(),
     );
   }
 
@@ -73,12 +75,25 @@ class AppLogger {
   }
 }
 
-/// Custom filter for production environments
-class _ProductionFilter extends LogFilter {
-  @override
-  bool shouldLog(LogEvent event) {
-    // In production, only log warnings and above
-    // In debug, log everything
-    return true; // Filter based on level in individual methods
+/// Maps the app's environment [LogLevel] to the logger package's [Level].
+Level loggerThresholdFor(LogLevel level) {
+  switch (level) {
+    case LogLevel.debug:
+      return Level.trace;
+    case LogLevel.info:
+      return Level.info;
+    case LogLevel.warning:
+      return Level.warning;
+    case LogLevel.error:
+      return Level.error;
   }
+}
+
+/// Filters log output by the environment's configured level, so release
+/// builds never print info-level records (which can reference user activity)
+/// to device logs.
+class _EnvironmentLogFilter extends LogFilter {
+  @override
+  bool shouldLog(LogEvent event) =>
+      event.level.value >= loggerThresholdFor(EnvironmentConfig.logLevel).value;
 }

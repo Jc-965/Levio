@@ -9,6 +9,7 @@ import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_coach_preferences.dart';
+import 'motion_demonstration_view.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_progress_screen.dart';
 import 'motion_reference_library.dart';
@@ -44,6 +45,8 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
   double? _recentAverage;
 
   final MotionCoachPreferences _preferences = MotionCoachPreferences.shared;
+  final Map<String, MotionDemonstrationLoop> _routinePreviews =
+      <String, MotionDemonstrationLoop>{};
 
   @override
   void initState() {
@@ -51,6 +54,30 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     _preferences.addListener(_onPreferencesChanged);
     if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_loadHistory());
+    unawaited(_loadRoutinePreviews());
+  }
+
+  /// Best effort: each routine card previews its first exercise's reference
+  /// motion. A failed load leaves that card on its icon.
+  Future<void> _loadRoutinePreviews() async {
+    for (final MotionRoutineDescription description in motionRoutineCatalog) {
+      try {
+        final RoutineDefinition routine = await _library.loadRoutine(
+          description.routineAssetId,
+        );
+        final MotionDemonstrationLoop loop = await _library.loadDemonstration(
+          routine.steps.first.exerciseId,
+        );
+        if (!mounted) return;
+        setState(() => _routinePreviews[description.routineAssetId] = loop);
+      } on Object catch (error, stackTrace) {
+        _logger.warning(
+          'Routine preview failed for ${description.routineAssetId}',
+          error,
+          stackTrace,
+        );
+      }
+    }
   }
 
   @override
@@ -269,6 +296,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     in motionRoutineCatalog)
                   _RoutineCard(
                     routine: routine,
+                    preview: _routinePreviews[routine.routineAssetId],
                     enabled: !_opening,
                     onTap: () => unawaited(_openRoutine(routine)),
                   ),
@@ -368,9 +396,11 @@ class _RoutineCard extends StatelessWidget {
     required this.routine,
     required this.enabled,
     required this.onTap,
+    this.preview,
   });
 
   final MotionRoutineDescription routine;
+  final MotionDemonstrationLoop? preview;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -385,13 +415,20 @@ class _RoutineCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Container(
-            width: 46,
-            height: 46,
+            width: 64,
+            height: 84,
             decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.14),
+              color: colors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(routine.icon, color: colors.primary),
+            clipBehavior: Clip.antiAlias,
+            child: preview == null
+                ? Icon(routine.icon, color: colors.primary)
+                : MotionDemonstrationView(
+                    key: ValueKey<String>(preview!.exerciseId),
+                    loop: preview!,
+                    color: colors.primary,
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(

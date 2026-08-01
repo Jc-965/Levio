@@ -4,10 +4,12 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/orientation_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_analysis.dart';
@@ -89,6 +91,13 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   @override
   void initState() {
     super.initState();
+    // The pose templates only allow portrait capture; hold the UI to the
+    // same orientation so the preview, overlay, and landmarks always agree.
+    unawaited(
+      SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]),
+    );
     _session = MotionCoachSession(
       liveCoach: LiveExerciseCoach(
         widget.exercise.engineSpec,
@@ -106,6 +115,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   @override
   void dispose() {
+    unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _session
@@ -387,7 +397,16 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         ],
       ),
     );
-    if (cancel != true || !mounted) return;
+    // Re-validated after the dialog await: the three-minute limit can
+    // auto-finish the recording (or a lifecycle event can suspend it) while
+    // the dialog is open, and discarding then would wipe the frames a
+    // finish is already draining.
+    if (cancel != true ||
+        !mounted ||
+        _finishingRecording ||
+        _phase != _CapturePhase.recording) {
+      return;
+    }
 
     _timer?.cancel();
     _recordingClock

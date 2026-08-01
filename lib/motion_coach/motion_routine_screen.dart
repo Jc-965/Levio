@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../services/app_logger.dart';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/orientation_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_capture_driver.dart';
@@ -75,6 +77,8 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   String? _demonstrationExerciseId;
   int _handledRepSerial = 0;
   int _handledCueSerial = 0;
+  int _announcedStepIndex = -1;
+  MotionRoutinePhase _lastSeenPhase = MotionRoutinePhase.framing;
   bool _finishing = false;
   int _generation = 0;
   String _errorTitle = 'The guided routine is unavailable';
@@ -83,6 +87,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   @override
   void initState() {
     super.initState();
+    // The pose templates only allow portrait capture; hold the UI to the
+    // same orientation so the preview, overlay, and landmarks always agree.
+    unawaited(
+      SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]),
+    );
     _controller = MotionRoutineController(
       routine: widget.routine,
       library: widget.library,
@@ -99,6 +110,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
   @override
   void dispose() {
+    unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _controller
       ..removeListener(_onControllerChanged)
@@ -128,6 +140,26 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       _handledCueSerial = _controller.cueSerial;
       if (_preferences.speechEnabled) unawaited(_cueSpeaker.speak(cue.text));
     }
+    // Rest is a pause in coaching: silence any in-flight cue rather than
+    // letting it finish over the countdown.
+    if (_controller.phase == MotionRoutinePhase.rest &&
+        _lastSeenPhase != MotionRoutinePhase.rest) {
+      unawaited(_cueSpeaker.stop());
+    }
+    // Announce each newly started step by its reviewed catalog copy, so a
+    // person who is not watching the screen knows what to do next.
+    if (_controller.isStarted &&
+        _controller.phase == MotionRoutinePhase.active &&
+        _controller.stepIndex != _announcedStepIndex) {
+      _announcedStepIndex = _controller.stepIndex;
+      if (_preferences.speechEnabled) {
+        final MotionExerciseDefinition exercise = _controller.currentExercise;
+        unawaited(
+          _cueSpeaker.speak('${exercise.title}. ${exercise.instructions}'),
+        );
+      }
+    }
+    _lastSeenPhase = _controller.phase;
     if (_demonstrationExerciseId != _demonstrationTargetId) {
       unawaited(_loadDemonstration());
     }
@@ -251,6 +283,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     HapticUtils.mediumImpact();
     _handledRepSerial = 0;
     _handledCueSerial = 0;
+    _announcedStepIndex = -1;
     _controller.start();
     setState(() => _phase = _RoutineScreenPhase.running);
   }
@@ -493,8 +526,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   Widget _buildStage(BuildContext context, {required bool running}) {
     final colors = context.colors;
     final MotionDemonstrationLoop? demonstration = _demonstration;
+    // Scales with the viewport so small phones keep the controls on screen
+    // and tall phones get a larger preview; clamped to sane bounds.
+    final double stageHeight = (MediaQuery.sizeOf(context).height * 0.34).clamp(
+      220.0,
+      340.0,
+    );
     return SizedBox(
-      height: 260,
+      height: stageHeight,
       child: Row(
         children: <Widget>[
           Expanded(
@@ -507,8 +546,8 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                         fit: BoxFit.cover,
                         clipBehavior: Clip.hardEdge,
                         child: SizedBox(
-                          width: 260 / _driver!.aspectRatio,
-                          height: 260,
+                          width: stageHeight / _driver!.aspectRatio,
+                          height: stageHeight,
                           // The overlay shares the preview's exact coordinate
                           // box so normalized landmarks map straight onto it.
                           child: Stack(

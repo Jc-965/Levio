@@ -242,6 +242,7 @@ class Singleton extends ChangeNotifier {
   final Map<String, List<Map<String, dynamic>>> communityComments = {};
   final Set<String> joinedCommunityGroups = <String>{};
   String? _lastCommunityError;
+  String? _lastCommunitySupportMessage;
 
   /// Initialize singleton services
   Future<void> initialize({bool isProduction = false}) async {
@@ -842,6 +843,12 @@ class Singleton extends ChangeNotifier {
     final error = _lastCommunityError;
     _lastCommunityError = null;
     return error;
+  }
+
+  String? consumeLastCommunitySupportMessage() {
+    final message = _lastCommunitySupportMessage;
+    _lastCommunitySupportMessage = null;
+    return message;
   }
 
   void _applyConnectivityResults(List<ConnectivityResult> results) {
@@ -2317,6 +2324,9 @@ class Singleton extends ChangeNotifier {
         allowLinks: false,
         userId: uid,
       );
+      if (moderation.crisisDetected) {
+        _lastCommunitySupportMessage = moderation.supportMessage;
+      }
       if (!moderation.isApproved) {
         _lastCommunityError =
             moderation.rejectionReason ??
@@ -2393,6 +2403,9 @@ class Singleton extends ChangeNotifier {
         allowLinks: false,
         userId: uid,
       );
+      if (moderation.crisisDetected) {
+        _lastCommunitySupportMessage = moderation.supportMessage;
+      }
       if (!moderation.isApproved) {
         _lastCommunityError =
             moderation.rejectionReason ??
@@ -2639,6 +2652,9 @@ class Singleton extends ChangeNotifier {
         allowLinks: false,
         userId: uid,
       );
+      if (moderation.crisisDetected) {
+        _lastCommunitySupportMessage = moderation.supportMessage;
+      }
       if (!moderation.isApproved) {
         _lastCommunityError =
             moderation.rejectionReason ??

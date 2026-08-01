@@ -9,12 +9,19 @@ class ModerationResult {
   final List<ModerationViolation> violations;
   final String? rejectionReason;
 
+  /// Set when the content discloses a mental health crisis. The content is
+  /// still allowed; the UI should surface [supportMessage] alongside it.
+  final bool crisisDetected;
+  final String? supportMessage;
+
   ModerationResult({
     required this.isApproved,
     this.sanitizedContent,
     this.flaggedWords = const [],
     this.violations = const [],
     this.rejectionReason,
+    this.crisisDetected = false,
+    this.supportMessage,
   });
 
   factory ModerationResult.approved(String content) =>
@@ -42,6 +49,7 @@ enum ViolationType {
   emptyContent,
   linkSpam,
   harassment,
+  crisisSupport,
 }
 
 /// Details about a specific violation
@@ -62,8 +70,8 @@ class ModerationViolation {
 /// Features:
 /// - Multi-language profanity detection using LDNOOBW word list
 /// - Spam pattern detection (URLs, emails, phone numbers)
-/// - Harassment pattern detection
-/// - Rate limiting support
+/// - Crisis-language detection that attaches support resources without
+///   blocking or censoring the disclosure
 /// - Content length validation
 /// - Excessive caps detection
 /// - Repetitive content detection
@@ -83,26 +91,36 @@ class ContentModerationService {
   static const double maxCapsRatio = 0.6;
   static const int repetitionThreshold = 3;
 
-  // Additional blocked patterns for healthcare app context
-  static const List<String> _healthcareBlockedTerms = [
+  // Phrases that suggest the author may be in crisis. These are never
+  // treated as profanity: a disclosure of distress must not be blocked,
+  // censored, or described as inappropriate language. Detection only
+  // attaches support resources to the moderation result.
+  static const List<String> _crisisSupportTerms = [
     'suicide',
+    'suicidal',
     'kill myself',
     'end my life',
+    'end it all',
     'want to die',
     'self harm',
+    'self-harm',
     'hurt myself',
     'overdose',
+    'no reason to live',
+    'better off without me',
   ];
 
   // Crisis resources to show when concerning content is detected
   static const String crisisMessage =
-      'If you are in crisis, please contact emergency services or a mental health helpline immediately.';
+      'You are not alone. If you are thinking about suicide or self-harm, '
+      'help is available right now: call or text 988 (Suicide and Crisis '
+      'Lifeline, US), or contact your local emergency services.';
 
   ContentModerationService._internal() {
-    // Initialize with default LDNOOBW word list plus custom additions
-    _profanityFilter = ProfanityFilter.filterAdditionally(
-      _healthcareBlockedTerms,
-    );
+    // Initialize with the default LDNOOBW word list only. Crisis terms are
+    // deliberately kept out of the profanity filter so they are never
+    // censored or reported as inappropriate language.
+    _profanityFilter = ProfanityFilter();
   }
 
   /// Moderate content with comprehensive checks
@@ -147,14 +165,14 @@ class ContentModerationService {
       );
     }
 
-    // 4. Check for concerning mental health content
-    final concerningResult = _checkConcerningContent(content);
-    if (concerningResult != null) {
-      violations.add(concerningResult);
+    // 4. Check for crisis language. Never blocks; surfaces support resources.
+    final crisisResult = _checkCrisisLanguage(content);
+    if (crisisResult != null) {
+      violations.add(crisisResult);
 
       _logger.moderation(
-        'concerning_content',
-        reason: 'Mental health concern detected',
+        'crisis_support_shown',
+        reason: 'Crisis language detected, support resources attached',
       );
     }
 
@@ -175,16 +193,21 @@ class ContentModerationService {
     }
 
     // Determine final result
-    final hasBlockingViolation = violations.any(
-      (v) =>
-          v.type == ViolationType.profanity ||
-          v.type == ViolationType.harassment ||
-          v.type == ViolationType.tooLong ||
-          v.type == ViolationType.emptyContent,
+    final crisisDetected = violations.any(
+      (v) => v.type == ViolationType.crisisSupport,
     );
 
-    if (hasBlockingViolation) {
-      final primaryViolation = violations.first;
+    bool isBlocking(ModerationViolation v) =>
+        v.type == ViolationType.profanity ||
+        v.type == ViolationType.harassment ||
+        v.type == ViolationType.tooLong ||
+        v.type == ViolationType.emptyContent;
+
+    final blockingViolations = violations.where(isBlocking).toList();
+
+    if (blockingViolations.isNotEmpty) {
+      // Explain the actual blocking violation, not whichever check ran first.
+      final primaryViolation = blockingViolations.first;
       return ModerationResult(
         isApproved: false,
         violations: violations,
@@ -192,6 +215,8 @@ class ContentModerationService {
         flaggedWords: _profanityFilter.hasProfanity(content)
             ? _profanityFilter.getAllProfanity(content)
             : [],
+        crisisDetected: crisisDetected,
+        supportMessage: crisisDetected ? crisisMessage : null,
       );
     }
 
@@ -205,6 +230,8 @@ class ContentModerationService {
       isApproved: true,
       sanitizedContent: sanitized,
       violations: violations, // May have minor violations
+      crisisDetected: crisisDetected,
+      supportMessage: crisisDetected ? crisisMessage : null,
     );
   }
 
@@ -256,12 +283,12 @@ class ContentModerationService {
     return null;
   }
 
-  ModerationViolation? _checkConcerningContent(String content) {
+  ModerationViolation? _checkCrisisLanguage(String content) {
     final lowerContent = content.toLowerCase();
-    for (final term in _healthcareBlockedTerms) {
+    for (final term in _crisisSupportTerms) {
       if (lowerContent.contains(term)) {
         return ModerationViolation(
-          type: ViolationType.harassment,
+          type: ViolationType.crisisSupport,
           description: crisisMessage,
           matchedContent: null, // Don't expose matched term
         );
@@ -415,6 +442,10 @@ class ContentModerationService {
         return 'Links are not allowed in posts for safety reasons.';
       case ViolationType.harassment:
         return violation.description;
+      case ViolationType.crisisSupport:
+        // Crisis support never blocks content; this reason is only shown if
+        // some other violation blocked the post.
+        return crisisMessage;
     }
   }
 }

@@ -578,6 +578,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                                 ),
                               ),
                             );
+                            _showCrisisSupportIfNeeded(messenger);
                             return;
                           }
 
@@ -587,6 +588,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                             _postVersion++;
                           });
 
+                          _showCrisisSupportIfNeeded(messenger);
                           Navigator.pop(ctx);
                           messenger.showSnackBar(
                             SnackBar(
@@ -1570,6 +1572,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                               ),
                             ),
                           );
+                          _showCrisisSupportIfNeeded(messenger);
                           return;
                         }
 
@@ -1577,6 +1580,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                         if (!mounted || !ctx.mounted) return;
                         setModalState(() {});
                         commentController.clear();
+                        _showCrisisSupportIfNeeded(messenger);
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -1891,6 +1895,22 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 }
 
+/// Shows crisis support resources if the last community action detected
+/// crisis language. The content itself is never blocked for this; we only
+/// make sure the author sees where to get help.
+void _showCrisisSupportIfNeeded(ScaffoldMessengerState messenger) {
+  final support = Singleton().consumeLastCommunitySupportMessage();
+  if (support == null) return;
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(support),
+      duration: const Duration(seconds: 10),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    ),
+  );
+}
+
 class _CreatePostScreen extends StatefulWidget {
   const _CreatePostScreen();
 
@@ -1920,6 +1940,7 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
 
     setState(() => _submitting = true);
     HapticUtils.lightImpact();
+    final messenger = ScaffoldMessenger.of(context);
     final success = await singleton.createCommunityPost(
       content: content,
       category: _selectedCategory ?? 'General',
@@ -1932,7 +1953,7 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
       setState(() => _submitting = false);
       final errorMessage =
           singleton.consumeLastCommunityError() ?? 'Unable to share post.';
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(errorMessage),
           behavior: SnackBarBehavior.floating,
@@ -1940,6 +1961,7 @@ class _CreatePostScreenState extends State<_CreatePostScreen> {
         ),
       );
     }
+    _showCrisisSupportIfNeeded(messenger);
   }
 
   @override

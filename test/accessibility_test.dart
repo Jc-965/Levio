@@ -84,4 +84,23 @@ void main() {
     await expectLater(tester, meetsGuideline(textContrastGuideline));
     handle.dispose();
   });
+
+  testWidgets('dark theme text meets contrast guideline on navbar', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: ThemeMode.dark,
+        routes: namedRoutes,
+        home: const Navbar(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+    handle.dispose();
+  });
 }

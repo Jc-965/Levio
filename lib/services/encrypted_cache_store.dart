@@ -74,6 +74,19 @@ class EncryptedCacheStore {
     }
   }
 
+  /// Removes the data key from the keystore. Called on account deletion so
+  /// any ciphertext that survives (backups, forensics) is undecryptable.
+  Future<void> destroyKey() async {
+    _dataKey = null;
+    try {
+      await _secureStorage.delete(key: _keyName);
+    } on MissingPluginException {
+      // No keystore in this environment.
+    } on PlatformException catch (e) {
+      _logger.error('Unable to remove cache data key', e);
+    }
+  }
+
   /// Seals [plaintext]. Encryption fails closed in release builds: with no
   /// keystore available a [KeystoreUnavailableException] is thrown rather
   /// than writing health data as plaintext. Debug and test environments

@@ -9,6 +9,7 @@ import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/singleton.dart';
+import 'package:parkiwell/utils/webview_policy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -66,6 +67,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
+            onNavigationRequest: decideEmbedNavigation,
             onPageStarted: (_) {
               if (!mounted) return;
               setState(() => _isVideoLoading = true);

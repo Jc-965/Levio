@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/webview_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import '../widgets/session_completion_bar.dart';
@@ -34,6 +35,7 @@ class _SpeechAudioState extends State<SpeechAudio> {
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
+            onNavigationRequest: decideEmbedNavigation,
             onPageStarted: (_) {
               if (!mounted) return;
               setState(() => _isVideoLoading = true);

@@ -6,13 +6,8 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 
-# Firebase rules
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
-
-# Kotlin rules
--keep class kotlin.** { *; }
--keep class kotlinx.** { *; }
+# MediaPipe pose bridge reflects into task classes
+-keep class com.google.mediapipe.** { *; }
 
 # Keep native methods
 -keepclassmembers class * {

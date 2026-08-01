@@ -711,7 +711,8 @@ class CloudBackendService {
             .from('logs')
             .select()
             .eq('user_id', effectiveUserId)
-            .order('created_at', ascending: false);
+            .order('created_at', ascending: false)
+            .limit(5000);
       });
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
@@ -732,7 +733,8 @@ class CloudBackendService {
             .from('schedules')
             .select()
             .eq('user_id', effectiveUserId)
-            .order('created_at', ascending: false);
+            .order('created_at', ascending: false)
+            .limit(5000);
       });
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
@@ -755,7 +757,8 @@ class CloudBackendService {
               .from('recovery_sessions')
               .select()
               .eq('user_id', effectiveUserId)
-              .order('completed_at', ascending: false);
+              .order('completed_at', ascending: false)
+              .limit(5000);
         },
       );
       return List<Map<String, dynamic>>.from(result);
@@ -779,7 +782,8 @@ class CloudBackendService {
               .from('medication_events')
               .select()
               .eq('user_id', effectiveUserId)
-              .order('scheduled_at', ascending: false);
+              .order('scheduled_at', ascending: false)
+              .limit(5000);
         },
       );
       return List<Map<String, dynamic>>.from(result);

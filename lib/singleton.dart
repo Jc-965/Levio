@@ -2303,6 +2303,9 @@ class Singleton extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await _offlineSyncEngine.clear();
       await prefs.clear();
+      // Rotate away the encryption key so any surviving ciphertext copies
+      // are permanently unreadable.
+      await _cacheStore.destroyKey();
       _lastSyncAt = null;
       _lastSyncStatus = 'Not synced yet';
       _hasHydratedLocalCache = false;

@@ -719,8 +719,10 @@ class CloudBackendService {
       });
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
+      // Rethrow rather than returning []: a failed load must never render
+      // as an empty health history downstream.
       _logger.error('Cloud get logs failed', e, stackTrace);
-      return <Map<String, dynamic>>[];
+      rethrow;
     }
   }
 
@@ -741,8 +743,10 @@ class CloudBackendService {
       });
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
+      // Rethrow rather than returning []: a failed load must never render
+      // as an empty health history downstream.
       _logger.error('Cloud get schedules failed', e, stackTrace);
-      return <Map<String, dynamic>>[];
+      rethrow;
     }
   }
 
@@ -766,8 +770,10 @@ class CloudBackendService {
       );
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
+      // Rethrow rather than returning []: a failed load must never render
+      // as an empty health history downstream.
       _logger.error('Cloud get recovery sessions failed', e, stackTrace);
-      return <Map<String, dynamic>>[];
+      rethrow;
     }
   }
 
@@ -791,8 +797,10 @@ class CloudBackendService {
       );
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
+      // Rethrow rather than returning []: a failed load must never render
+      // as an empty health history downstream.
       _logger.error('Cloud get medication events failed', e, stackTrace);
-      return <Map<String, dynamic>>[];
+      rethrow;
     }
   }
 

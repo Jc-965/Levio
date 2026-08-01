@@ -76,10 +76,6 @@ dependencies:
   timezone: ^0.10.0
   flutter_timezone: ^4.0.0
 
-dependency_overrides:
-  win32: ^5.5.0
-  archive: ^3.6.1
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

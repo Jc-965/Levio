@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' show Tristate;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:parkiwell/Manage/log.dart';
+import 'package:parkiwell/Manage/schedule.dart';
 import 'package:parkiwell/navbar.dart';
 import 'package:parkiwell/routes.dart';
 import 'package:parkiwell/singleton.dart';
@@ -109,6 +111,63 @@ void main() {
 
     expect(find.text('Home'), findsWidgets);
     expect(tester.takeException(), isNull);
+  });
+
+  group('health management screens', () {
+    Future<void> pumpScreen(WidgetTester tester, Widget home) async {
+      singleton.log
+        ..clear()
+        ..add(['08:00, 1 July 2026', 'Tremor', '3']);
+      singleton.logIDs
+        ..clear()
+        ..add('log-1');
+      singleton.schedule
+        ..clear()
+        ..add(['Levodopa', '100mg', 'Everyday']);
+      singleton.scheduleIDs
+        ..clear()
+        ..add('sched-1');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme(),
+          darkTheme: AppTheme.darkTheme(),
+          themeMode: ThemeMode.light,
+          routes: namedRoutes,
+          home: home,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('symptom log screen meets tap target guidelines', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpScreen(tester, const LogScreen());
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      handle.dispose();
+    });
+
+    testWidgets('medication schedule screen meets tap target guidelines', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await pumpScreen(tester, const ScheduleScreen());
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      handle.dispose();
+    });
+
+    testWidgets('symptom log screen meets contrast guideline', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpScreen(tester, const LogScreen());
+
+      await expectLater(tester, meetsGuideline(textContrastGuideline));
+      handle.dispose();
+    });
   });
 
   testWidgets('dark theme text meets contrast guideline on navbar', (

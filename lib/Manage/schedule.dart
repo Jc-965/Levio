@@ -158,6 +158,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       backgroundColor: colors.error,
                       onPressed: () async {
                         HapticUtils.lightImpact();
+                        // Confirm first: a tremor tap must never silently
+                        // delete a medication schedule.
+                        final confirmed = await showDialog<bool>(
+                          context: c,
+                          builder: (dc) => AlertDialog(
+                            title: const Text('Delete Medication'),
+                            content: const Text(
+                              'Delete this medication schedule? This cannot '
+                              'be undone.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dc, false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(dc, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
                         await singleton.deleteEntireList(index, 'schedules');
                         if (!mounted || !c.mounted) return;
                         Navigator.pop(c);
@@ -341,6 +364,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
           onPressed: () {
             HapticUtils.lightImpact();

@@ -96,7 +96,7 @@ class Singleton extends ChangeNotifier {
     "fJXCDDZJLDg": [
       "Introduction to LSVT LOUD",
       "Official LSVT LOUD overview session introducing core daily voice exercises and cueing strategies.",
-      "YouTube",
+      "",
       "Source: LSVTGLOBAL (YouTube)",
     ],
     "dzKy4vKp5_I": [

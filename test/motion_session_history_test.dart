@@ -63,6 +63,36 @@ void main() {
       );
     });
 
+    test('states evidence deterministically from engine numbers', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.record(
+        _evaluation(score: 82),
+        completedAt: DateTime.utc(2026, 7, 30),
+      );
+      final MotionSessionStep step = history.entries.single.steps.first;
+
+      expect(step.medianRomPctOfReference, 88);
+      expect(step.medianTempoSeconds, closeTo(3.1, 1e-9));
+      final List<String> statements = step.evidenceStatements;
+      expect(statements, hasLength(3));
+      expect(
+        statements[0],
+        'Across 3 complete movements, the median movement size measured '
+        '88% of the exercise reference.',
+      );
+      expect(
+        statements[1],
+        'A complete movement took a median of 3.1 seconds.',
+      );
+      expect(
+        statements[2],
+        'The first movement measured 96% of the reference and the last '
+        'measured 72% (75% of the first).',
+      );
+      // No reps means no invented evidence.
+      expect(history.entries.single.steps.last.evidenceStatements, isEmpty);
+    });
+
     test('keeps the newest sessions first', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(

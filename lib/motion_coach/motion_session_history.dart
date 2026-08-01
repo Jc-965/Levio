@@ -312,6 +312,50 @@ class MotionSessionStep {
     return repetitions.last.romPctOfReference / first;
   }
 
+  /// Median observed movement size across reps, as percent of the exercise
+  /// reference; null with no reps.
+  double? get medianRomPctOfReference => _median(<double>[
+    for (final MotionSessionRep rep in repetitions) rep.romPctOfReference,
+  ]);
+
+  /// Median complete-movement duration in seconds; null with no reps.
+  double? get medianTempoSeconds => _median(<double>[
+    for (final MotionSessionRep rep in repetitions) rep.tempoSeconds,
+  ]);
+
+  /// Deterministic evidence sentences built only from engine measurements.
+  /// Wording stays neutral and observational; nothing here scores, praises,
+  /// or diagnoses, matching the engine's allowlisted-copy policy.
+  List<String> get evidenceStatements {
+    final List<String> statements = <String>[];
+    final double? rom = medianRomPctOfReference;
+    if (rom != null) {
+      statements.add(
+        'Across ${repetitions.length} complete '
+        '${repetitions.length == 1 ? 'movement' : 'movements'}, the median '
+        'movement size measured ${rom.round()}% of the exercise reference.',
+      );
+    }
+    final double? tempo = medianTempoSeconds;
+    if (tempo != null) {
+      statements.add(
+        'A complete movement took a median of '
+        '${tempo.toStringAsFixed(1)} seconds.',
+      );
+    }
+    final double? ratio = amplitudeLastFirstRatio;
+    if (ratio != null) {
+      statements.add(
+        'The first movement measured '
+        '${repetitions.first.romPctOfReference.round()}% of the reference '
+        'and the last measured '
+        '${repetitions.last.romPctOfReference.round()}% '
+        '(${(ratio * 100).round()}% of the first).',
+      );
+    }
+    return statements;
+  }
+
   Map<String, Object?> toJson() => <String, Object?>{
     'exercise_id': exerciseId,
     'assessed': assessed,
@@ -378,4 +422,12 @@ class MotionSessionRep {
     'tempo_s': tempoSeconds,
     'score': overallScore,
   };
+}
+
+double? _median(List<double> values) {
+  if (values.isEmpty) return null;
+  final List<double> sorted = List<double>.of(values)..sort();
+  final int middle = sorted.length ~/ 2;
+  if (sorted.length.isOdd) return sorted[middle];
+  return (sorted[middle - 1] + sorted[middle]) / 2;
 }

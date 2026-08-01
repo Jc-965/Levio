@@ -278,6 +278,7 @@ class _StepCard extends StatelessWidget {
             _ComponentBar(label: 'Smoothness', value: step.smoothnessScore),
             if (step.symmetryScore != null)
               _ComponentBar(label: 'Evenness', value: step.symmetryScore),
+            if (step.repetitions.isNotEmpty) _StepEvidence(step: step),
           ],
         ],
       ),
@@ -292,6 +293,99 @@ class _StepCard extends StatelessWidget {
       // one does not ship; the id is still better than an empty row.
       return exerciseId;
     }
+  }
+}
+
+/// Per-repetition evidence: what was measured, movement by movement.
+///
+/// This is the detailed-feedback half of the coach's purpose. Every chip and
+/// sentence is an engine measurement or a deterministic restatement of one;
+/// nothing is generated or judged in the UI.
+class _StepEvidence extends StatelessWidget {
+  const _StepEvidence({required this.step});
+
+  final MotionSessionStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final bool alternating = step.repetitions.any(
+      (MotionSessionRep rep) => rep.side != 'both',
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const SizedBox(height: 6),
+        Text(
+          'Movement by movement',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: <Widget>[
+            for (final MotionSessionRep rep in step.repetitions)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${rep.index}'
+                  '${alternating ? (rep.side == 'left' ? ' L' : ' R') : ''}'
+                  ' · ${rep.romPctOfReference.round()}%',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Each chip is one complete movement and its measured size as a '
+          'percentage of the exercise reference.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        for (final String statement in step.evidenceStatements)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.straighten_rounded,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    statement,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 

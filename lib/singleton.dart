@@ -2225,12 +2225,18 @@ class Singleton extends ChangeNotifier {
 
   // ==================== Community Operations ====================
 
-  Future<String> _communityDisplayName() async {
-    if (name.trim().isNotEmpty && name != '[Name]') {
+  static const String _useRealNameKey = 'community_use_real_name';
+
+  /// Posting in a disease-specific community discloses a diagnosis, so the
+  /// display name is a persistent alias unless the user opts in to their
+  /// real name.
+  Future<String> communityDisplayName() async {
+    final prefs = await _prefs;
+    final useRealName = prefs.getBool(_useRealNameKey) ?? false;
+    if (useRealName && name.trim().isNotEmpty && name != '[Name]') {
       return name.trim();
     }
 
-    final prefs = await _prefs;
     final existingAlias = prefs.getString('community_alias');
     if (existingAlias != null && existingAlias.trim().isNotEmpty) {
       return existingAlias;
@@ -2239,6 +2245,17 @@ class Singleton extends ChangeNotifier {
     final alias = 'Member-${Random().nextInt(9000) + 1000}';
     await prefs.setString('community_alias', alias);
     return alias;
+  }
+
+  Future<bool> getCommunityUseRealName() async {
+    final prefs = await _prefs;
+    return prefs.getBool(_useRealNameKey) ?? false;
+  }
+
+  Future<void> setCommunityUseRealName(bool value) async {
+    final prefs = await _prefs;
+    await prefs.setBool(_useRealNameKey, value);
+    notifyListenersSafe();
   }
 
   Future<List<Map<String, dynamic>>> loadCommunityPosts({
@@ -2336,7 +2353,7 @@ class Singleton extends ChangeNotifier {
       }
 
       final postId = _uuid.v4();
-      final displayName = await _communityDisplayName();
+      final displayName = await communityDisplayName();
       final createdAt = DateTime.now().toIso8601String();
 
       final saved = await _cloud.saveCommunityPost(
@@ -2581,7 +2598,7 @@ class Singleton extends ChangeNotifier {
       }
 
       final commentId = _uuid.v4();
-      final displayName = await _communityDisplayName();
+      final displayName = await communityDisplayName();
       final createdAt = DateTime.now().toIso8601String();
 
       final saved = await _cloud.saveCommunityComment(

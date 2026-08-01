@@ -24,12 +24,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool theme = false;
   String _appVersion = 'Loading...';
   bool _isSyncing = false;
+  bool _useRealNameInCommunity = false;
 
   @override
   void initState() {
     super.initState();
     theme = singleton.colorMode == 1;
     _loadAppVersion();
+    _loadCommunityIdentityPreference();
+  }
+
+  Future<void> _loadCommunityIdentityPreference() async {
+    final useRealName = await singleton.getCommunityUseRealName();
+    if (!mounted) return;
+    setState(() => _useRealNameInCommunity = useRealName);
   }
 
   Future<void> _loadAppVersion() async {
@@ -392,6 +400,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Import Backup',
                 subtitle: 'Restore from backup JSON',
                 onTap: _showImportBackupDialog,
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Privacy',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _SettingsTile(
+                icon: Icons.badge_outlined,
+                title: 'Use Real Name in Community',
+                subtitle: _useRealNameInCommunity
+                    ? 'Posts show your profile name'
+                    : 'Posts show a private alias',
+                trailing: Switch(
+                  value: _useRealNameInCommunity,
+                  activeThumbColor: colors.primary,
+                  onChanged: (value) async {
+                    HapticUtils.selectionClick();
+                    setState(() => _useRealNameInCommunity = value);
+                    await singleton.setCommunityUseRealName(value);
+                  },
+                ),
               ),
               const SizedBox(height: 24),
 

@@ -48,6 +48,8 @@ dependencies:
   fl_chart: ^1.1.1
   
   # Media
+  # Exact-pinned: the hand-rolled MotionPoseBridge natives are validated
+  # against this camera release; bump deliberately, with a device test.
   camera: 0.12.0+2
   flutter_tts: ^4.2.5
   motion_engine:

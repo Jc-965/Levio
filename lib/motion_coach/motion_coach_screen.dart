@@ -78,6 +78,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   Timer? _timer;
   _CapturePhase _phase = _CapturePhase.initializing;
   Duration _elapsed = Duration.zero;
+  bool _warnedNearCap = false;
   String _errorTitle = 'Motion check is unavailable';
   String _errorBody = 'Please try again.';
   int _generation = 0;
@@ -297,6 +298,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     try {
       await driver.startRecording();
       if (!mounted) return;
+      _warnedNearCap = false;
       _recordingClock
         ..reset()
         ..start();
@@ -308,6 +310,20 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
           return;
         }
         if (elapsed.inSeconds != _elapsed.inSeconds) {
+          // Warn before the cap: an unannounced auto-finish surprises
+          // slow movers mid-repetition.
+          if (!_warnedNearCap &&
+              _maximumDuration - elapsed <= const Duration(seconds: 30)) {
+            _warnedNearCap = true;
+            if (_preferences.hapticsEnabled) HapticUtils.mediumImpact();
+            if (_preferences.speechEnabled) {
+              unawaited(
+                _cueSpeaker.speak(
+                  'Thirty seconds left. The recording will finish on its own.',
+                ),
+              );
+            }
+          }
           setState(() => _elapsed = elapsed);
         }
       });

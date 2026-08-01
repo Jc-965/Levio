@@ -2469,23 +2469,76 @@ class Singleton extends ChangeNotifier {
     }
   }
 
+  /// Nearest configured dose time for [scheduleId] on the day of
+  /// [reference], or null when the schedule has no per-dose times. Binding
+  /// events to real slots keeps adherence timing honest: recording
+  /// scheduled_at = taken_at would score every dose as perfectly on time.
+  DateTime? nearestDoseSlot(String scheduleId, DateTime reference) {
+    final index = scheduleIDs.indexOf(scheduleId);
+    if (index < 0 || schedule[index].length < 4) return null;
+    final local = reference.toLocal();
+    DateTime? best;
+    var bestDistance = const Duration(days: 999);
+    for (final raw in schedule[index][3].split(',')) {
+      final parts = raw.trim().split(':');
+      if (parts.length != 2) continue;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) continue;
+      final slot = DateTime(local.year, local.month, local.day, hour, minute);
+      final distance = local.difference(slot).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = slot;
+      }
+    }
+    return best?.toUtc();
+  }
+
+  /// True when a dose is already recorded for this schedule at the same
+  /// slot (or, slotless, on the same local day), so a tremor double-tap
+  /// can never fabricate phantom doses in the medical record.
+  bool hasRecordedDoseFor(String scheduleId, DateTime scheduledAt) {
+    final slotIso = scheduledAt.toUtc().toIso8601String();
+    final slotDay = scheduledAt.toLocal();
+    return medicationEvents.any((event) {
+      if (event['schedule_id']?.toString() != scheduleId) return false;
+      final eventScheduled = DateTime.tryParse(
+        event['scheduled_at']?.toString() ?? '',
+      );
+      if (eventScheduled == null) return false;
+      if (event['scheduled_at']?.toString() == slotIso) return true;
+      final eventDay = eventScheduled.toLocal();
+      return eventDay.year == slotDay.year &&
+          eventDay.month == slotDay.month &&
+          eventDay.day == slotDay.day &&
+          nearestDoseSlot(scheduleId, DateTime.now()) == null;
+    });
+  }
+
   Future<bool> recordMedicationTakenById(
     String scheduleId, {
     DateTime? takenAt,
     DateTime? scheduledAt,
+    String status = 'taken',
   }) async {
     try {
       final scheduleIndex = scheduleIDs.indexOf(scheduleId);
       if (scheduleIndex < 0) return false;
       final now = (takenAt ?? DateTime.now()).toUtc();
+      final slot = scheduledAt ?? nearestDoseSlot(scheduleId, now) ?? now;
+      if (hasRecordedDoseFor(scheduleId, slot)) {
+        _lastCommunityError = null;
+        return false;
+      }
       final eventId = _uuid.v4();
       final event = <String, dynamic>{
         'id': eventId,
         'schedule_id': scheduleId,
         'medication_name': schedule[scheduleIndex][0],
-        'scheduled_at': (scheduledAt ?? now).toUtc().toIso8601String(),
-        'taken_at': now.toIso8601String(),
-        'status': 'taken',
+        'scheduled_at': slot.toUtc().toIso8601String(),
+        'taken_at': status == 'taken' ? now.toIso8601String() : null,
+        'status': status,
       };
 
       await _queueHealthMutation(

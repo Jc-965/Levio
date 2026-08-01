@@ -162,14 +162,26 @@ class _NavbarState extends State<Navbar> with TickerProviderStateMixin {
     _setCurrentIndex(index, syncSingleton: true);
   }
 
+  String _lastSeenName = '';
+  String _lastSeenImage = '';
+  bool _lastSeenPersistenceFailed = false;
+
   void _onSingletonPageChange() {
     if (!mounted) return;
     final targetIndex = singleton.page;
     if (targetIndex != currentIndex) {
       _setCurrentIndex(targetIndex, syncSingleton: false);
-    } else {
-      // Data-only change (e.g. profile name/avatar updated): refresh the
-      // app bar without a tab transition.
+      return;
+    }
+    // Rebuild only when something this scaffold actually renders changed;
+    // a bare setState here made every sync tick and community persist
+    // rebuild the whole active tab tree.
+    if (singleton.name != _lastSeenName ||
+        singleton.image != _lastSeenImage ||
+        singleton.localPersistenceFailed != _lastSeenPersistenceFailed) {
+      _lastSeenName = singleton.name;
+      _lastSeenImage = singleton.image;
+      _lastSeenPersistenceFailed = singleton.localPersistenceFailed;
       setState(() {});
     }
   }

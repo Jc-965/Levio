@@ -4,7 +4,12 @@ import 'package:path_provider/path_provider.dart';
 
 const Set<String> _videoExtensions = {'.mp4', '.mov', '.temp'};
 
-/// Deletes exercise recordings stranded by a crash or OS kill.
+/// Plaintext backup exports left for share targets to read; stale copies
+/// are cleared on the next launch (see settings export flow).
+const String _backupFileName = 'parkiwell-backup.json';
+
+/// Deletes exercise recordings stranded by a crash or OS kill, plus any
+/// stale plaintext backup export.
 ///
 /// Recordings are normally deleted when their screen disposes, but a
 /// mid-session process death leaves an unencrypted video of the patient in
@@ -16,10 +21,11 @@ Future<int> sweepOrphanedRecordings() async {
     await for (final entity in dir.list()) {
       if (entity is! File) continue;
       final name = entity.path.toLowerCase();
+      final isBackup = name.endsWith(_backupFileName);
       final dot = name.lastIndexOf('.');
-      if (dot == -1 || !_videoExtensions.contains(name.substring(dot))) {
-        continue;
-      }
+      final isVideo =
+          dot != -1 && _videoExtensions.contains(name.substring(dot));
+      if (!isBackup && !isVideo) continue;
       try {
         await entity.delete();
         removed++;

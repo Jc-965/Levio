@@ -905,8 +905,11 @@ class CloudBackendService {
       );
       return List<Map<String, dynamic>>.from(result);
     } catch (e, stackTrace) {
+      // Rethrow like the health getters: returning [] here made the
+      // caller clear and PERSIST an empty feed over the cached one, so a
+      // tunnel ride silently destroyed the offline community cache.
       _logger.error('Cloud get posts failed', e, stackTrace);
-      return <Map<String, dynamic>>[];
+      rethrow;
     }
   }
 

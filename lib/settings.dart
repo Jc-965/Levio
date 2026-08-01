@@ -309,15 +309,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // histories and message previews.
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/parkiwell-backup.json');
-      try {
-        await file.writeAsString(payload);
-        await SharePlus.instance.share(
-          ShareParams(files: [XFile(file.path)], subject: 'ParkiWell backup'),
-        );
-      } finally {
-        // Never leave a plaintext health record in the temp directory,
-        // even when the share sheet throws.
-        if (await file.exists()) await file.delete();
+      await file.writeAsString(payload);
+      final result = await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'ParkiWell backup'),
+      );
+      // Deleting the instant share() resolves races the receiving app on
+      // Android (the intent can resolve before the target reads the
+      // file). Delete on dismissal without a pick; otherwise leave it for
+      // the boot sweep, which clears stale backup files on next launch.
+      if (result.status == ShareResultStatus.dismissed && await file.exists()) {
+        await file.delete();
       }
     } catch (_) {
       if (!mounted) return;

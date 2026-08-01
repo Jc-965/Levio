@@ -116,25 +116,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   child: ModernButton(
                     text: 'Mark as Taken',
                     icon: Icons.check_circle_outline_rounded,
-                    onPressed: () async {
-                      HapticUtils.success();
-                      final saved = await singleton.recordMedicationTakenById(
-                        scheduleId,
-                      );
-                      if (!mounted || !c.mounted) return;
-                      Navigator.pop(c);
-                      setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            saved
-                                ? '${name(index)} recorded'
-                                : 'Unable to record this dose',
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: () => _recordDose(c, index, scheduleId, 'taken'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ModernButton(
+                    text: 'Skipped this dose',
+                    icon: Icons.remove_circle_outline_rounded,
+                    isOutlined: true,
+                    onPressed: () =>
+                        _recordDose(c, index, scheduleId, 'skipped'),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -199,6 +192,37 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _recordDose(
+    BuildContext sheetContext,
+    int index,
+    String scheduleId,
+    String status,
+  ) async {
+    HapticUtils.success();
+    final saved = await singleton.recordMedicationTakenById(
+      scheduleId,
+      status: status,
+    );
+    if (!mounted || !sheetContext.mounted) return;
+    Navigator.pop(sheetContext);
+    setState(() {});
+    final medName = name(index);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved
+              ? (status == 'taken'
+                    ? '$medName recorded'
+                    : '$medName marked as skipped')
+              // recordMedicationTakenById refuses duplicates for the same
+              // dose slot, so "false" here usually means already recorded.
+              : 'This dose is already recorded for this time.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 

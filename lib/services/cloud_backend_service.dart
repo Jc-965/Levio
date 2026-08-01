@@ -1171,6 +1171,46 @@ class CloudBackendService {
     return true;
   }
 
+  /// Records a unique per-user report; the RPC hides the post after three
+  /// distinct reporters.
+  Future<bool> reportCommunityPost({
+    required String postId,
+    String? reason,
+  }) async {
+    if (!isEnabled) return false;
+    try {
+      await _withRetry<void>('report community post', () async {
+        await _client!.rpc(
+          'report_post',
+          params: {'p_post_id': postId, 'p_reason': reason ?? ''},
+        );
+      });
+      return true;
+    } catch (e, stackTrace) {
+      _logger.error('Cloud report post failed', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Deletes the caller's auth identity and data via the delete_account
+  /// edge function. Returns null when the function is not deployed so the
+  /// caller can fall back to row-level deletion.
+  Future<bool?> deleteAccountViaFunction() async {
+    if (!isEnabled) return null;
+    try {
+      final response = await _client!.functions.invoke('delete_account');
+      final data = response.data;
+      return data is Map && data['ok'] == true;
+    } on FunctionException catch (e, stackTrace) {
+      if (e.status == 404) return null;
+      _logger.error('Account deletion function failed', e, stackTrace);
+      return false;
+    } catch (e, stackTrace) {
+      _logger.error('Account deletion function failed', e, stackTrace);
+      return null;
+    }
+  }
+
   /// Removes the caller's like. Returns true when a like was removed,
   /// false when no like existed, and null on failure.
   Future<bool?> unlikeCommunityPost({

@@ -286,6 +286,58 @@ $$;
 revoke all on function public.refresh_post_like_count(text) from public;
 grant execute on function public.refresh_post_like_count(text) to authenticated;
 
+create table if not exists public.community_post_reports (
+  post_id text not null references public.community_posts(id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
+  reason text,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (post_id, user_id)
+);
+
+alter table public.community_post_reports enable row level security;
+
+drop policy if exists post_reports_insert_own on public.community_post_reports;
+create policy post_reports_insert_own on public.community_post_reports
+  for insert to authenticated
+  with check (user_id = auth.uid()::text);
+
+drop policy if exists post_reports_select_own on public.community_post_reports;
+create policy post_reports_select_own on public.community_post_reports
+  for select to authenticated
+  using (user_id = auth.uid()::text);
+
+create or replace function public.report_post(p_post_id text, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_report_count integer;
+begin
+  insert into public.community_post_reports (post_id, user_id, reason)
+  values (p_post_id, auth.uid()::text, left(coalesce(p_reason, ''), 500))
+  on conflict (post_id, user_id) do nothing;
+
+  select count(*) into v_report_count
+  from public.community_post_reports r
+  where r.post_id = p_post_id;
+
+  -- Reports are counted from unique reporter rows, so a single user cannot
+  -- flood a post into hiding. Three unique reports hide the post pending
+  -- review.
+  update public.community_posts
+    set reports = v_report_count,
+        is_flagged = v_report_count >= 1,
+        is_hidden = is_hidden or v_report_count >= 3,
+        updated_at = timezone('utc', now())
+  where id = p_post_id;
+end;
+$$;
+
+revoke all on function public.report_post(text, text) from public;
+grant execute on function public.report_post(text, text) to authenticated;
+
 create or replace function public.apply_health_mutations(p_mutations jsonb)
 returns jsonb
 language plpgsql

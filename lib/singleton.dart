@@ -2247,9 +2247,26 @@ class Singleton extends ChangeNotifier {
   Future<bool> deleteAccount() async {
     try {
       final uid = await _resolveUserId();
-      if (uid != null && !await _cloud.deleteUser(uid)) {
-        _logger.error('Failed to delete user from cloud database');
-        return false;
+      if (uid != null) {
+        // Prefer the delete_account edge function: it removes the auth
+        // identity (email, OAuth linkage) as well as the data rows, which
+        // the client cannot do with the publishable key alone.
+        final viaFunction = await _cloud.deleteAccountViaFunction();
+        if (viaFunction == false) {
+          _logger.error('Server-side account deletion failed');
+          return false;
+        }
+        if (viaFunction == null) {
+          // Function not deployed: fall back to row-level deletion. The
+          // auth identity survives in this mode.
+          _logger.warning(
+            'delete_account function unavailable; deleting rows only',
+          );
+          if (!await _cloud.deleteUser(uid)) {
+            _logger.error('Failed to delete user from cloud database');
+            return false;
+          }
+        }
       }
 
       log.clear();
@@ -2351,7 +2368,9 @@ class Singleton extends ChangeNotifier {
       return existingAlias;
     }
 
-    final alias = 'Member-${Random().nextInt(9000) + 1000}';
+    // Secure RNG and a 900k space keep aliases practically collision-free,
+    // so two members are unlikely to appear under the same name.
+    final alias = 'Member-${Random.secure().nextInt(900000) + 100000}';
     await prefs.setString('community_alias', alias);
     return alias;
   }
@@ -2638,6 +2657,62 @@ class Singleton extends ChangeNotifier {
     } catch (e, stackTrace) {
       _logger.error('Error liking post', e, stackTrace);
       _lastCommunityError = 'Unable to like post right now.';
+      return false;
+    }
+  }
+
+  static const String _blockedUsersKey = 'community_blocked_users_v1';
+  Set<String>? _blockedUserIds;
+
+  Future<Set<String>> blockedUserIds() async {
+    if (_blockedUserIds != null) return _blockedUserIds!;
+    final prefs = await _prefs;
+    _blockedUserIds =
+        (prefs.getStringList(_blockedUsersKey) ?? const <String>[]).toSet();
+    return _blockedUserIds!;
+  }
+
+  /// Blocks are enforced locally: the blocker simply stops seeing the
+  /// blocked member's posts and comments on this device.
+  Future<void> blockCommunityUser(String userId) async {
+    final blocked = await blockedUserIds();
+    if (userId.trim().isEmpty || !blocked.add(userId)) return;
+    final prefs = await _prefs;
+    await prefs.setStringList(_blockedUsersKey, blocked.toList());
+    notifyListenersSafe();
+  }
+
+  Future<void> unblockCommunityUser(String userId) async {
+    final blocked = await blockedUserIds();
+    if (!blocked.remove(userId)) return;
+    final prefs = await _prefs;
+    await prefs.setStringList(_blockedUsersKey, blocked.toList());
+    notifyListenersSafe();
+  }
+
+  Future<bool> reportCommunityPost(String postId, {String? reason}) async {
+    try {
+      _lastCommunityError = null;
+      if (!_cloud.isEnabled) {
+        _lastCommunityError = 'Cloud sync unavailable.';
+        return false;
+      }
+      final uid = await _resolveUserId();
+      if (uid == null) {
+        _lastCommunityError = 'Complete profile setup first.';
+        return false;
+      }
+      final reported = await _cloud.reportCommunityPost(
+        postId: postId,
+        reason: reason,
+      );
+      if (!reported) {
+        _lastCommunityError = 'Unable to report post right now.';
+      }
+      return reported;
+    } catch (e, stackTrace) {
+      _logger.error('Error reporting post', e, stackTrace);
+      _lastCommunityError = 'Unable to report post right now.';
       return false;
     }
   }

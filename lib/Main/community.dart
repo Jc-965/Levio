@@ -110,20 +110,25 @@ class _CommunityScreenState extends State<CommunityScreen>
 
     try {
       final rawPosts = await singleton.loadCommunityPosts(limit: 100);
-      final posts = rawPosts.map((row) {
-        return CommunityPost(
-          id: row['id']?.toString() ?? '',
-          authorId: row['user_id']?.toString() ?? '',
-          authorName: row['user_name']?.toString() ?? 'Community Member',
-          authorImage: row['profile_image']?.toString() ?? 'images/711128.png',
-          content: row['content']?.toString() ?? '',
-          timestamp: _parseTimestamp(row['created_at']),
-          category: row['category']?.toString(),
-          likes: (row['likes'] as num?)?.toInt() ?? 0,
-          commentCount: (row['comment_count'] as num?)?.toInt() ?? 0,
-          isLiked: row['liked_by_me'] == true,
-        );
-      }).toList();
+      final blocked = await singleton.blockedUserIds();
+      final posts = rawPosts
+          .where((row) => !blocked.contains(row['user_id']?.toString()))
+          .map((row) {
+            return CommunityPost(
+              id: row['id']?.toString() ?? '',
+              authorId: row['user_id']?.toString() ?? '',
+              authorName: row['user_name']?.toString() ?? 'Community Member',
+              authorImage:
+                  row['profile_image']?.toString() ?? 'images/711128.png',
+              content: row['content']?.toString() ?? '',
+              timestamp: _parseTimestamp(row['created_at']),
+              category: row['category']?.toString(),
+              likes: (row['likes'] as num?)?.toInt() ?? 0,
+              commentCount: (row['comment_count'] as num?)?.toInt() ?? 0,
+              isLiked: row['liked_by_me'] == true,
+            );
+          })
+          .toList();
 
       if (!mounted) return;
       setState(() {
@@ -146,6 +151,80 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   Future<void> _refreshFeed() async {
     await _loadFeedData();
+  }
+
+  void _showFeedSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    );
+  }
+
+  Future<void> _reportPost(CommunityPost post) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Report Post'),
+        content: const Text(
+          'Report this post to the ParkiWell team? Posts reported by '
+          'several members are hidden automatically pending review.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final reported = await singleton.reportCommunityPost(post.id);
+    if (!mounted) return;
+    _showFeedSnack(
+      reported
+          ? 'Thanks for the report. Our team will review this post.'
+          : singleton.consumeLastCommunityError() ?? 'Unable to report post.',
+    );
+  }
+
+  Future<void> _blockAuthor(CommunityPost post) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Block User'),
+        content: Text(
+          'Hide all posts and comments from ${post.authorName}? You can '
+          'change this later from this menu on any of their posts.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await singleton.blockCommunityUser(post.authorId);
+    if (!mounted) return;
+    setState(() {
+      _posts.removeWhere((p) => p.authorId == post.authorId);
+      _postVersion++;
+    });
+    _showFeedSnack('You will no longer see posts from ${post.authorName}.');
   }
 
   Future<void> _sharePost(CommunityPost post) async {
@@ -202,15 +281,20 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   Future<void> _loadCommentsForPost(CommunityPost post) async {
     final rawComments = await singleton.loadCommunityComments(post.id);
-    final mapped = rawComments.map((row) {
-      return PostComment(
-        id: row['id']?.toString() ?? '',
-        authorName: row['user_name']?.toString() ?? 'Member',
-        authorImage: row['profile_image']?.toString() ?? 'images/711128.png',
-        content: row['content']?.toString() ?? '',
-        timestamp: _parseTimestamp(row['created_at']),
-      );
-    }).toList();
+    final blocked = await singleton.blockedUserIds();
+    final mapped = rawComments
+        .where((row) => !blocked.contains(row['user_id']?.toString()))
+        .map((row) {
+          return PostComment(
+            id: row['id']?.toString() ?? '',
+            authorName: row['user_name']?.toString() ?? 'Member',
+            authorImage:
+                row['profile_image']?.toString() ?? 'images/711128.png',
+            content: row['content']?.toString() ?? '',
+            timestamp: _parseTimestamp(row['created_at']),
+          );
+        })
+        .toList();
 
     if (!mounted) return;
     setState(() {
@@ -1100,6 +1184,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                     size: 20,
                     color: colors.textTertiary,
                   ),
+                  tooltip: 'Post options',
                   onSelected: (value) {
                     if (value == 'edit') {
                       HapticUtils.lightImpact();
@@ -1116,6 +1201,36 @@ class _CommunityScreenState extends State<CommunityScreen>
                     PopupMenuItem<String>(
                       value: 'delete',
                       child: Text('Delete'),
+                    ),
+                  ],
+                )
+              else
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_horiz,
+                    size: 20,
+                    color: colors.textTertiary,
+                  ),
+                  tooltip: 'Post options',
+                  onSelected: (value) {
+                    if (value == 'report') {
+                      HapticUtils.lightImpact();
+                      _reportPost(post);
+                      return;
+                    }
+                    if (value == 'block') {
+                      HapticUtils.lightImpact();
+                      _blockAuthor(post);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem<String>(
+                      value: 'report',
+                      child: Text('Report post'),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'block',
+                      child: Text('Block user'),
                     ),
                   ],
                 ),

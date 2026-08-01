@@ -22,6 +22,21 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- Android 11+ package visibility: without these, canLaunchUrl
+             returns false for the dialer and browser even when installed,
+             silently dead-ending the helpline call button and every
+             external resource link. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
     </queries>
     
     <!-- Backups are disabled: the local health cache (encrypted with a

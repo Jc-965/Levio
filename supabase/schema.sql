@@ -1029,6 +1029,22 @@ create policy posts_insert_own on public.community_posts
   );
 
 -- Server-side content guard: the client-side moderation pass can be
+-- Append-only write audit powering the community rate limits. Rows are
+-- never removed by user actions (deleting a post does not refund quota)
+-- and are pruned opportunistically after 25 hours.
+create table if not exists public.community_write_audit (
+  id bigint generated always as identity primary key,
+  user_id text not null,
+  kind text not null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_write_audit_user_kind_created
+  on public.community_write_audit (user_id, kind, created_at desc);
+
+alter table public.community_write_audit enable row level security;
+-- No policies: only the security definer trigger touches this table.
+
 -- bypassed by any REST client holding the anon key, so the length cap and
 -- rate limit are enforced here too.
 create or replace function public.enforce_community_content()
@@ -1045,17 +1061,13 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    if tg_table_name = 'community_comments' then
-      select count(*) into v_recent
-      from public.community_comments c
-      where c.user_id = new.user_id
-        and c.created_at > timezone('utc', now()) - interval '1 hour';
-    else
-      select count(*) into v_recent
-      from public.community_posts p
-      where p.user_id = new.user_id
-        and p.created_at > timezone('utc', now()) - interval '1 hour';
-    end if;
+    -- Count from the append-only audit, not live rows: counting live rows
+    -- lets post-delete-repost cycles bypass the hourly limit entirely.
+    select count(*) into v_recent
+    from public.community_write_audit a
+    where a.user_id = new.user_id
+      and a.kind = tg_table_name
+      and a.created_at > timezone('utc', now()) - interval '1 hour';
     -- Posts match the client-side product rule (10/hour); comments allow
     -- more because replying in a support thread is higher-frequency.
     if tg_table_name = 'community_comments' then
@@ -1065,6 +1077,12 @@ begin
     elsif v_recent >= 10 then
       raise exception 'rate limit exceeded';
     end if;
+
+    insert into public.community_write_audit (user_id, kind)
+    values (new.user_id, tg_table_name);
+    -- Opportunistic pruning keeps the audit tiny without a scheduled job.
+    delete from public.community_write_audit
+    where created_at < timezone('utc', now()) - interval '25 hours';
   end if;
 
   return new;
@@ -1190,7 +1208,10 @@ drop policy if exists comments_delete_own on public.community_comments;
 create policy comments_select_all on public.community_comments
   for select to authenticated
   using (
-    is_flagged = false
+    -- Authors keep sight of their own hidden comments, mirroring posts;
+    -- otherwise three reports make a comment vanish for its writer with
+    -- no explanation.
+    (is_flagged = false or user_id = public.current_uid())
     and coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) = false
   );
 

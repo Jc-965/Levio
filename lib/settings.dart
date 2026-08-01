@@ -132,39 +132,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showDeleteAccountDialog() {
     final colors = context.colors;
+    final confirmController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (BuildContext c) {
-        return AlertDialog(
-          title: const Text('Delete Account'),
-          content: Text(
-            'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.',
-            style: Theme.of(
-              c,
-            ).textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: colors.textSecondary),
+        return StatefulBuilder(
+          builder: (c, setDialogState) {
+            final confirmed =
+                confirmController.text.trim().toUpperCase() == 'DELETE';
+            return AlertDialog(
+              title: const Text('Delete Account'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This permanently destroys your entire health record: '
+                    'symptoms, medications, and exercise history. It cannot '
+                    'be undone.\n\nConsider exporting a backup first. To '
+                    'continue, type DELETE below.',
+                    style: Theme.of(c).textTheme.bodyMedium?.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: confirmController,
+                    autofocus: false,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: 'DELETE',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                HapticUtils.lightImpact();
-                Navigator.pop(c);
-                await _showDeletingDialog();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.error,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(c);
+                    _exportBackup();
+                  },
+                  child: const Text('Export first'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
+                ),
+                ElevatedButton(
+                  // Typing DELETE is deliberate friction: an unlocked
+                  // phone or a tremor tap must never be enough to destroy
+                  // a medical history.
+                  onPressed: confirmed
+                      ? () async {
+                          HapticUtils.lightImpact();
+                          Navigator.pop(c);
+                          await _showDeletingDialog();
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

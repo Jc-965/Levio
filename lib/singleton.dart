@@ -1704,6 +1704,25 @@ class Singleton extends ChangeNotifier {
     }
   }
 
+  /// Local cap on adherence events. Every event is re-serialized and
+  /// re-encrypted on each write, and analytics scan them per access; the
+  /// cloud keeps the full history, so the device holds a rolling window.
+  static const int _maxLocalMedicationEvents = 2000;
+
+  void _pruneLocalMedicationEvents() {
+    if (medicationEvents.length <= _maxLocalMedicationEvents) return;
+    medicationEvents.sort((a, b) {
+      final aTime = DateTime.tryParse(a['scheduled_at']?.toString() ?? '');
+      final bTime = DateTime.tryParse(b['scheduled_at']?.toString() ?? '');
+      if (aTime == null || bTime == null) return 0;
+      return aTime.compareTo(bTime);
+    });
+    medicationEvents.removeRange(
+      0,
+      medicationEvents.length - _maxLocalMedicationEvents,
+    );
+  }
+
   String _normalizedDisplayName(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? 'ParkiWell Member' : trimmed;
@@ -2476,6 +2495,7 @@ class Singleton extends ChangeNotifier {
         payload: event,
       );
       medicationEvents.add(event);
+      _pruneLocalMedicationEvents();
       _invalidateAnalytics();
       await _persistLocalCache();
       // Local persistence is the durability guarantee (mutation journal);

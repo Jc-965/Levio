@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/app_logger.dart';
+
 /// On-device history of completed motion routines.
 ///
 /// Only derived numbers are kept — scores, repetition counts, and the
@@ -64,6 +66,21 @@ class MotionSessionHistory {
     await _write();
   }
 
+  /// Versioned export of every stored session, for the person to share or
+  /// keep. Contains only what this store holds: derived scores, counts, and
+  /// the engine's allowlisted sentences; never video or pose data. Export is
+  /// always an explicit user action, mirroring the app's backup export.
+  String exportJson() =>
+      const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+        'format': 'parkiwell-motion-history',
+        'format_version': 1,
+        'exported_at': DateTime.now().toIso8601String(),
+        'session_count': _entries.length,
+        'sessions': <Object?>[
+          for (final MotionSessionRecord entry in _entries) entry.toJson(),
+        ],
+      });
+
   Future<void> clear() async {
     _entries = const <MotionSessionRecord>[];
     _loaded = true;
@@ -82,6 +99,49 @@ class MotionSessionHistory {
       }
     }
     return scores;
+  }
+
+  /// Consecutive calendar days with at least one completed session, ending
+  /// today or yesterday. A streak survives until a full day is missed, so
+  /// this morning's not-yet-done session does not read as a broken streak.
+  int currentStreakDays({DateTime? now}) {
+    if (_entries.isEmpty) return 0;
+    final Set<DateTime> days = <DateTime>{
+      for (final MotionSessionRecord entry in _entries)
+        DateTime(
+          entry.completedAt.toLocal().year,
+          entry.completedAt.toLocal().month,
+          entry.completedAt.toLocal().day,
+        ),
+    };
+    final DateTime local = (now ?? DateTime.now()).toLocal();
+    // Calendar-safe decrement: the constructor normalizes day 0 to the last
+    // day of the previous month and always lands on that day's real local
+    // midnight. Subtracting a flat 24 hours would drift across daylight
+    // saving transitions and read an unbroken streak as ended.
+    DateTime previousDay(DateTime day) =>
+        DateTime(day.year, day.month, day.day - 1);
+    DateTime cursor = DateTime(local.year, local.month, local.day);
+    if (!days.contains(cursor)) {
+      cursor = previousDay(cursor);
+      if (!days.contains(cursor)) return 0;
+    }
+    int streak = 0;
+    while (days.contains(cursor)) {
+      streak += 1;
+      cursor = previousDay(cursor);
+    }
+    return streak;
+  }
+
+  /// Sessions completed in the seven days ending [now], inclusive.
+  int sessionsInLastWeek({DateTime? now}) {
+    final DateTime end = (now ?? DateTime.now()).toLocal();
+    final DateTime start = end.subtract(const Duration(days: 7));
+    return _entries.where((MotionSessionRecord entry) {
+      final DateTime completed = entry.completedAt.toLocal();
+      return completed.isAfter(start) && !completed.isAfter(end);
+    }).length;
   }
 
   /// Mean overall score across the [count] most recent scored sessions.
@@ -124,7 +184,12 @@ class MotionSessionHistory {
         entries.add(
           MotionSessionRecord.fromJson(value! as Map<String, Object?>),
         );
-      } on Object {
+      } on Object catch (error, stackTrace) {
+        AppLogger().warning(
+          'Dropped one unreadable motion session record',
+          error,
+          stackTrace,
+        );
         continue;
       }
     }
@@ -312,6 +377,50 @@ class MotionSessionStep {
     return repetitions.last.romPctOfReference / first;
   }
 
+  /// Median observed movement size across reps, as percent of the exercise
+  /// reference; null with no reps.
+  double? get medianRomPctOfReference => _median(<double>[
+    for (final MotionSessionRep rep in repetitions) rep.romPctOfReference,
+  ]);
+
+  /// Median complete-movement duration in seconds; null with no reps.
+  double? get medianTempoSeconds => _median(<double>[
+    for (final MotionSessionRep rep in repetitions) rep.tempoSeconds,
+  ]);
+
+  /// Deterministic evidence sentences built only from engine measurements.
+  /// Wording stays neutral and observational; nothing here scores, praises,
+  /// or diagnoses, matching the engine's allowlisted-copy policy.
+  List<String> get evidenceStatements {
+    final List<String> statements = <String>[];
+    final double? rom = medianRomPctOfReference;
+    if (rom != null) {
+      statements.add(
+        'Across ${repetitions.length} complete '
+        '${repetitions.length == 1 ? 'movement' : 'movements'}, the median '
+        'movement size measured ${rom.round()}% of the exercise reference.',
+      );
+    }
+    final double? tempo = medianTempoSeconds;
+    if (tempo != null) {
+      statements.add(
+        'A complete movement took a median of '
+        '${tempo.toStringAsFixed(1)} seconds.',
+      );
+    }
+    final double? ratio = amplitudeLastFirstRatio;
+    if (ratio != null) {
+      statements.add(
+        'The first movement measured '
+        '${repetitions.first.romPctOfReference.round()}% of the reference '
+        'and the last measured '
+        '${repetitions.last.romPctOfReference.round()}% '
+        '(${(ratio * 100).round()}% of the first).',
+      );
+    }
+    return statements;
+  }
+
   Map<String, Object?> toJson() => <String, Object?>{
     'exercise_id': exerciseId,
     'assessed': assessed,
@@ -378,4 +487,12 @@ class MotionSessionRep {
     'tempo_s': tempoSeconds,
     'score': overallScore,
   };
+}
+
+double? _median(List<double> values) {
+  if (values.isEmpty) return null;
+  final List<double> sorted = List<double>.of(values)..sort();
+  final int middle = sorted.length ~/ 2;
+  if (sorted.length.isOdd) return sorted[middle];
+  return (sorted[middle - 1] + sorted[middle]) / 2;
 }

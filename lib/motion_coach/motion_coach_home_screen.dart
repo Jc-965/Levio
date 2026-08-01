@@ -3,16 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
+import 'motion_coach_preferences.dart';
+import 'motion_demonstration_view.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_progress_screen.dart';
 import 'motion_reference_library.dart';
 import 'motion_routine_catalog.dart';
 import 'motion_routine_screen.dart';
 import 'motion_session_history.dart';
+import 'motion_session_intro_sheet.dart';
 
 /// Entry point for guided, camera-coached movement.
 ///
@@ -31,6 +35,7 @@ class MotionCoachHomeScreen extends StatefulWidget {
 }
 
 class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
+  final AppLogger _logger = AppLogger();
   late final MotionReferenceLibrary _library =
       widget.library ?? MotionReferenceLibrary.shared;
   late final MotionSessionHistory _history =
@@ -39,10 +44,50 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
   int _sessionCount = 0;
   double? _recentAverage;
 
+  final MotionCoachPreferences _preferences = MotionCoachPreferences.shared;
+  final Map<String, MotionDemonstrationLoop> _routinePreviews =
+      <String, MotionDemonstrationLoop>{};
+
   @override
   void initState() {
     super.initState();
+    _preferences.addListener(_onPreferencesChanged);
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_loadHistory());
+    unawaited(_loadRoutinePreviews());
+  }
+
+  /// Best effort: each routine card previews its first exercise's reference
+  /// motion. A failed load leaves that card on its icon.
+  Future<void> _loadRoutinePreviews() async {
+    for (final MotionRoutineDescription description in motionRoutineCatalog) {
+      try {
+        final RoutineDefinition routine = await _library.loadRoutine(
+          description.routineAssetId,
+        );
+        final MotionDemonstrationLoop loop = await _library.loadDemonstration(
+          routine.steps.first.exerciseId,
+        );
+        if (!mounted) return;
+        setState(() => _routinePreviews[description.routineAssetId] = loop);
+      } on Object catch (error, stackTrace) {
+        _logger.warning(
+          'Routine preview failed for ${description.routineAssetId}',
+          error,
+          stackTrace,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _preferences.removeListener(_onPreferencesChanged);
+    super.dispose();
+  }
+
+  void _onPreferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadHistory() async {
@@ -63,6 +108,16 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         description.routineAssetId,
       );
       if (!mounted) return;
+      final bool begin = await showMotionSessionIntro(
+        context,
+        description: description,
+        exercises: <MotionExerciseDefinition>[
+          for (final RoutineStepDefinition step in routine.steps)
+            motionExerciseById(step.exerciseId),
+        ],
+        library: _library,
+      );
+      if (!begin || !mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MotionRoutineScreen(
@@ -74,7 +129,12 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         ),
       );
       await _loadHistory();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Routine ${description.routineAssetId} failed to open',
+        error,
+        stackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -95,6 +155,13 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     try {
       await _library.templateFor(exercise.exerciseId);
       if (!mounted) return;
+      final bool begin = await showMotionSessionIntro(
+        context,
+        description: singleExerciseDescription(exercise),
+        exercises: <MotionExerciseDefinition>[exercise],
+        library: _library,
+      );
+      if (!begin || !mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MotionRoutineScreen(
@@ -106,7 +173,12 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
         ),
       );
       await _loadHistory();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Exercise ${exercise.exerciseId} failed to open',
+        error,
+        stackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -224,6 +296,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     in motionRoutineCatalog)
                   _RoutineCard(
                     routine: routine,
+                    preview: _routinePreviews[routine.routineAssetId],
                     enabled: !_opening,
                     onTap: () => unawaited(_openRoutine(routine)),
                   ),
@@ -241,6 +314,43 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                     enabled: !_opening,
                     onTap: () => unawaited(_openSingleExercise(exercise)),
                   ),
+                const SizedBox(height: 20),
+                const SectionHeading(
+                  title: 'Coaching preferences',
+                  description:
+                      'On-screen guidance always stays on; choose how else '
+                      'cues are delivered.',
+                ),
+                const SizedBox(height: 12),
+                ModernCard(
+                  margin: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    children: <Widget>[
+                      SwitchListTile.adaptive(
+                        value: _preferences.speechEnabled,
+                        onChanged: (bool enabled) =>
+                            unawaited(_preferences.setSpeechEnabled(enabled)),
+                        title: const Text('Spoken cues'),
+                        subtitle: const Text(
+                          'Read short coaching cues aloud during a session.',
+                        ),
+                      ),
+                      SwitchListTile.adaptive(
+                        value: _preferences.hapticsEnabled,
+                        onChanged: (bool enabled) =>
+                            unawaited(_preferences.setHapticsEnabled(enabled)),
+                        title: const Text('Vibration on each movement'),
+                        subtitle: const Text(
+                          'A light tap confirms every counted movement.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -286,9 +396,11 @@ class _RoutineCard extends StatelessWidget {
     required this.routine,
     required this.enabled,
     required this.onTap,
+    this.preview,
   });
 
   final MotionRoutineDescription routine;
+  final MotionDemonstrationLoop? preview;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -303,13 +415,20 @@ class _RoutineCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Container(
-            width: 46,
-            height: 46,
+            width: 64,
+            height: 84,
             decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.14),
+              color: colors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(routine.icon, color: colors.primary),
+            clipBehavior: Clip.antiAlias,
+            child: preview == null
+                ? Icon(routine.icon, color: colors.primary)
+                : MotionDemonstrationView(
+                    key: ValueKey<String>(preview!.exerciseId),
+                    loop: preview!,
+                    color: colors.primary,
+                  ),
           ),
           const SizedBox(width: 14),
           Expanded(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
@@ -14,9 +15,11 @@ import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_pose_bridge.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
 
   group('MotionCoachSession', () {
     test(
@@ -430,6 +433,52 @@ void main() {
       expect(driver.disposeCalls, 1);
     });
 
+    testWidgets('backgrounding during finish cannot wipe the recording', (
+      WidgetTester tester,
+    ) async {
+      final _FakeMotionCaptureDriver driver = _FakeMotionCaptureDriver();
+      await _pumpApp(
+        tester,
+        MotionCoachScreen(
+          library: library,
+          driverFactory: () => driver,
+          // A canned result keeps the finish path inside the fake-async
+          // zone; the real analyzer would hop to an isolate the widget
+          // test clock cannot drive.
+          analyzer: _CannedAnalyzer(_result(confidence: 'high', repCount: 1)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(_sample(timestampMs: index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start movement'));
+      await tester.tap(find.text('Start movement'));
+      await tester.pumpAndSettle();
+      driver.emit(_sample(timestampMs: 400));
+
+      // Stall stopRecording so the lifecycle event lands mid-finalization.
+      driver.holdStopRecording = true;
+      await tester.ensureVisible(find.text('Finish and review'));
+      await tester.tap(find.text('Finish and review'));
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+
+      // The suspend path must not have cancelled or disposed the driver the
+      // finish already owns, nor reset the session's buffered frames.
+      expect(driver.cancelCalls, 0);
+      expect(driver.disposeCalls, 0);
+
+      driver.releaseStopRecording();
+      await tester.pumpAndSettle();
+      expect(find.text('Motion check'), findsOneWidget);
+      expect(driver.disposeCalls, 1);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+    });
+
     testWidgets(
       'cancels and disposes a recording when the app is backgrounded',
       (WidgetTester tester) async {
@@ -712,8 +761,17 @@ class _FakeMotionCaptureDriver implements MotionCaptureDriver {
     _recording = true;
   }
 
+  bool holdStopRecording = false;
+  Completer<void>? _stopGate;
+
+  void releaseStopRecording() => _stopGate?.complete();
+
   @override
   Future<String> stopRecording() async {
+    if (holdStopRecording) {
+      _stopGate = Completer<void>();
+      await _stopGate!.future;
+    }
     _recording = false;
     return '/tmp/parkiwell-motion-test.mp4';
   }
@@ -750,4 +808,19 @@ class _FakeMotionCueSpeaker implements MotionCueSpeaker {
   Future<void> dispose() async {
     disposed = true;
   }
+}
+
+class _CannedAnalyzer extends MotionCoachAnalyzer {
+  const _CannedAnalyzer(this.result);
+
+  final MotionAnalysisResult result;
+
+  @override
+  Future<MotionAnalysisResult> analyze({
+    required List<PoseFrame> frames,
+    required int width,
+    required int height,
+    String? runtime,
+    MotionExerciseDefinition exercise = seatedArmRaiseExercise,
+  }) async => result;
 }

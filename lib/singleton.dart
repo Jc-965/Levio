@@ -419,9 +419,17 @@ class Singleton extends ChangeNotifier {
 
   Map<String, dynamic>? _normalizedRecoverySession(Map entry) {
     final type = _normalizeRecoveryType(entry['type']?.toString());
-    final videoId = normalizeYouTubeVideoId(
-      (entry['video_id'] ?? entry['videoId'] ?? '').toString(),
-    );
+    final rawVideoId = (entry['video_id'] ?? entry['videoId'] ?? '')
+        .toString()
+        .trim();
+    // Motion coach sessions live in their own id namespace and must survive
+    // cache reloads, mutation replays, and cloud restores; only YouTube-style
+    // ids go through YouTube normalization.
+    final videoId =
+        rawVideoId.length > motionSessionIdPrefix.length &&
+            rawVideoId.startsWith(motionSessionIdPrefix)
+        ? rawVideoId
+        : normalizeYouTubeVideoId(rawVideoId);
     final completedAt =
         _parseRecoverySessionDate(entry['completed_at']) ?? DateTime.now();
 
@@ -478,6 +486,71 @@ class Singleton extends ChangeNotifier {
       videoId,
       completedAt: completedAt,
     );
+  }
+
+  /// Identifier prefix for camera-coached motion sessions stored in the
+  /// shared recovery log. They are not YouTube videos, so their ids live in
+  /// a distinct namespace while still counting as physical sessions for the
+  /// weekly plan, history, and cloud sync (the backend accepts any text id).
+  static const String motionSessionIdPrefix = 'motion:';
+
+  /// Log a completed motion coach session as a physical recovery session.
+  ///
+  /// Only the fact of completion, the routine identity, and the time are
+  /// recorded here; scores and per-movement evidence stay in the coach's
+  /// local-only history.
+  Future<void> recordMotionCoachSession({
+    required String routineId,
+    required String title,
+    DateTime? completedAt,
+  }) async {
+    final trimmedRoutineId = routineId.trim();
+    final trimmedTitle = title.trim();
+    if (trimmedRoutineId.isEmpty || trimmedTitle.isEmpty) {
+      _logger.warning('Dropped motion session with blank identity');
+      return;
+    }
+
+    final completionTime = (completedAt ?? DateTime.now()).toLocal();
+    if (completionTime.isAfter(
+      DateTime.now().add(const Duration(minutes: 1)),
+    )) {
+      _logger.warning(
+        'Dropped motion session with future completion time $completionTime',
+      );
+      return;
+    }
+
+    final session = <String, dynamic>{
+      'id': _uuid.v4(),
+      'type': recoveryTypePhysical,
+      'video_id': '$motionSessionIdPrefix$trimmedRoutineId',
+      'title': trimmedTitle,
+      'completed_at': completionTime.toIso8601String(),
+    };
+    recoverySessions.add(session);
+    exerNum = totalRecoverySessions;
+    _invalidateAnalytics();
+    notifyListenersSafe();
+
+    try {
+      await _queueHealthMutation(
+        entityType: SyncEntityType.recoverySession,
+        entityId: session['id']!.toString(),
+        operation: SyncMutationOperation.upsert,
+        payload: session,
+      );
+      await _persistLocalCache();
+      unawaited(syncPendingMutations());
+    } catch (error) {
+      recoverySessions.removeWhere(
+        (entry) => entry['id']?.toString() == session['id']?.toString(),
+      );
+      exerNum = totalRecoverySessions;
+      _invalidateAnalytics();
+      notifyListenersSafe();
+      rethrow;
+    }
   }
 
   Future<int> recordSpeechExerciseSession(

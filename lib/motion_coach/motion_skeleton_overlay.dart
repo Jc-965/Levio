@@ -55,6 +55,23 @@ const List<List<int>> _skeletonBones = <List<int>>[
   <int>[26, 28],
 ];
 
+/// Every landmark that appears in [_skeletonBones]; joints are drawn from
+/// this set so end-of-chain landmarks (wrists, ankles) get markers too.
+const List<int> _skeletonJoints = <int>[
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+];
+
 const double _minimumVisibility = 0.5;
 
 /// Live tracking overlay for the camera preview.
@@ -134,8 +151,8 @@ class _SkeletonPainter extends CustomPainter {
       if (first == null || second == null) continue;
       canvas.drawLine(first, second, _bonePaint);
     }
-    for (final List<int> pair in _skeletonBones) {
-      final Offset? point = project(pair[0]);
+    for (final int landmark in _skeletonJoints) {
+      final Offset? point = project(landmark);
       if (point != null) canvas.drawCircle(point, 3.5, _jointPaint);
     }
   }

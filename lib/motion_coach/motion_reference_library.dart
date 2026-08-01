@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
@@ -97,10 +98,15 @@ class MotionReferenceLibrary {
   Future<MotionDemonstrationLoop> loadDemonstration(String exerciseId) async {
     final MotionDemonstrationLoop? cached = _demonstrations[exerciseId];
     if (cached != null) return cached;
-    final MotionDemonstrationLoop loop = MotionDemonstrationLoop.fromJson(
-      await _decode(
-        '$demonstrationAssetPrefix$exerciseId.demonstration-loop.v1.json',
-      ),
+    final String raw = await _assets.loadString(
+      '$demonstrationAssetPrefix$exerciseId.demonstration-loop.v1.json',
+    );
+    // Demonstration loops are the largest motion assets (roughly 70-140 KB
+    // of JSON); decoding them on the UI thread would land exactly when a
+    // session screen is opening. Templates stay on-thread; they are tiny.
+    final MotionDemonstrationLoop loop = await compute(
+      _decodeDemonstrationLoop,
+      raw,
     );
     _demonstrations[exerciseId] = loop;
     return loop;
@@ -120,6 +126,15 @@ class MotionReferenceLibrary {
     }
     return document;
   }
+}
+
+/// Isolate entry point for [MotionReferenceLibrary.loadDemonstration].
+MotionDemonstrationLoop _decodeDemonstrationLoop(String raw) {
+  final Object? document = jsonDecode(raw);
+  if (document is! Map<String, Object?>) {
+    throw const FormatException('demonstration loop is not a JSON object');
+  }
+  return MotionDemonstrationLoop.fromJson(document);
 }
 
 /// Front-view stick-figure demonstration, decoded from the flat asset form.

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:parkiwell/navbar.dart';
 import 'package:parkiwell/routes.dart';
 import 'package:parkiwell/singleton.dart';
+import 'package:parkiwell/utils/orientation_policy.dart';
 import 'package:parkiwell/theme/app_theme.dart';
 import 'package:parkiwell/screens/onboarding_flow.dart';
 import 'package:parkiwell/screens/splash_screen.dart';
@@ -32,10 +33,7 @@ void main() async {
   TerminateRestart.instance.initialize();
 
   // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  await SystemChrome.setPreferredOrientations(appPreferredOrientations);
 
   // Initialize singleton services
   final singleton = Singleton();

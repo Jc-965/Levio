@@ -4,14 +4,17 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/orientation_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_analysis.dart';
 import 'motion_capture_driver.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
 import 'motion_cue_speaker.dart';
@@ -46,6 +49,7 @@ class MotionCoachScreen extends StatefulWidget {
     this.analyzer = const MotionCoachAnalyzer(),
     this.exercise = seatedArmRaiseExercise,
     this.cueSpeaker,
+    this.preferences,
   });
 
   final MotionReferenceLibrary library;
@@ -53,6 +57,9 @@ class MotionCoachScreen extends StatefulWidget {
   final MotionCoachAnalyzer analyzer;
   final MotionExerciseDefinition exercise;
   final MotionCueSpeaker? cueSpeaker;
+
+  /// Cue delivery preferences; defaults to the shared app-wide instance.
+  final MotionCoachPreferences? preferences;
 
   @override
   State<MotionCoachScreen> createState() => _MotionCoachScreenState();
@@ -64,6 +71,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   late final MotionCoachSession _session;
   late final MotionCueSpeaker _cueSpeaker;
+  late final MotionCoachPreferences _preferences;
   final Stopwatch _recordingClock = Stopwatch();
   MotionCaptureDriver? _driver;
   Timer? _timer;
@@ -74,6 +82,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   int _generation = 0;
   int _handledLiveRepSerial = 0;
   int _handledLiveCueSerial = 0;
+  bool _finishingRecording = false;
   LiveExerciseCue? _spokenCue;
 
   bool get _isBusy =>
@@ -82,6 +91,13 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   @override
   void initState() {
     super.initState();
+    // The pose templates only allow portrait capture; hold the UI to the
+    // same orientation so the preview, overlay, and landmarks always agree.
+    unawaited(
+      SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]),
+    );
     _session = MotionCoachSession(
       liveCoach: LiveExerciseCoach(
         widget.exercise.engineSpec,
@@ -89,6 +105,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       ),
     );
     _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
+    _preferences = widget.preferences ?? MotionCoachPreferences.shared;
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_onSessionChanged);
     unawaited(_cueSpeaker.initialize());
@@ -97,6 +115,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   @override
   void dispose() {
+    unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _session
@@ -128,12 +147,14 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     final LiveExerciseCue? liveCue = _session.liveCue;
     if (_session.liveRepSerial > _handledLiveRepSerial) {
       _handledLiveRepSerial = _session.liveRepSerial;
-      HapticUtils.selectionClick();
+      if (_preferences.hapticsEnabled) HapticUtils.selectionClick();
     }
     if (_session.liveCueSerial > _handledLiveCueSerial && liveCue != null) {
       _handledLiveCueSerial = _session.liveCueSerial;
       _spokenCue = liveCue;
-      unawaited(_cueSpeaker.speak(liveCue.text));
+      if (_preferences.speechEnabled) {
+        unawaited(_cueSpeaker.speak(liveCue.text));
+      }
     } else if (liveCue == null && _spokenCue != null) {
       _spokenCue = null;
       unawaited(_cueSpeaker.stop());
@@ -143,6 +164,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   Future<void> _initialize() async {
     final int generation = ++_generation;
+    _finishingRecording = false;
     _timer?.cancel();
     _recordingClock
       ..stop()
@@ -228,6 +250,10 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   Future<void> _suspend() async {
     if (_phase == _CapturePhase.suspended) return;
+    // A finish already owns the driver and is about to drain the session's
+    // frames; resetting or disposing here would wipe the just-completed
+    // recording mid-finalization and delete its file under the analyzer.
+    if (_finishingRecording) return;
     ++_generation;
     _timer?.cancel();
     _recordingClock
@@ -289,6 +315,11 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   Future<void> _finishRecording() async {
     final MotionCaptureDriver? driver = _driver;
     if (driver == null || _phase != _CapturePhase.recording) return;
+    // Claim the driver and mark the finish before the first await so a
+    // concurrent lifecycle suspend can neither reset the buffered frames
+    // nor double-stop and delete the recording being finalized.
+    _finishingRecording = true;
+    _driver = null;
     _timer?.cancel();
     _recordingClock.stop();
     setState(() => _phase = _CapturePhase.analyzing);
@@ -300,7 +331,6 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       final int width = _session.frameWidth;
       final int height = _session.frameHeight;
       await driver.dispose();
-      _driver = null;
       final MotionAnalysisResult analysis = await widget.analyzer.analyze(
         frames: frames,
         width: width,
@@ -330,8 +360,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     } catch (_) {
       _session.finishAndDrain();
       await driver.dispose();
-      _driver = null;
       if (videoPath != null) await _deleteVideo(videoPath);
+      _finishingRecording = false;
       if (!mounted) return;
       setState(() {
         _phase = _CapturePhase.error;
@@ -367,7 +397,16 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         ],
       ),
     );
-    if (cancel != true || !mounted) return;
+    // Re-validated after the dialog await: the three-minute limit can
+    // auto-finish the recording (or a lifecycle event can suspend it) while
+    // the dialog is open, and discarding then would wipe the frames a
+    // finish is already draining.
+    if (cancel != true ||
+        !mounted ||
+        _finishingRecording ||
+        _phase != _CapturePhase.recording) {
+      return;
+    }
 
     _timer?.cancel();
     _recordingClock

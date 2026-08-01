@@ -1,11 +1,19 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motion_engine/motion_engine.dart';
 import 'package:parkiwell/motion_coach/motion_coach_home_screen.dart';
+import 'package:parkiwell/motion_coach/motion_coach_preferences.dart';
 import 'package:parkiwell/motion_coach/motion_coach_session.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/motion_coach/motion_routine_catalog.dart';
+import 'package:parkiwell/motion_coach/motion_capture_driver.dart';
+import 'package:parkiwell/motion_coach/motion_cue_speaker.dart';
 import 'package:parkiwell/motion_coach/motion_routine_controller.dart';
+import 'package:parkiwell/motion_coach/motion_routine_screen.dart';
+import 'package:parkiwell/motion_coach/motion_session_history.dart';
+import 'package:parkiwell/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'motion_pose_fixtures.dart';
 
@@ -155,6 +163,75 @@ void main() {
       expect(overall['assessed_steps'], 1);
     });
 
+    test('exposes the upcoming exercise during rest', () async {
+      final MotionReferenceLibrary library = MotionReferenceLibrary();
+      await library.templateFor('seated_bilateral_lateral_arm_raise');
+      await library.templateFor('seated_bilateral_forward_reach');
+      final MotionRoutineController controller = MotionRoutineController(
+        routine: RoutineDefinition(
+          routineId: 'two_step',
+          routineVersion: 1,
+          displayName: 'Two step',
+          steps: <RoutineStepDefinition>[
+            RoutineStepDefinition(
+              exerciseId: 'seated_bilateral_lateral_arm_raise',
+              targetRepetitions: 1,
+              maximumDurationS: 600,
+              restDurationS: 10,
+            ),
+            RoutineStepDefinition(
+              exerciseId: 'seated_bilateral_forward_reach',
+              targetRepetitions: 1,
+              maximumDurationS: 600,
+              restDurationS: 0,
+            ),
+          ],
+        ),
+        library: library,
+      );
+      addTearDown(controller.dispose);
+
+      controller.start();
+      expect(controller.upcomingExercise, isNull);
+      _driveRepetitions(controller, count: 1, startMs: 200);
+
+      expect(controller.phase, MotionRoutinePhase.rest);
+      expect(
+        controller.upcomingExercise?.exerciseId,
+        'seated_bilateral_forward_reach',
+      );
+      expect(controller.restRemainingSeconds, greaterThan(0));
+    });
+
+    test('skips the active step while keeping measured movements', () async {
+      final MotionRoutineController controller = await _controller(
+        targetRepetitions: 3,
+      );
+      addTearDown(controller.dispose);
+
+      // Skip is a no-op before the routine starts.
+      controller.skipCurrentStep();
+      expect(controller.isStarted, isFalse);
+
+      controller.start();
+      _driveRepetitions(controller, count: 1, startMs: 200);
+      expect(controller.completedRepetitions, 1);
+
+      controller.skipCurrentStep();
+
+      // A one-step routine completes immediately; the finished movement
+      // stays in the evaluation with timeout semantics.
+      expect(controller.phase, MotionRoutinePhase.complete);
+      final List<Object?> steps =
+          controller.evaluation!['steps']! as List<Object?>;
+      final Map<String, Object?> step = steps.single! as Map<String, Object?>;
+      expect(step['completed_repetitions'], 1);
+      expect(step['target_repetitions'], 3);
+      // Skip after completion stays a no-op.
+      controller.skipCurrentStep();
+      expect(controller.phase, MotionRoutinePhase.complete);
+    });
+
     test('reset abandons the run without producing an evaluation', () async {
       final MotionRoutineController controller = await _controller(
         targetRepetitions: 4,
@@ -169,6 +246,176 @@ void main() {
       expect(controller.evaluation, isNull);
       expect(controller.completedRepetitions, 0);
       expect(controller.phase, MotionRoutinePhase.framing);
+    });
+  });
+
+  group('MotionRoutineScreen', () {
+    // Asset I/O must load outside testWidgets bodies: the widget-test zone
+    // controls the clock and a real bundle read awaited there never
+    // completes.
+    late MotionReferenceLibrary screenLibrary;
+    setUpAll(() async {
+      screenLibrary = MotionReferenceLibrary();
+      await screenLibrary.templateFor(seatedArmRaiseExercise.exerciseId);
+    });
+
+    testWidgets('completes a session, saves it, and logs it to recovery', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final MotionReferenceLibrary library = screenLibrary;
+      final _FakeRoutineDriver driver = _FakeRoutineDriver();
+      final List<MotionSessionRecord> logged = <MotionSessionRecord>[];
+      final MotionSessionHistory history = MotionSessionHistory();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme(),
+          home: MotionRoutineScreen(
+            description: singleExerciseDescription(seatedArmRaiseExercise),
+            routine: singleExerciseRoutine(seatedArmRaiseExercise),
+            library: library,
+            driverFactory: () => driver,
+            cueSpeaker: _SilentCueSpeaker(),
+            history: history,
+            onSessionLogged: (MotionSessionRecord record) async {
+              logged.add(record);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(armRaiseSample(10, index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start routine'));
+      await tester.tap(find.text('Start routine'));
+      await tester.pump();
+
+      int timestampMs = 600;
+      for (
+        int rep = 0;
+        rep < seatedArmRaiseExercise.maximumRecordingRepetitions;
+        rep += 1
+      ) {
+        for (final double phase in repPhase) {
+          driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
+          timestampMs += 200;
+        }
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine summary'), findsOneWidget);
+      expect(logged, hasLength(1));
+      expect(
+        logged.single.routineId,
+        'single_${seatedArmRaiseExercise.exerciseId}',
+      );
+      expect(history.entries, hasLength(1));
+      expect(history.entries.single.steps.single.repetitions, isNotEmpty);
+    });
+  });
+
+  group('MotionCoachPreferences', () {
+    test('persists toggles and defaults to everything on', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final MotionCoachPreferences preferences = MotionCoachPreferences();
+      await preferences.load();
+
+      expect(preferences.speechEnabled, isTrue);
+      expect(preferences.hapticsEnabled, isTrue);
+
+      await preferences.setSpeechEnabled(false);
+      await preferences.setHapticsEnabled(false);
+
+      final MotionCoachPreferences reloaded = MotionCoachPreferences();
+      await reloaded.load();
+      expect(reloaded.speechEnabled, isFalse);
+      expect(reloaded.hapticsEnabled, isFalse);
+    });
+  });
+
+  group('MotionRoutineScreen skip race', () {
+    late MotionReferenceLibrary raceLibrary;
+    setUpAll(() async {
+      raceLibrary = MotionReferenceLibrary();
+      await raceLibrary.templateFor('seated_bilateral_lateral_arm_raise');
+      await raceLibrary.templateFor('seated_bilateral_forward_reach');
+    });
+
+    testWidgets('confirming a skip after the step ended is a no-op', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final _FakeRoutineDriver driver = _FakeRoutineDriver();
+      final MotionSessionHistory history = MotionSessionHistory();
+      final RoutineDefinition routine = RoutineDefinition(
+        routineId: 'race_test',
+        routineVersion: 1,
+        displayName: 'Race test',
+        steps: <RoutineStepDefinition>[
+          RoutineStepDefinition(
+            exerciseId: 'seated_bilateral_lateral_arm_raise',
+            targetRepetitions: 1,
+            maximumDurationS: 600,
+            restDurationS: 1,
+          ),
+          RoutineStepDefinition(
+            exerciseId: 'seated_bilateral_forward_reach',
+            targetRepetitions: 5,
+            maximumDurationS: 600,
+            restDurationS: 0,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme(),
+          home: MotionRoutineScreen(
+            description: fullBodyRoutine,
+            routine: routine,
+            library: raceLibrary,
+            driverFactory: () => driver,
+            cueSpeaker: _SilentCueSpeaker(),
+            history: history,
+            onSessionLogged: (MotionSessionRecord record) async {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (int index = 0; index < 6; index += 1) {
+        driver.emit(armRaiseSample(10, index * 60));
+      }
+      await tester.pump();
+      await tester.ensureVisible(find.text('Start routine'));
+      await tester.tap(find.text('Start routine'));
+      await tester.pump();
+
+      // Open the skip dialog for step 0.
+      await tester.ensureVisible(find.text('Skip this exercise'));
+      await tester.tap(find.text('Skip this exercise'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Skip Seated bilateral'), findsOneWidget);
+
+      // Behind the dialog, step 0 completes on its own and, after the one
+      // second rest, step 1 becomes active.
+      int timestampMs = 600;
+      for (final double phase in repPhase) {
+        driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
+        timestampMs += 200;
+      }
+      driver.emit(armRaiseSample(10, timestampMs + 1200));
+      await tester.pump();
+
+      // Confirming now must not skip the newly active step.
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine summary'), findsNothing);
+      expect(find.textContaining('Seated forward reach'), findsWidgets);
     });
   });
 
@@ -244,4 +491,61 @@ void _driveRepetitions(
       timestampMs += 200;
     }
   }
+}
+
+class _FakeRoutineDriver implements MotionCaptureDriver {
+  MotionSampleCallback? _onSample;
+  bool _initialized = false;
+
+  void emit(MotionPoseSample sample) => _onSample?.call(sample);
+
+  @override
+  bool get isInitialized => _initialized;
+
+  @override
+  bool get isRecording => false;
+
+  @override
+  double get aspectRatio => 3 / 4;
+
+  @override
+  Widget buildPreview() => const ColoredBox(color: Colors.black);
+
+  @override
+  Future<void> initialize(
+    MotionSampleCallback onSample, {
+    VoidCallback? onPersistentFailure,
+  }) async {
+    _onSample = onSample;
+    _initialized = true;
+  }
+
+  @override
+  Future<void> startRecording() async {}
+
+  @override
+  Future<String> stopRecording() async => '';
+
+  @override
+  Future<void> cancelRecording() async {}
+
+  @override
+  Future<void> dispose() async {
+    _onSample = null;
+    _initialized = false;
+  }
+}
+
+class _SilentCueSpeaker implements MotionCueSpeaker {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> speak(String text) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

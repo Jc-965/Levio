@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_exercise_catalog.dart';
+import 'motion_routine_results_screen.dart';
 import 'motion_session_history.dart';
 
 /// Trends across saved routine sessions.
@@ -35,6 +37,25 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
   Future<void> _load() async {
     await widget.history.load();
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _export() async {
+    HapticUtils.lightImpact();
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: widget.history.exportJson(),
+          subject: 'ParkiWell movement history',
+        ),
+      );
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to export your history right now.'),
+        ),
+      );
+    }
   }
 
   Future<void> _confirmClear() async {
@@ -77,12 +98,18 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
         elevation: 0,
         title: const Text('Movement progress'),
         actions: <Widget>[
-          if (entries.isNotEmpty)
+          if (entries.isNotEmpty) ...[
+            IconButton(
+              tooltip: 'Export history',
+              icon: const Icon(Icons.ios_share_rounded),
+              onPressed: () => unawaited(_export()),
+            ),
             IconButton(
               tooltip: 'Delete history',
               icon: const Icon(Icons.delete_outline_rounded),
               onPressed: () => unawaited(_confirmClear()),
             ),
+          ],
         ],
       ),
       body: LiquidBackground(
@@ -166,9 +193,14 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
                 ),
                 Expanded(
                   child: _Statistic(
-                    label: 'Movements',
-                    value:
-                        '${entries.fold<int>(0, (int total, MotionSessionRecord entry) => total + entry.completedRepetitions)}',
+                    label: 'Day streak',
+                    value: '${widget.history.currentStreakDays()}',
+                  ),
+                ),
+                Expanded(
+                  child: _Statistic(
+                    label: 'This week',
+                    value: '${widget.history.sessionsInLastWeek()}',
                   ),
                 ),
               ],
@@ -191,7 +223,20 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
           const SectionHeading(title: 'Sessions'),
           const SizedBox(height: 12),
           for (final MotionSessionRecord entry in entries)
-            _SessionCard(entry: entry),
+            _SessionCard(
+              entry: entry,
+              onTap: () {
+                HapticUtils.lightImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MotionRoutineResultsScreen(
+                      title: entry.routineName,
+                      record: entry,
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -299,9 +344,10 @@ class _ExerciseTrendCard extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.entry});
+  const _SessionCard({required this.entry, required this.onTap});
 
   final MotionSessionRecord entry;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -309,6 +355,7 @@ class _SessionCard extends StatelessWidget {
     return ModernCard(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
+      onTap: onTap,
       child: Row(
         children: <Widget>[
           Expanded(

@@ -2,13 +2,18 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/app_logger.dart';
+import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/orientation_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_capture_driver.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_coach_screen.dart' show MotionCaptureDriverFactory;
 import 'motion_coach_session.dart';
 import 'motion_cue_speaker.dart';
@@ -37,6 +42,8 @@ class MotionRoutineScreen extends StatefulWidget {
     this.driverFactory,
     this.cueSpeaker,
     this.history,
+    this.onSessionLogged,
+    this.preferences,
   });
 
   final MotionRoutineDescription description;
@@ -46,20 +53,32 @@ class MotionRoutineScreen extends StatefulWidget {
   final MotionCueSpeaker? cueSpeaker;
   final MotionSessionHistory? history;
 
+  /// Called once when a session completes, so it counts in the app's shared
+  /// recovery tracking (weekly plan, history). Injectable for tests; the
+  /// default logs through the app [Singleton].
+  final Future<void> Function(MotionSessionRecord record)? onSessionLogged;
+
+  /// Cue delivery preferences; defaults to the shared app-wide instance.
+  final MotionCoachPreferences? preferences;
+
   @override
   State<MotionRoutineScreen> createState() => _MotionRoutineScreenState();
 }
 
 class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     with WidgetsBindingObserver {
+  final AppLogger _logger = AppLogger();
   late final MotionRoutineController _controller;
   late final MotionCueSpeaker _cueSpeaker;
+  late final MotionCoachPreferences _preferences;
   MotionCaptureDriver? _driver;
   _RoutineScreenPhase _phase = _RoutineScreenPhase.initializing;
   MotionDemonstrationLoop? _demonstration;
   String? _demonstrationExerciseId;
   int _handledRepSerial = 0;
   int _handledCueSerial = 0;
+  int _announcedStepIndex = -1;
+  MotionRoutinePhase _lastSeenPhase = MotionRoutinePhase.framing;
   bool _finishing = false;
   int _generation = 0;
   String _errorTitle = 'The guided routine is unavailable';
@@ -68,13 +87,22 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   @override
   void initState() {
     super.initState();
+    // The pose templates only allow portrait capture; hold the UI to the
+    // same orientation so the preview, overlay, and landmarks always agree.
+    unawaited(
+      SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]),
+    );
     _controller = MotionRoutineController(
       routine: widget.routine,
       library: widget.library,
     );
     _cueSpeaker = widget.cueSpeaker ?? PlatformMotionCueSpeaker();
+    _preferences = widget.preferences ?? MotionCoachPreferences.shared;
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onControllerChanged);
+    if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_cueSpeaker.initialize());
     unawaited(_loadDemonstration());
     unawaited(_initialize());
@@ -82,6 +110,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
   @override
   void dispose() {
+    unawaited(SystemChrome.setPreferredOrientations(appPreferredOrientations));
     WidgetsBinding.instance.removeObserver(this);
     _controller
       ..removeListener(_onControllerChanged)
@@ -104,14 +133,34 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     if (!mounted) return;
     if (_controller.repSerial > _handledRepSerial) {
       _handledRepSerial = _controller.repSerial;
-      HapticUtils.selectionClick();
+      if (_preferences.hapticsEnabled) HapticUtils.selectionClick();
     }
     final LiveExerciseCue? cue = _controller.cue;
     if (_controller.cueSerial > _handledCueSerial && cue != null) {
       _handledCueSerial = _controller.cueSerial;
-      unawaited(_cueSpeaker.speak(cue.text));
+      if (_preferences.speechEnabled) unawaited(_cueSpeaker.speak(cue.text));
     }
-    if (_demonstrationExerciseId != _controller.currentStep.exerciseId) {
+    // Rest is a pause in coaching: silence any in-flight cue rather than
+    // letting it finish over the countdown.
+    if (_controller.phase == MotionRoutinePhase.rest &&
+        _lastSeenPhase != MotionRoutinePhase.rest) {
+      unawaited(_cueSpeaker.stop());
+    }
+    // Announce each newly started step by its reviewed catalog copy, so a
+    // person who is not watching the screen knows what to do next.
+    if (_controller.isStarted &&
+        _controller.phase == MotionRoutinePhase.active &&
+        _controller.stepIndex != _announcedStepIndex) {
+      _announcedStepIndex = _controller.stepIndex;
+      if (_preferences.speechEnabled) {
+        final MotionExerciseDefinition exercise = _controller.currentExercise;
+        unawaited(
+          _cueSpeaker.speak('${exercise.title}. ${exercise.instructions}'),
+        );
+      }
+    }
+    _lastSeenPhase = _controller.phase;
+    if (_demonstrationExerciseId != _demonstrationTargetId) {
       unawaited(_loadDemonstration());
     }
     if (_controller.phase == MotionRoutinePhase.complete) {
@@ -120,18 +169,28 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     setState(() {});
   }
 
+  /// During rest, the guide previews the next exercise so the person can
+  /// reposition for it; otherwise it mirrors the current step.
+  String get _demonstrationTargetId =>
+      (_controller.upcomingExercise ?? _controller.currentExercise).exerciseId;
+
   Future<void> _loadDemonstration() async {
-    final String exerciseId = _controller.currentStep.exerciseId;
+    final String exerciseId = _demonstrationTargetId;
     _demonstrationExerciseId = exerciseId;
     try {
       final MotionDemonstrationLoop loop = await widget.library
           .loadDemonstration(exerciseId);
       if (!mounted || _demonstrationExerciseId != exerciseId) return;
       setState(() => _demonstration = loop);
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // The written instruction is the fallback; a missing guide animation
       // must not stop the routine. Guarded like the success path so a stale
       // failure can never clobber a newer step's loaded guide.
+      _logger.warning(
+        'Demonstration loop failed to load for $exerciseId',
+        error,
+        stackTrace,
+      );
       if (!mounted || _demonstrationExerciseId != exerciseId) return;
       setState(() => _demonstration = null);
     }
@@ -207,6 +266,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
 
   Future<void> _suspend() async {
     if (_phase == _RoutineScreenPhase.suspended) return;
+    // Completion already owns the driver and navigation; suspending now
+    // would only flash a spurious paused screen under the results push.
+    if (_finishing) return;
     ++_generation;
     _controller.reset();
     final MotionCaptureDriver? driver = _driver;
@@ -221,6 +283,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     HapticUtils.mediumImpact();
     _handledRepSerial = 0;
     _handledCueSerial = 0;
+    _announcedStepIndex = -1;
     _controller.start();
     setState(() => _phase = _RoutineScreenPhase.running);
   }
@@ -246,21 +309,37 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         evaluation,
         completedAt: DateTime.now(),
       );
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      // The engine emitted a document this build cannot parse; that is a
+      // defect worth hearing about, not a user-facing condition.
+      _logger.error(
+        'Session evaluation could not be parsed',
+        error,
+        stackTrace,
+      );
       if (mounted) Navigator.of(context).pop();
       return;
     }
     bool saved = true;
     try {
       await (widget.history ?? MotionSessionHistory()).add(record);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      _logger.warning('Session history write failed', error, stackTrace);
       saved = false;
+    }
+    // Count the completed session in the app's shared recovery tracking.
+    // Best effort: a logging failure must not block the results screen.
+    try {
+      await (widget.onSessionLogged ?? _logToRecoveryTracking)(record);
+    } on Object catch (error, stackTrace) {
+      // The coach's own history above is the authoritative record.
+      _logger.warning('Recovery tracking log failed', error, stackTrace);
     }
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => MotionRoutineResultsScreen(
-          description: widget.description,
+          title: widget.description.title,
           record: record,
           saved: saved,
         ),
@@ -268,7 +347,17 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     );
   }
 
+  static Future<void> _logToRecoveryTracking(MotionSessionRecord record) =>
+      Singleton().recordMotionCoachSession(
+        routineId: record.routineId,
+        title: 'Motion coach: ${record.routineName}',
+        completedAt: record.completedAt,
+      );
+
   Future<void> _confirmExit() async {
+    // Completion navigation is already in flight; a concurrent pop here
+    // would race the pushReplacement onto a route being removed.
+    if (_finishing) return;
     if (_phase != _RoutineScreenPhase.running) {
       if (mounted) Navigator.of(context).pop();
       return;
@@ -293,14 +382,17 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         ],
       ),
     );
-    if (leave == true && mounted) Navigator.of(context).pop();
+    // Re-checked after the dialog await: the routine can complete while the
+    // dialog is open, and popping then would tear the screen out from under
+    // the in-flight completion save.
+    if (leave == true && mounted && !_finishing) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return PopScope(
-      canPop: _phase != _RoutineScreenPhase.running,
+      canPop: _phase != _RoutineScreenPhase.running && !_finishing,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop) unawaited(_confirmExit());
       },
@@ -412,6 +504,15 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                           : 'Waiting for a clear view',
                     ),
                   ),
+                if (running &&
+                    _controller.phase == MotionRoutinePhase.active) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => unawaited(_confirmSkipStep()),
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: const Text('Skip this exercise'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -425,8 +526,14 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   Widget _buildStage(BuildContext context, {required bool running}) {
     final colors = context.colors;
     final MotionDemonstrationLoop? demonstration = _demonstration;
+    // Scales with the viewport so small phones keep the controls on screen
+    // and tall phones get a larger preview; clamped to sane bounds.
+    final double stageHeight = (MediaQuery.sizeOf(context).height * 0.34).clamp(
+      220.0,
+      340.0,
+    );
     return SizedBox(
-      height: 260,
+      height: stageHeight,
       child: Row(
         children: <Widget>[
           Expanded(
@@ -439,8 +546,8 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                         fit: BoxFit.cover,
                         clipBehavior: Clip.hardEdge,
                         child: SizedBox(
-                          width: 260 / _driver!.aspectRatio,
-                          height: 260,
+                          width: stageHeight / _driver!.aspectRatio,
+                          height: stageHeight,
                           // The overlay shares the preview's exact coordinate
                           // box so normalized landmarks map straight onto it.
                           child: Stack(
@@ -494,6 +601,42 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     );
   }
 
+  Future<void> _confirmSkipStep() async {
+    final int stepIndex = _controller.stepIndex;
+    final MotionExerciseDefinition exercise = _controller.currentExercise;
+    final bool? skip = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Skip ${exercise.title}?'),
+        content: const Text(
+          'The movements you completed in this exercise still count. The '
+          'routine moves on to the next exercise.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep going'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Skip'),
+          ),
+        ],
+      ),
+    );
+    // The routine keeps running behind the dialog; the step the person
+    // agreed to skip may have finished on its own. Skipping is only honored
+    // while that same step is still the active one, otherwise a confirm
+    // would silently skip the following exercise instead.
+    if (skip == true &&
+        mounted &&
+        _controller.stepIndex == stepIndex &&
+        _controller.phase == MotionRoutinePhase.active) {
+      HapticUtils.lightImpact();
+      _controller.skipCurrentStep();
+    }
+  }
+
   Widget _buildFramingStatus(BuildContext context) {
     final colors = context.colors;
     final bool ready = _controller.isFramingReady;
@@ -539,6 +682,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   Widget _buildLiveStatus(BuildContext context) {
     final colors = context.colors;
     if (_controller.phase == MotionRoutinePhase.rest) {
+      final MotionExerciseDefinition? upcoming = _controller.upcomingExercise;
       return ModernCard(
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(20),
@@ -559,6 +703,25 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                 color: colors.primary,
               ),
             ),
+            if (upcoming != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Next: ${upcoming.title}',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                upcoming.setupHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ],
         ),
       );

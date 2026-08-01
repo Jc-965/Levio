@@ -65,10 +65,24 @@ class _MotionDemonstrationViewState extends State<MotionDemonstrationView>
     duration: widget.loop.duration,
   );
 
+  bool _reduceMotion = false;
+
   @override
-  void initState() {
-    super.initState();
-    if (widget.playing) _controller.repeat();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // With reduce-motion on, hold a single reference pose instead of
+    // looping; the written instructions carry the movement description.
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _syncPlayback();
+  }
+
+  void _syncPlayback() {
+    final bool shouldPlay = widget.playing && !_reduceMotion;
+    if (shouldPlay && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!shouldPlay && _controller.isAnimating) {
+      _controller.stop();
+    }
   }
 
   @override
@@ -83,15 +97,8 @@ class _MotionDemonstrationViewState extends State<MotionDemonstrationView>
         ..stop()
         ..duration = widget.loop.duration
         ..value = 0;
-      if (widget.playing) _controller.repeat();
-      return;
     }
-    if (widget.playing == oldWidget.playing) return;
-    if (widget.playing) {
-      _controller.repeat();
-    } else {
-      _controller.stop();
-    }
+    _syncPlayback();
   }
 
   @override

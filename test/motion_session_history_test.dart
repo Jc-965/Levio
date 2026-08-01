@@ -63,6 +63,36 @@ void main() {
       );
     });
 
+    test('states evidence deterministically from engine numbers', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.record(
+        _evaluation(score: 82),
+        completedAt: DateTime.utc(2026, 7, 30),
+      );
+      final MotionSessionStep step = history.entries.single.steps.first;
+
+      expect(step.medianRomPctOfReference, 88);
+      expect(step.medianTempoSeconds, closeTo(3.1, 1e-9));
+      final List<String> statements = step.evidenceStatements;
+      expect(statements, hasLength(3));
+      expect(
+        statements[0],
+        'Across 3 complete movements, the median movement size measured '
+        '88% of the exercise reference.',
+      );
+      expect(
+        statements[1],
+        'A complete movement took a median of 3.1 seconds.',
+      );
+      expect(
+        statements[2],
+        'The first movement measured 96% of the reference and the last '
+        'measured 72% (75% of the first).',
+      );
+      // No reps means no invented evidence.
+      expect(history.entries.single.steps.last.evidenceStatements, isEmpty);
+    });
+
     test('keeps the newest sessions first', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       await history.record(
@@ -133,6 +163,68 @@ void main() {
         <double>[88, 65],
       );
       expect(history.scoreTrendFor('sit_to_stand'), isEmpty);
+    });
+
+    test('computes day streaks that survive an incomplete today', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final DateTime now = DateTime(2026, 7, 31, 9);
+      for (int daysAgo = 1; daysAgo <= 3; daysAgo += 1) {
+        await history.record(
+          _evaluation(score: 80),
+          completedAt: now.subtract(Duration(days: daysAgo)),
+        );
+      }
+
+      // Yesterday through three days ago: streak holds at 3 before today's
+      // session, grows to 4 after it, and a two-day-old gap breaks it.
+      expect(history.currentStreakDays(now: now), 3);
+      await history.record(_evaluation(score: 90), completedAt: now);
+      expect(history.currentStreakDays(now: now), 4);
+      expect(
+        history.currentStreakDays(now: now.add(const Duration(days: 2))),
+        0,
+      );
+      expect(history.sessionsInLastWeek(now: now), 4);
+      expect(MotionSessionHistory().currentStreakDays(now: now), 0);
+    });
+
+    test('streaks span a month boundary with calendar arithmetic', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final DateTime now = DateTime(2026, 8, 1, 8);
+      await history.record(_evaluation(score: 80), completedAt: now);
+      await history.record(
+        _evaluation(score: 80),
+        completedAt: DateTime(2026, 7, 31, 21),
+      );
+      await history.record(
+        _evaluation(score: 80),
+        completedAt: DateTime(2026, 7, 30, 7),
+      );
+
+      expect(history.currentStreakDays(now: now), 3);
+    });
+
+    test('exports a versioned document of stored sessions only', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.record(
+        _evaluation(score: 82),
+        completedAt: DateTime.utc(2026, 7, 30),
+      );
+
+      final Map<String, Object?> exported =
+          jsonDecode(history.exportJson()) as Map<String, Object?>;
+
+      expect(exported['format'], 'parkiwell-motion-history');
+      expect(exported['format_version'], 1);
+      expect(exported['session_count'], 1);
+      final List<Object?> sessions = exported['sessions']! as List<Object?>;
+      expect(sessions, hasLength(1));
+      final Map<String, Object?> session =
+          sessions.single! as Map<String, Object?>;
+      expect(session['routine_id'], 'seated_foundation');
+      // Nothing beyond the stored derived record may leak into an export.
+      expect(session.keys, isNot(contains('video')));
+      expect(session.keys, isNot(contains('landmarks')));
     });
 
     test('clear removes every stored session', () async {

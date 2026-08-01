@@ -229,15 +229,19 @@ class MedicationReminderService {
   /// entry is `[name, details, daysText]` with an optional fourth element
   /// of comma-separated per-dose times; medications without their own
   /// times fall back to the app-wide reminder time.
-  Future<void> syncFromSchedule(List<List<String>> schedule) async {
-    if (!await _ensureInitialized()) return;
+  /// Returns the number of planned reminder slots that could NOT be
+  /// scheduled because the plan exceeded the platform pending-notification
+  /// limit, so callers can tell the user instead of dropping doses silently.
+  Future<int> syncFromSchedule(List<List<String>> schedule) async {
+    if (!await _ensureInitialized()) return 0;
     try {
       await _plugin.cancelAll();
-      if (!await remindersEnabled()) return;
+      if (!await remindersEnabled()) return 0;
 
       final fallbackTime = await reminderTime();
       final slots = planReminderSlots(schedule, fallbackTime, DateTime.now());
-      if (slots.length > maxScheduledReminders) {
+      final dropped = slots.length - maxScheduledReminders;
+      if (dropped > 0) {
         _logger.warning(
           'Reminder plan exceeds the platform pending limit; scheduling the '
           'soonest $maxScheduledReminders of ${slots.length} slots',
@@ -256,8 +260,10 @@ class MedicationReminderService {
           at: _nextInstanceOf(slot.weekday, slot.time),
         );
       }
+      return dropped > 0 ? dropped : 0;
     } catch (e) {
       _logger.warning('Unable to schedule medication reminders');
+      return 0;
     }
   }
 

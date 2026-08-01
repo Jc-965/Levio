@@ -43,8 +43,11 @@ Future<void> main() async {
   /// Recovery plan shows progress regardless of the day this runs.
   DateTime withinThisWeek(DateTime candidate) {
     final now = DateTime.now();
-    final startOfWeek = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - DateTime.monday));
+    final startOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - DateTime.monday));
     return candidate.isBefore(startOfWeek)
         ? startOfWeek.add(const Duration(hours: 9))
         : candidate;
@@ -60,53 +63,59 @@ Future<void> main() async {
     singleton.setName('Janet');
     singleton.setTherapyGoals(weeklySpeech: 3, weeklyPhysical: 3);
 
+    // Local-only demo seeding: writes the public lists directly since the
+    // app itself only creates entries through the synced, ID-backed APIs.
+    var seededEntries = 0;
+    void seedLog(String time, String symptom, String severity) {
+      singleton.log.add(<String>[time, symptom, severity]);
+      singleton.logIDs.add('demo-log-${seededEntries++}');
+    }
+
+    void seedSchedule(String name, String details, String days) {
+      singleton.schedule.add(<String>[name, details, days]);
+      singleton.scheduleIDs.add('demo-schedule-${seededEntries++}');
+    }
+
     final now = DateTime.now();
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(hours: 2))),
       'Tremor',
       'Mild',
     );
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(hours: 6))),
       'Stiffness',
       'Moderate',
     );
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(days: 1, hours: 3))),
       'Fatigue',
       'Mild',
     );
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(days: 1, hours: 9))),
       'Tremor',
       'Very Mild',
     );
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(days: 2, hours: 5))),
       'Balance',
       'Moderate',
     );
-    singleton.addLogList(
+    seedLog(
       storageTime(now.subtract(const Duration(days: 3, hours: 4))),
       'Stiffness',
       'Mild',
     );
 
-    singleton.addScheduleList(
+    seedSchedule(
       'Carbidopa-Levodopa',
       '25/100 mg — 1 tablet, three times daily',
       'Everyday',
     );
-    singleton.addScheduleList(
-      'Ropinirole',
-      '2 mg — evening dose',
-      'Everyday',
-    );
-    singleton.addScheduleList(
-      'Vitamin D',
-      '1000 IU — with breakfast',
-      'Everyday',
-    );
+    seedSchedule('Ropinirole', '2 mg — evening dose', 'Everyday');
+    seedSchedule('Vitamin D', '1000 IU — with breakfast', 'Everyday');
+    singleton.sortTime();
 
     await singleton.recordSpeechExerciseSession(
       '0ndTdBnVwFY',
@@ -122,13 +131,12 @@ Future<void> main() async {
     );
 
     Widget app(Widget home) => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme(),
-          darkTheme: AppTheme.darkTheme(),
-          themeMode:
-              singleton.colorMode == 0 ? ThemeMode.light : ThemeMode.dark,
-          home: home,
-        );
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
+      themeMode: singleton.colorMode == 0 ? ThemeMode.light : ThemeMode.dark,
+      home: home,
+    );
 
     // Screenshot pixels come from the Flutter surface, so convert it once
     // before the first capture.

@@ -1274,7 +1274,33 @@ class Singleton extends ChangeNotifier {
       });
     }
 
-    postNum = communityPosts.length;
+    _recalculateOwnPostCount();
+  }
+
+  /// Slots dropped from the last reminder sync because the plan exceeded
+  /// the platform pending-notification cap. Non-zero means the user's
+  /// furthest-out doses have no reminder and the UI should say so.
+  int droppedReminderSlots = 0;
+
+  Future<void> _syncMedicationReminders() async {
+    final dropped = await MedicationReminderService().syncFromSchedule(
+      schedule,
+    );
+    if (dropped != droppedReminderSlots) {
+      droppedReminderSlots = dropped;
+      notifyListenersSafe();
+    }
+  }
+
+  /// Profile "Posts" stat: counts only the signed-in user's posts in the
+  /// fetched feed, never the feed size. When identity is unknown (offline
+  /// cold start) the persisted value is kept rather than overwritten.
+  void _recalculateOwnPostCount() {
+    final uid = _cloud.cloudUserId;
+    if (uid == null) return;
+    postNum = communityPosts
+        .where((post) => post['user_id']?.toString() == uid)
+        .length;
   }
 
   Future<void> _hydrateFromLocalCache() async {
@@ -1322,11 +1348,18 @@ class Singleton extends ChangeNotifier {
   /// wedged keystore is never a silent data loss.
   bool localPersistenceFailed = false;
 
+  int _persistGeneration = 0;
+
   Future<void> _writeLocalCacheSnapshot() async {
+    // The persist tail abandons a wedged predecessor after a timeout but
+    // cannot cancel it; the generation stamp keeps that late writer from
+    // clobbering a newer snapshot when it finally completes.
+    final generation = ++_persistGeneration;
     try {
       final prefs = await _prefs;
       final snapshot = _buildLocalCacheSnapshot();
       final sealed = await _cacheStore.seal(jsonEncode(snapshot));
+      if (generation != _persistGeneration) return;
       await prefs.setString(_localCacheKey, sealed);
       if (localPersistenceFailed) {
         localPersistenceFailed = false;
@@ -1703,6 +1736,15 @@ class Singleton extends ChangeNotifier {
         image = cloudImage;
       }
 
+      // The server reserves one community alias per account (identity
+      // trigger); adopting it here keeps the member's public identity
+      // stable across devices and reinstalls.
+      final cloudAlias = userData['community_alias']?.toString().trim() ?? '';
+      if (cloudAlias.isNotEmpty) {
+        final aliasPrefs = await _prefs;
+        await aliasPrefs.setString('community_alias', cloudAlias);
+      }
+
       _observeCloudVersions(snapshot.logs);
       _observeCloudVersions(snapshot.schedules);
       _observeCloudVersions(snapshot.recoverySessions);
@@ -1842,6 +1884,15 @@ class Singleton extends ChangeNotifier {
       }
 
       await _persistLocalCache();
+      // loadUser may have left mutations queued (for example a replay batch
+      // the server rejected); reporting success then would hide unsynced
+      // health data behind a green banner.
+      if (_offlineSyncEngine.pendingCount > 0) {
+        await _markSyncPending(
+          '${_offlineSyncEngine.pendingCount} changes pending',
+        );
+        return false;
+      }
       await _markSyncSuccess('Synced successfully');
       return true;
     } catch (e, stackTrace) {
@@ -2177,7 +2228,7 @@ class Singleton extends ChangeNotifier {
       ]);
       scheduleIDs.add(scheduleId);
       calcMeds();
-      unawaited(MedicationReminderService().syncFromSchedule(schedule));
+      unawaited(_syncMedicationReminders());
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();
@@ -2223,7 +2274,7 @@ class Singleton extends ChangeNotifier {
         if (doseTimes.isNotEmpty) doseTimes,
       ];
       calcMeds();
-      unawaited(MedicationReminderService().syncFromSchedule(schedule));
+      unawaited(_syncMedicationReminders());
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();
@@ -2251,7 +2302,7 @@ class Singleton extends ChangeNotifier {
       schedule.removeAt(index);
       scheduleIDs.removeAt(index);
       calcMeds();
-      unawaited(MedicationReminderService().syncFromSchedule(schedule));
+      unawaited(_syncMedicationReminders());
       await _persistLocalCache();
       await syncPendingMutations();
       notifyListenersSafe();
@@ -2527,7 +2578,7 @@ class Singleton extends ChangeNotifier {
       communityPosts
         ..clear()
         ..addAll(normalizedPosts);
-      postNum = communityPosts.length;
+      _recalculateOwnPostCount();
       await _persistCommunityCache();
       notifyListenersSafe();
       return communityPosts;
@@ -2615,7 +2666,7 @@ class Singleton extends ChangeNotifier {
         'created_at': createdAt,
         'updated_at': createdAt,
       });
-      postNum = communityPosts.length;
+      _recalculateOwnPostCount();
       await _persistCommunityCache();
       await _markSyncSuccess('Community post synced');
       notifyListenersSafe();
@@ -2710,7 +2761,7 @@ class Singleton extends ChangeNotifier {
 
       communityPosts.removeWhere((post) => post['id'] == postId);
       communityComments.remove(postId);
-      postNum = communityPosts.length;
+      _recalculateOwnPostCount();
       await _persistCommunityCache();
       await _markSyncSuccess('Community post deletion synced');
       notifyListenersSafe();

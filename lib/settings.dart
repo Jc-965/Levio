@@ -74,9 +74,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
     await _reminders.setRemindersEnabled(value);
-    await _reminders.syncFromSchedule(singleton.schedule);
+    final dropped = await _reminders.syncFromSchedule(singleton.schedule);
     if (!mounted) return;
     setState(() => _remindersEnabled = value);
+    _warnAboutDroppedReminders(dropped);
   }
 
   Future<void> _pickReminderTime() async {
@@ -88,9 +89,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (picked == null) return;
     await _reminders.setReminderTime(picked);
-    await _reminders.syncFromSchedule(singleton.schedule);
+    final dropped = await _reminders.syncFromSchedule(singleton.schedule);
     if (!mounted) return;
     setState(() => _reminderTime = picked);
+    _warnAboutDroppedReminders(dropped);
+  }
+
+  void _warnAboutDroppedReminders(int dropped) {
+    if (dropped <= 0 || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        content: Text(
+          'Your schedule needs more reminders than this phone allows. The '
+          'soonest ones are set; $dropped further-out '
+          '${dropped == 1 ? 'reminder was' : 'reminders were'} not scheduled.',
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCommunityIdentityPreference() async {

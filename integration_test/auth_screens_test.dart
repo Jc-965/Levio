@@ -18,28 +18,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('auth screen shows providers and signs in against cloud',
-      (tester) async {
+  testWidgets('auth screen shows providers and signs in against cloud', (
+    tester,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('parkiwell_main_tutorial_completed_v1', true);
 
     final singleton = Singleton();
     await singleton.initialize(isProduction: false);
 
-    expect(singleton.isCloudConfigured, isTrue,
-        reason: 'Run with --dart-define-from-file=.env.local');
+    expect(
+      singleton.isCloudConfigured,
+      isTrue,
+      reason: 'Run with --dart-define-from-file=.env.local',
+    );
 
     var completed = false;
     Widget app(Widget home) => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme(),
-          home: home,
-        );
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme(),
+      home: home,
+    );
 
-    await tester.pumpWidget(app(EditProfileScreen(
-      startInSignIn: true,
-      onComplete: () => completed = true,
-    )));
+    await tester.pumpWidget(
+      app(
+        EditProfileScreen(
+          startInSignIn: true,
+          onComplete: () => completed = true,
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 400));
     await binding.convertFlutterSurfaceToImage();
@@ -63,16 +71,22 @@ Future<void> main() async {
     for (var i = 0; i < 60 && !completed; i++) {
       await tester.pump(const Duration(milliseconds: 500));
     }
-    expect(completed, isTrue,
-        reason: 'Cloud sign-in did not complete within 30s');
+    expect(
+      completed,
+      isTrue,
+      reason: 'Cloud sign-in did not complete within 30s',
+    );
 
     // Land on the real Home tab fed by cloud-synced records.
     await tester.pumpWidget(app(const Navbar()));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 400));
     }
-    expect(find.textContaining('Alex'), findsWidgets,
-        reason: 'Cloud profile name should appear on Home');
+    expect(
+      find.textContaining('Alex'),
+      findsWidgets,
+      reason: 'Cloud profile name should appear on Home',
+    );
     await binding.takeScreenshot('auth-home-cloud');
   });
 }

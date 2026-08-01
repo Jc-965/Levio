@@ -30,9 +30,18 @@ create table if not exists public.users (
   email text,
   age integer not null default 0,
   profile_image text,
+  -- Server-reserved community alias (Member-NNNNNN). Owned by exactly one
+  -- account so nobody can post under another member's established alias,
+  -- and stable across the owner's devices and reinstalls.
+  community_alias text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.users add column if not exists community_alias text;
+create unique index if not exists users_community_alias_unique
+  on public.users (community_alias)
+  where community_alias is not null;
 
 create table if not exists public.logs (
   id text primary key,
@@ -894,17 +903,42 @@ begin
   -- avatar may only reference a bundled app asset, never an arbitrary URL
   -- or device path delivered by a modified client.
   new.user_name := left(trim(coalesce(new.user_name, '')), 40);
-  -- Identity may only be the caller's own profile name or their private
-  -- alias; anything else (a clinician's name, another member's alias)
-  -- is collapsed to a neutral label, killing scripted impersonation.
-  if new.user_name = ''
-     or (new.user_name is distinct from (
-           select u.name from public.users u
-           where u.id = public.current_uid()
-         )
-         and new.user_name !~ '^Member-[0-9]{4,6}$') then
-    new.user_name := 'Member';
-  end if;
+  -- Identity may only be the caller's own profile name or an alias the
+  -- caller owns. A never-seen Member-NNNNNN alias is reserved for the
+  -- caller on first use; someone else's reserved alias is replaced with
+  -- the caller's own (or a neutral label), killing alias impersonation.
+  declare
+    v_own_name text;
+    v_own_alias text;
+    v_alias_owner text;
+  begin
+    select u.name, u.community_alias into v_own_name, v_own_alias
+    from public.users u
+    where u.id = public.current_uid();
+
+    if new.user_name = '' then
+      new.user_name := coalesce(v_own_alias, 'Member');
+    elsif new.user_name is not distinct from v_own_name then
+      null; -- posting under own profile name
+    elsif new.user_name ~ '^Member-[0-9]{4,6}$' then
+      if new.user_name is not distinct from v_own_alias then
+        null; -- caller's own reserved alias
+      else
+        select u.id into v_alias_owner
+        from public.users u
+        where u.community_alias = new.user_name;
+        if v_alias_owner is null and v_own_alias is null then
+          update public.users
+            set community_alias = new.user_name
+            where id = public.current_uid();
+        else
+          new.user_name := coalesce(v_own_alias, 'Member');
+        end if;
+      end if;
+    else
+      new.user_name := coalesce(v_own_alias, 'Member');
+    end if;
+  end;
   if new.profile_image is not null
      and new.profile_image not like 'images/%' then
     new.profile_image := null;

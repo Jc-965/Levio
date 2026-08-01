@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:terminate_restart/terminate_restart.dart';
 
 import 'legal/legal_document_screen.dart';
+import 'services/offline_sync_engine.dart';
 import 'services/medication_reminder_service.dart';
 import 'services/tutorial_service.dart';
 import 'singleton.dart';
@@ -275,6 +276,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(synced ? 'Sync complete' : 'Unable to sync right now.'),
       ),
     );
+  }
+
+  Future<void> _showDeadLetterDialog() async {
+    final colors = context.colors;
+    final items = singleton.deadLetteredMutations;
+    if (items.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Changes that could not sync'),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(c).size.height * 0.4,
+            maxWidth: MediaQuery.of(c).size.width * 0.85,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'The server refused these changes repeatedly. They are '
+                'still saved on this device.',
+                style: Theme.of(
+                  c,
+                ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+              ),
+              const SizedBox(height: 10),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final mutation in items)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          '• ${_describeMutation(mutation)}',
+                          style: Theme.of(c).textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(c);
+              await singleton.discardDeadLetteredMutations();
+              if (!mounted) return;
+              setState(() {});
+            },
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(c);
+              final requeued = await singleton.retryDeadLetteredMutations();
+              if (!mounted) return;
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$requeued changes queued for retry.')),
+              );
+            },
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _describeMutation(SyncMutation mutation) {
+    final what = switch (mutation.entityType) {
+      SyncEntityType.log => 'Symptom log',
+      SyncEntityType.schedule => 'Medication schedule',
+      SyncEntityType.recoverySession => 'Exercise session',
+      SyncEntityType.medicationEvent => 'Medication dose record',
+    };
+    final action = mutation.operation == SyncMutationOperation.delete
+        ? 'deletion'
+        : 'update';
+    final detail =
+        mutation.payload['symptom'] ??
+        mutation.payload['name'] ??
+        mutation.payload['medication_name'] ??
+        mutation.payload['title'] ??
+        '';
+    return detail.toString().trim().isEmpty
+        ? '$what $action'
+        : '$what $action — $detail';
   }
 
   Future<void> _exportBackup() async {
@@ -548,6 +644,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     '${singleton.lastSyncStatus} • ${singleton.lastSyncDisplay}',
               ),
               const SizedBox(height: 8),
+
+              if (singleton.historyMayBeTruncated) ...[
+                const _SettingsTile(
+                  icon: Icons.history_toggle_off_outlined,
+                  title: 'Older history not shown',
+                  subtitle:
+                      'This device shows your most recent records; your '
+                      'full history is safe in your account.',
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              if (singleton.deadLetteredMutations.isNotEmpty) ...[
+                _SettingsTile(
+                  icon: Icons.error_outline_rounded,
+                  title:
+                      '${singleton.deadLetteredMutations.length} '
+                      '${singleton.deadLetteredMutations.length == 1 ? 'change' : 'changes'} '
+                      'could not be synced',
+                  subtitle: 'Tap to review, retry, or discard',
+                  onTap: _showDeadLetterDialog,
+                ),
+                const SizedBox(height: 8),
+              ],
 
               _SettingsTile(
                 icon: Icons.sync_rounded,

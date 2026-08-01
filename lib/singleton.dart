@@ -1398,6 +1398,35 @@ class Singleton extends ChangeNotifier {
   }
 
   int get pendingMutationCount => _offlineSyncEngine.pendingCount;
+
+  /// Health changes the server refused after repeated attempts. Exposed
+  /// so settings can show WHAT could not sync, not just a count.
+  List<SyncMutation> get deadLetteredMutations =>
+      List.unmodifiable(_offlineSyncEngine.deadLetteredMutations);
+
+  /// Puts every dead-lettered change back in the queue and kicks a sync.
+  Future<int> retryDeadLetteredMutations() async {
+    final requeued = await _offlineSyncEngine.requeueDeadLetters();
+    if (requeued > 0) {
+      await _markSyncPending('$requeued changes queued for retry');
+      unawaited(syncPendingMutations());
+      notifyListenersSafe();
+    }
+    return requeued;
+  }
+
+  Future<void> discardDeadLetteredMutations() async {
+    await _offlineSyncEngine.discardDeadLetters();
+    if (_offlineSyncEngine.pendingCount == 0) {
+      await _markSyncSuccess('All changes synced');
+    }
+    notifyListenersSafe();
+  }
+
+  /// True when the last cloud load returned exactly the fetch cap for any
+  /// entity, meaning older history exists server-side that is not shown
+  /// on this device.
+  bool historyMayBeTruncated = false;
   int get healthDataVersion => _healthDataVersion;
 
   LongitudinalAnalyticsResult get longitudinalInsights {
@@ -1791,6 +1820,13 @@ class Singleton extends ChangeNotifier {
         recoverySessions: () => _cloud.getRecoverySessions(uid),
         medicationEvents: () => _cloud.getMedicationEvents(uid),
       );
+      // A result exactly at the fetch cap almost certainly means older
+      // rows were cut off server-side; surface it instead of letting a
+      // long-term patient's early history vanish without a trace.
+      historyMayBeTruncated =
+          snapshot.logs.length >= 5000 ||
+          snapshot.recoverySessions.length >= 5000 ||
+          snapshot.medicationEvents.length >= 5000;
       final userData = snapshot.user;
       if (userData == null) {
         // getUser rethrows on failure, so reaching null here means the

@@ -248,6 +248,29 @@ class OfflineSyncEngine {
 
   static const int maxRejectedPasses = 3;
 
+  /// Moves all dead-lettered mutations back into the pending journal for
+  /// another sync attempt (their rejection counters restart), and
+  /// persists the change. Returns how many were requeued.
+  Future<int> requeueDeadLetters() async {
+    if (deadLetteredMutations.isEmpty) return 0;
+    final requeued = deadLetteredMutations.length;
+    for (final mutation in deadLetteredMutations) {
+      _merge(mutation);
+      _rejectionCounts.remove(mutation.mutationId);
+    }
+    deadLetteredMutations.clear();
+    await _persist();
+    return requeued;
+  }
+
+  /// Discards all dead-lettered mutations permanently. The caller is
+  /// responsible for having shown the user what is being discarded.
+  Future<void> discardDeadLetters() async {
+    if (deadLetteredMutations.isEmpty) return;
+    deadLetteredMutations.clear();
+    await _persist();
+  }
+
   Future<int> replay(
     MutationBatchExecutor executor, {
     int batchSize = 500,

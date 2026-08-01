@@ -333,7 +333,7 @@ class AppTheme {
         height: 1.5,
       ),
       bodySmall: _fontStyle(
-        12,
+        13,
         FontWeight.w500,
         colors.textTertiary,
         height: 1.4,
@@ -341,7 +341,7 @@ class AppTheme {
       labelLarge: _fontStyle(14, FontWeight.w700, colors.textPrimary),
       labelMedium: _fontStyle(12, FontWeight.w700, colors.textSecondary),
       labelSmall: _fontStyle(
-        11,
+        12,
         FontWeight.w700,
         colors.textTertiary,
         letterSpacing: 0.3,

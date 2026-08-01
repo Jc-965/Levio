@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/app_logger.dart';
+import '../services/encrypted_cache_store.dart';
 
 /// On-device history of completed motion routines.
 ///
@@ -28,6 +29,7 @@ class MotionSessionHistory {
   static const int maximumEntries = 60;
 
   SharedPreferences? _preferences;
+  final EncryptedCacheStore _store = EncryptedCacheStore();
   List<MotionSessionRecord> _entries = const <MotionSessionRecord>[];
   bool _loaded = false;
 
@@ -39,8 +41,22 @@ class MotionSessionHistory {
   Future<List<MotionSessionRecord>> load() async {
     final SharedPreferences preferences = await _resolve();
     final String? raw = preferences.getString(storageKey);
-    _entries = raw == null ? const <MotionSessionRecord>[] : _decode(raw);
+    if (raw == null) {
+      _entries = const <MotionSessionRecord>[];
+      _loaded = true;
+      return _entries;
+    }
+    // Motor-progression scores are health data: sealed like the main
+    // cache. Legacy plaintext payloads are migrated on first read.
+    final bool wasPlaintext = !raw.startsWith(
+      EncryptedCacheStore.payloadPrefix,
+    );
+    final String? opened = await _store.open(raw);
+    _entries = opened == null ? const <MotionSessionRecord>[] : _decode(opened);
     _loaded = true;
+    if (wasPlaintext && !_store.keystoreUnavailable && opened != null) {
+      await _write();
+    }
     return _entries;
   }
 
@@ -180,12 +196,10 @@ class MotionSessionHistory {
 
   Future<void> _write() async {
     final SharedPreferences preferences = await _resolve();
-    await preferences.setString(
-      storageKey,
-      jsonEncode(<Object?>[
-        for (final MotionSessionRecord entry in _entries) entry.toJson(),
-      ]),
-    );
+    final String payload = jsonEncode(<Object?>[
+      for (final MotionSessionRecord entry in _entries) entry.toJson(),
+    ]);
+    await preferences.setString(storageKey, await _store.seal(payload));
   }
 
   Future<SharedPreferences> _resolve() async =>

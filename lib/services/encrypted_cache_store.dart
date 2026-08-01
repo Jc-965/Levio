@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
@@ -55,9 +56,24 @@ class EncryptedCacheStore {
   /// tests or on desktop shells without a secure storage implementation).
   bool get keystoreUnavailable => _keystoreUnavailable;
 
+  /// True inside flutter_test's FakeAsync zone (testWidgets bodies),
+  /// where platform-channel responses are never delivered and any keystore
+  /// call would hang the test forever. Plain test() bodies use real async
+  /// and still exercise real sealing.
+  static bool _inFakeAsyncZone() {
+    final probe = Timer(Duration.zero, () {});
+    final fake = probe.runtimeType.toString().contains('FakeTimer');
+    probe.cancel();
+    return fake;
+  }
+
   Future<SecretKey?> _obtainKey() async {
     if (_dataKey != null) return _dataKey;
     if (_keystoreUnavailable) return null;
+    if (!kReleaseMode && _inFakeAsyncZone()) {
+      _keystoreUnavailable = true;
+      return null;
+    }
     try {
       final stored = await _secureStorage.read(key: _keyName);
       if (stored != null && stored.isNotEmpty) {
@@ -66,7 +82,20 @@ class EncryptedCacheStore {
       }
       final rng = Random.secure();
       final bytes = List<int>.generate(32, (_) => rng.nextInt(256));
-      await _secureStorage.write(key: _keyName, value: base64Encode(bytes));
+      final encoded = base64Encode(bytes);
+      await _secureStorage.write(key: _keyName, value: encoded);
+      // Read-back verification: unmocked test channels and wedged
+      // keystores both accept writes that never persist. A key that
+      // cannot be read back must not be used, or every later launch
+      // would find undecryptable ciphertext.
+      final verify = await _secureStorage.read(key: _keyName);
+      if (verify != encoded) {
+        _keystoreUnavailable = true;
+        _logger.warning(
+          'Secure keystore write not persisted; cache stays unencrypted',
+        );
+        return null;
+      }
       _dataKey = SecretKey(bytes);
       return _dataKey;
     } on MissingPluginException {

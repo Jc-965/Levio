@@ -7,6 +7,7 @@ import 'package:parkiwell/navbar.dart';
 import 'package:parkiwell/routes.dart';
 import 'package:parkiwell/singleton.dart';
 import 'package:parkiwell/utils/orientation_policy.dart';
+import 'package:parkiwell/utils/orphaned_recording_sweep.dart';
 import 'package:parkiwell/theme/app_theme.dart';
 import 'package:parkiwell/screens/onboarding_flow.dart';
 import 'package:parkiwell/screens/splash_screen.dart';
@@ -63,6 +64,10 @@ Future<void> _bootstrap(
   AppLogger logger,
   bool isProduction,
 ) async {
+  // Reclaim any exercise recording stranded by a crash before it can
+  // outlive the session that created it.
+  unawaited(sweepOrphanedRecordings().catchError((_) => 0));
+
   try {
     await singleton.initialize(isProduction: isProduction);
 

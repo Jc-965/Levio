@@ -99,7 +99,7 @@ linter:
     void_checks: true
     
     # Disabled rules (too noisy for existing codebase)
-    avoid_print: false  # Used for debugging
+    avoid_print: true
     prefer_single_quotes: false
     file_names: false  # Existing files don't follow convention
     lines_longer_than_80_chars: false

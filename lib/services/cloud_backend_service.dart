@@ -963,6 +963,23 @@ class CloudBackendService {
     }
   }
 
+  /// Maps a server-side community write failure to a user-honest message,
+  /// or null when the cause is unrecognized. Server triggers reject with
+  /// specific exception text (rate limit, length) that the generic
+  /// "unable right now" copy used to hide.
+  static String? communityRejectionMessage(Object error) {
+    if (error is! PostgrestException) return null;
+    final message = error.message.toLowerCase();
+    if (message.contains('rate limit')) {
+      return 'You have reached the hourly sharing limit. '
+          'Please try again a little later.';
+    }
+    if (message.contains('length out of bounds')) {
+      return 'This post is too long to share.';
+    }
+    return null;
+  }
+
   Future<bool> saveCommunityPost({
     required String id,
     required String userId,
@@ -991,6 +1008,7 @@ class CloudBackendService {
       return true;
     } catch (e, stackTrace) {
       _logger.error('Cloud save post failed', e, stackTrace);
+      if (communityRejectionMessage(e) != null) rethrow;
       return false;
     }
   }
@@ -1371,6 +1389,7 @@ class CloudBackendService {
       return true;
     } catch (e, stackTrace) {
       _logger.error('Cloud save comment failed', e, stackTrace);
+      if (communityRejectionMessage(e) != null) rethrow;
       return false;
     }
   }

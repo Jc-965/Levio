@@ -373,10 +373,18 @@ create policy post_reports_select_own on public.community_post_reports
 
 create table if not exists public.community_user_blocks (
   blocker_id text not null references public.users(id) on delete cascade,
+  -- Deliberately no FK: a block must survive the blocked account deleting
+  -- and re-registering, and must be recordable even if the users row is
+  -- already gone. Length-capped below like every other free-text id.
   blocked_id text not null,
   created_at timestamptz not null default timezone('utc', now()),
   primary key (blocker_id, blocked_id)
 );
+
+alter table public.community_user_blocks
+  drop constraint if exists user_blocks_length_caps;
+alter table public.community_user_blocks add constraint user_blocks_length_caps
+  check (length(blocked_id) <= 64);
 
 alter table public.community_user_blocks enable row level security;
 
@@ -844,8 +852,10 @@ begin
 
     v_acknowledged := v_acknowledged || jsonb_build_array(v_mutation_id);
     exception
-      when check_violation or string_data_right_truncation
-        or not_null_violation or invalid_text_representation then
+      -- Any single-mutation failure (constraint, FK from a deleted user
+      -- row, tombstone uniqueness) rejects only that mutation; aborting
+      -- the batch would wedge every other pending change behind it.
+      when others then
         raise warning 'mutation % rejected: %', v_mutation_id, sqlerrm;
     end;
   end loop;

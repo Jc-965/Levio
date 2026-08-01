@@ -65,10 +65,15 @@ class ModerationViolation {
   });
 }
 
-/// Production-grade content moderation service
+/// Client-side content moderation.
+///
+/// English-only: profanity, spam, and crisis detection are all wordlist
+/// or regex based and will not catch other languages. The server enforces
+/// length and rate limits independently; everything else here is a
+/// best-effort first line, not a security boundary.
 ///
 /// Features:
-/// - Multi-language profanity detection using LDNOOBW word list
+/// - English profanity wordlist detection using LDNOOBW word list
 /// - Spam pattern detection (URLs, emails, phone numbers)
 /// - Crisis-language detection that attaches support resources without
 ///   blocking or censoring the disclosure

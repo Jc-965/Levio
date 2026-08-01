@@ -2496,23 +2496,27 @@ class Singleton extends ChangeNotifier {
   }
 
   /// True when a dose is already recorded for this schedule at the same
-  /// slot (or, slotless, on the same local day), so a tremor double-tap
-  /// can never fabricate phantom doses in the medical record.
+  /// slot (or, for slotless medications, within a short window), so a
+  /// tremor double-tap can never fabricate phantom doses. The slotless
+  /// window is deliberately small: an as-needed medication legitimately
+  /// gets several doses per day, and a day-wide window would silently
+  /// drop the second one from the adherence record.
+  static const Duration _slotlessDoseDedupeWindow = Duration(minutes: 10);
+
   bool hasRecordedDoseFor(String scheduleId, DateTime scheduledAt) {
     final slotIso = scheduledAt.toUtc().toIso8601String();
-    final slotDay = scheduledAt.toLocal();
+    final slotUtc = scheduledAt.toUtc();
+    final slotless = nearestDoseSlot(scheduleId, DateTime.now()) == null;
     return medicationEvents.any((event) {
       if (event['schedule_id']?.toString() != scheduleId) return false;
+      if (event['scheduled_at']?.toString() == slotIso) return true;
+      if (!slotless) return false;
       final eventScheduled = DateTime.tryParse(
         event['scheduled_at']?.toString() ?? '',
       );
       if (eventScheduled == null) return false;
-      if (event['scheduled_at']?.toString() == slotIso) return true;
-      final eventDay = eventScheduled.toLocal();
-      return eventDay.year == slotDay.year &&
-          eventDay.month == slotDay.month &&
-          eventDay.day == slotDay.day &&
-          nearestDoseSlot(scheduleId, DateTime.now()) == null;
+      return eventScheduled.toUtc().difference(slotUtc).abs() <
+          _slotlessDoseDedupeWindow;
     });
   }
 
@@ -2976,7 +2980,9 @@ class Singleton extends ChangeNotifier {
       return true;
     } catch (e, stackTrace) {
       _logger.error('Error creating community post', e, stackTrace);
-      _lastCommunityError = 'Unable to share post right now.';
+      _lastCommunityError =
+          CloudBackendService.communityRejectionMessage(e) ??
+          'Unable to share post right now.';
       return false;
     }
   }
@@ -3125,8 +3131,9 @@ class Singleton extends ChangeNotifier {
   static const String _postTimesKey = 'community_post_times_v1';
 
   /// Local posting rate limit backing [ContentModerationService.maxPostsPerHour].
-  /// Server-side enforcement is still an open item; this at least keeps a
-  /// well-behaved client honest.
+  /// The server enforces the same 10/hour cap from an append-only audit
+  /// (enforce_community_content); this keeps a well-behaved client from
+  /// ever hitting the server error path.
   Future<List<DateTime>> _recentPostTimes() async {
     final prefs = await _prefs;
     final now = DateTime.now();
@@ -3415,7 +3422,9 @@ class Singleton extends ChangeNotifier {
       return true;
     } catch (e, stackTrace) {
       _logger.error('Error creating comment', e, stackTrace);
-      _lastCommunityError = 'Unable to add comment right now.';
+      _lastCommunityError =
+          CloudBackendService.communityRejectionMessage(e) ??
+          'Unable to add comment right now.';
       return false;
     }
   }

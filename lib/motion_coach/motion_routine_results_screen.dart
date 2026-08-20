@@ -61,6 +61,9 @@ class MotionRoutineResultsScreen extends StatelessWidget {
     final colors = context.colors;
     final double? score = record.overallScore;
     final bool assessed = score != null;
+    // Motion checks measure evidence without producing a score; a fully
+    // successful one must not be dressed in setup-help warnings.
+    final bool measuredUnscored = !assessed && record.assessedSteps > 0;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -82,8 +85,13 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                 ModernCard(
                   margin: EdgeInsets.zero,
                   padding: const EdgeInsets.all(22),
-                  backgroundColor: (assessed ? colors.success : colors.warning)
-                      .withValues(alpha: 0.11),
+                  backgroundColor:
+                      (assessed
+                              ? colors.success
+                              : measuredUnscored
+                              ? colors.primary
+                              : colors.warning)
+                          .withValues(alpha: 0.11),
                   child: Column(
                     children: <Widget>[
                       Text(
@@ -97,12 +105,19 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                         style: Theme.of(context).textTheme.displayMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w800,
-                              color: assessed ? colors.success : colors.warning,
+                              color: assessed
+                                  ? colors.success
+                                  : measuredUnscored
+                                  ? colors.primary
+                                  : colors.warning,
                             ),
                       ),
                       Text(
                         assessed
                             ? 'Movement score out of 100'
+                            : measuredUnscored
+                            ? 'Measured without a score — motion checks '
+                                  'report evidence only'
                             : 'Not enough was visible to score this session',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -185,6 +200,7 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                   _StepCard(step: step),
                 if (saved &&
                     MotionCoachPreferences.shared.aiSummaryEnabled &&
+                    MotionCoachPreferences.shared.syncResultsEnabled &&
                     CloudBackendService().hasFullAccount) ...[
                   const SizedBox(height: 18),
                   _AiSummaryCard(sessionId: record.id),
@@ -276,7 +292,25 @@ class _AiSummaryCardState extends State<_AiSummaryCard> {
   @override
   void initState() {
     super.initState();
-    _summary = CloudBackendService().getMotionSessionSummary(widget.sessionId);
+    _summary = _fetchWithRetry();
+  }
+
+  /// The session row reaches the backend through the async sync journal, so
+  /// the very first request usually races it. A few spaced retries cover
+  /// the normal sync latency; after that the card simply stays hidden.
+  Future<String?> _fetchWithRetry() async {
+    final CloudBackendService cloud = CloudBackendService();
+    for (int attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(seconds: 3 * attempt));
+        if (!mounted) return null;
+      }
+      final String? summary = await cloud.getMotionSessionSummary(
+        widget.sessionId,
+      );
+      if (summary != null && summary.isNotEmpty) return summary;
+    }
+    return null;
   }
 
   @override

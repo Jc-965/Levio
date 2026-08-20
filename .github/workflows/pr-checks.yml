@@ -43,6 +43,15 @@ jobs:
         run: dart test
         working-directory: packages/motion_engine
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test motion summary edge function
+        run: deno test __tests__/
+        working-directory: supabase/functions/motion_summary
+
       - name: Analyze code
         run: flutter analyze --fatal-infos
 

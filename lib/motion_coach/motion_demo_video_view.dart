@@ -72,7 +72,18 @@ class _MotionDemoVideoViewState extends State<MotionDemoVideoView> {
   @override
   Widget build(BuildContext context) {
     final VideoPlayerController? controller = _controller;
-    if (_failed || controller == null || !controller.value.isInitialized) {
+    if (_failed) {
+      // The caller normally swaps in the animated guide via [onUnavailable];
+      // this icon is the last-resort rendering, never a stuck spinner.
+      return Center(
+        child: Icon(
+          Icons.accessibility_new_rounded,
+          size: 56,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+      );
+    }
+    if (controller == null || !controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator());
     }
     return ClipRRect(

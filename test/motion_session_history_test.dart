@@ -339,6 +339,43 @@ void main() {
       expect(await MotionSessionHistory().load(), isEmpty);
     });
 
+    test('round-trips an unscored motion check record', () async {
+      final MotionSessionRecord record = MotionSessionRecord.fromMotionCheck(
+        exerciseId: 'seated_bilateral_lateral_arm_raise',
+        exerciseTitle: 'Seated bilateral arm raise',
+        completedAt: DateTime.utc(2026, 8, 19, 10),
+        assessed: true,
+        coverage: 0.97,
+        targetRepetitions: 3,
+        engineVersion: '0.3.0',
+        repetitions: const <MotionSessionRep>[
+          MotionSessionRep(
+            index: 1,
+            side: 'both',
+            romDeg: 72,
+            romPctOfReference: 95,
+            tempoSeconds: 4.1,
+            overallScore: null,
+          ),
+        ],
+      );
+
+      final MotionSessionHistory history = MotionSessionHistory();
+      await history.add(record);
+      final MotionSessionRecord reloaded =
+          (await MotionSessionHistory().load()).single;
+
+      expect(reloaded.id, record.id);
+      expect(reloaded.routineId, 'check:seated_bilateral_lateral_arm_raise');
+      expect(reloaded.overallScore, isNull);
+      expect(reloaded.assessedSteps, 1);
+      final MotionSessionStep step = reloaded.steps.single;
+      expect(step.assessed, isTrue);
+      expect(step.overallScore, isNull);
+      expect(step.repetitions.single.overallScore, isNull);
+      expect(step.repetitions.single.romPctOfReference, 95);
+    });
+
     test('merges cloud records by id with local winning collisions',
         () async {
       final MotionSessionHistory history = MotionSessionHistory();

@@ -79,6 +79,26 @@ void main() {
       );
       expect(find.text('—'), findsOneWidget);
     });
+
+    testWidgets('describes an unscored motion check as measured evidence', (
+      WidgetTester tester,
+    ) async {
+      // Motion checks report evidence without a score: assessed steps with
+      // a null session score must not read as a setup failure.
+      await pump(
+        tester,
+        MotionRoutineResultsScreen(
+          title: 'Motion check',
+          record: _record(score: null, assessedSteps: 1),
+        ),
+      );
+
+      expect(find.textContaining('Measured without a score'), findsOneWidget);
+      expect(
+        find.text('Not enough was visible to score this session'),
+        findsNothing,
+      );
+    });
   });
 
   group('MotionProgressScreen', () {
@@ -117,7 +137,7 @@ void main() {
   });
 }
 
-MotionSessionRecord _record({double? score = 82}) =>
+MotionSessionRecord _record({double? score = 82, int? assessedSteps}) =>
     MotionSessionRecord.fromEvaluation(<String, Object?>{
       'schema_version': 'session-evaluation.v1',
       'engine_version': '0.3.0',
@@ -172,7 +192,7 @@ MotionSessionRecord _record({double? score = 82}) =>
       ],
       'overall': <String, Object?>{
         'score': score,
-        'assessed_steps': 1,
+        'assessed_steps': assessedSteps ?? (score == null ? 0 : 1),
         'total_steps': 1,
         'reason_codes': <Object?>[],
       },

@@ -62,6 +62,14 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
   MotionDemonstrationLoop? _loop;
   int _previewIndex = 0;
 
+  /// Exercises whose bundled clip failed to decode on this device; they
+  /// fall back to the animated guide for the rest of this sheet's life.
+  final Set<String> _videoUnavailable = <String>{};
+
+  bool _showsVideo(MotionExerciseDefinition exercise) =>
+      exercise.demoVideoAsset != null &&
+      !_videoUnavailable.contains(exercise.exerciseId);
+
   @override
   void initState() {
     super.initState();
@@ -138,12 +146,20 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
                         children: <Widget>[
                           SizedBox(
                             height: 190,
-                            child: previewed.demoVideoAsset != null
+                            child: _showsVideo(previewed)
                                 ? MotionDemoVideoView(
                                     key: ValueKey<String>(
                                       previewed.demoVideoAsset!,
                                     ),
                                     assetPath: previewed.demoVideoAsset!,
+                                    onUnavailable: () {
+                                      if (!mounted) return;
+                                      setState(() {
+                                        _videoUnavailable.add(
+                                          previewed.exerciseId,
+                                        );
+                                      });
+                                    },
                                   )
                                 : loop == null
                                 ? Center(
@@ -166,7 +182,7 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            previewed.demoVideoAsset != null
+                            _showsVideo(previewed)
                                 ? demoVideoCreditLine
                                 : 'Reference movement, repeated on a loop',
                             style: Theme.of(context).textTheme.labelSmall

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:parkiwell/services/app_logger.dart';
@@ -548,6 +549,36 @@ class Singleton extends ChangeNotifier {
     }
   }
 
+  /// Delete every motion session locally AND queue account deletions.
+  ///
+  /// "Delete history" must mean deleted: without the tombstones, the next
+  /// sign-in restore would quietly resurrect every score the person just
+  /// watched disappear.
+  Future<void> deleteAllMotionSessions({MotionSessionHistory? history}) async {
+    final MotionSessionHistory store = history ?? MotionSessionHistory.shared;
+    if (!store.isLoaded) await store.load();
+    final List<String> ids = <String>[
+      for (final MotionSessionRecord entry in store.entries) entry.id,
+    ];
+    await store.clear();
+    for (final String id in ids) {
+      try {
+        await _queueHealthMutation(
+          entityType: SyncEntityType.motionSession,
+          entityId: id,
+          operation: SyncMutationOperation.delete,
+        );
+      } catch (error, stackTrace) {
+        _logger.warning(
+          'Motion session delete enqueue failed',
+          error,
+          stackTrace,
+        );
+      }
+    }
+    if (ids.isNotEmpty) unawaited(syncPendingMutations());
+  }
+
   /// Delete one synced motion session locally and from the account.
   Future<bool> deleteMotionSession(String id) async {
     final bool removed = await MotionSessionHistory.shared.removeById(id);
@@ -619,18 +650,21 @@ class Singleton extends ChangeNotifier {
       return;
     }
 
-    final videoId = '$motionSessionIdPrefix$trimmedRoutineId';
-    // schema.sql caps recovery_sessions.video_id at 32 chars; an oversized
-    // routine id would dead-letter every completed session for that
-    // routine, so refuse loudly here instead of failing quietly in sync.
-    assert(
-      videoId.length <= 32,
-      'Routine id "$trimmedRoutineId" exceeds the synced video_id cap',
-    );
+    // schema.sql caps recovery_sessions.video_id at 32 chars. Routine ids
+    // that fit stay readable; longer ones (every single-exercise routine)
+    // become a stable digest so the id remains unique and deterministic
+    // instead of being truncated into colliding prefixes.
+    String videoId = '$motionSessionIdPrefix$trimmedRoutineId';
+    if (videoId.length > 32) {
+      final String digest = sha256
+          .convert(utf8.encode(trimmedRoutineId))
+          .toString();
+      videoId = '${motionSessionIdPrefix}h:${digest.substring(0, 22)}';
+    }
     final session = <String, dynamic>{
       'id': _uuid.v4(),
       'type': recoveryTypePhysical,
-      'video_id': videoId.length <= 32 ? videoId : videoId.substring(0, 32),
+      'video_id': videoId,
       'title': trimmedTitle,
       'completed_at': completionTime.toIso8601String(),
     };
@@ -1934,7 +1968,8 @@ class Singleton extends ChangeNotifier {
       historyMayBeTruncated =
           snapshot.logs.length >= 5000 ||
           snapshot.recoverySessions.length >= 5000 ||
-          snapshot.medicationEvents.length >= 5000;
+          snapshot.medicationEvents.length >= 5000 ||
+          snapshot.motionSessions.length >= 500;
       final userData = snapshot.user;
       if (userData == null) {
         // getUser rethrows on failure, so reaching null here means the
@@ -2946,6 +2981,13 @@ class Singleton extends ChangeNotifier {
       // motor-progression health data under their own storage key, so they
       // must not survive into the next sign-in either.
       await MotionSessionHistory.shared.clear();
+      // Per-person motion consents and cloud-facing toggles must not leak
+      // to the next account: inheriting someone else's opt-in would send
+      // the new person's scores to the backup or the AI service without
+      // their consent.
+      await prefs.remove('motion_coach_mediapipe_consent_v2');
+      await prefs.remove(MotionCoachPreferences.syncResultsKey);
+      await prefs.remove(MotionCoachPreferences.aiSummaryKey);
       await MedicationReminderService().cancelAll();
       await _deleteStoredAvatarFiles();
       _lastSyncAt = null;

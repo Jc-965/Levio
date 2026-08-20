@@ -88,15 +88,31 @@ Deno.serve(async (req) => {
   }
 
   // Structural cost bound: one generation per session row, plus a per-user
-  // daily ceiling in case a client loops on uncached sessions.
+  // daily ceiling. The attempt timestamp below is written BEFORE the model
+  // call, so failed or discarded generations count against the ceiling too;
+  // otherwise a client looping on a session whose output keeps failing
+  // validation would have unbounded spend.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count } = await admin
+  const { count, error: countError } = await admin
     .from("motion_sessions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .gt("llm_summary_generated_at", since);
-  if ((count ?? 0) >= MAX_SUMMARIES_PER_DAY) {
-    return json({ error: "rate_limited" }, 429);
+  if (countError || (count ?? 0) >= MAX_SUMMARIES_PER_DAY) {
+    // A failed count fails CLOSED: for an optional feature, briefly
+    // unavailable beats unmetered.
+    return json(
+      countError ? { summary: null } : { error: "rate_limited" },
+      countError ? 200 : 429,
+    );
+  }
+  const { error: attemptError } = await admin
+    .from("motion_sessions")
+    .update({ llm_summary_generated_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .eq("user_id", user.id);
+  if (attemptError) {
+    return json({ summary: null }, 200);
   }
 
   // Recent trend context: scores and day-level dates only, never identity.

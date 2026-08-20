@@ -36,6 +36,37 @@ void main() {
       expect(singleton.weeklyPhysicalExerciseSessions, 1);
     });
 
+    test('a single-exercise routine id syncs as a bounded stable digest',
+        () async {
+      // Every single-exercise routine id ('single_<exerciseId>') exceeds
+      // the 32-char recovery video_id cap; the bridge must hash, not
+      // truncate into colliding prefixes.
+      await singleton.recordMotionCoachSession(
+        routineId: 'single_seated_bilateral_lateral_arm_raise',
+        title: 'Motion coach: Seated bilateral arm raise',
+      );
+      await singleton.recordMotionCoachSession(
+        routineId: 'single_seated_bilateral_lateral_arm_raise',
+        title: 'Motion coach: Seated bilateral arm raise',
+      );
+      await singleton.recordMotionCoachSession(
+        routineId: 'single_seated_bilateral_forward_reach',
+        title: 'Motion coach: Seated forward reach',
+      );
+
+      final List<String> ids = <String>[
+        for (final Map<String, dynamic> session in singleton.recoverySessions)
+          session['video_id'] as String,
+      ];
+      for (final String id in ids) {
+        expect(id.length, lessThanOrEqualTo(32));
+        expect(id, startsWith('${Singleton.motionSessionIdPrefix}h:'));
+      }
+      // Deterministic for the same routine, distinct across routines.
+      expect(ids[0], ids[1]);
+      expect(ids[0], isNot(ids[2]));
+    });
+
     test('rejects blank identity and future completion times', () async {
       await singleton.recordMotionCoachSession(routineId: '  ', title: 'x');
       await singleton.recordMotionCoachSession(routineId: 'r', title: '  ');

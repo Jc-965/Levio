@@ -16,7 +16,7 @@ if printf '%s\n' "$tracked_files" | grep -Eiq '(^|/)(google-services\.json|Googl
   fail "a credential or signing file is tracked"
 fi
 
-secret_pattern='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|-----BEGIN ([A-Z ]+ )?PRIVATE KEY-----|sbp_[A-Za-z0-9_-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'
+secret_pattern='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|-----BEGIN ([A-Z ]+ )?PRIVATE KEY-----|sbp_[A-Za-z0-9_-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}'
 if git grep -IEn "$secret_pattern" -- . ':!scripts/check-public-repo.sh' >/dev/null; then
   git grep -IEn "$secret_pattern" -- . ':!scripts/check-public-repo.sh' >&2
   fail "a value matching a secret pattern is tracked"

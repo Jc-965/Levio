@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
@@ -65,8 +66,9 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
       builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete movement history?'),
         content: const Text(
-          'Every saved score on this device will be removed. This cannot be '
-          'undone.',
+          'Every saved score will be removed from this device and, if you '
+          'use account backup, deleted from your account as well. This '
+          'cannot be undone.',
         ),
         actions: <Widget>[
           TextButton(
@@ -82,7 +84,9 @@ class _MotionProgressScreenState extends State<MotionProgressScreen> {
     );
     if (clear != true) return;
     HapticUtils.mediumImpact();
-    await widget.history.clear();
+    // Deletion must reach the account backup too, or the next sign-in
+    // restore would resurrect everything the person just deleted.
+    await Singleton().deleteAllMotionSessions(history: widget.history);
     if (mounted) setState(() {});
   }
 

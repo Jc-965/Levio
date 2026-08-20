@@ -2,8 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motion_engine/motion_engine.dart';
 import 'package:parkiwell/motion_coach/motion_analysis.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
+import 'package:parkiwell/motion_coach/motion_pose_bridge.dart';
+import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('motion exercise catalog', () {
     test('covers every exercise the engine implements, exactly once', () {
       final Set<String> catalogIds = <String>{
@@ -102,27 +106,41 @@ void main() {
       expect(uri.queryParameters['t'], '32s');
     });
 
-    test('creates the matching analyzer template', () {
-      final MotionDetailedAnalysisSpec analysis =
-          seatedArmRaiseExercise.detailedAnalysis!;
-      final ExerciseTemplate template = motionCoachTemplateFor(
-        seatedArmRaiseExercise,
-      );
-
-      expect(template.exerciseId, seatedArmRaiseExercise.exerciseId);
-      expect(template.templateVersion, analysis.templateVersion);
-      expect(template.primarySignal, 'arm_elevation_mean');
-      expect(template.referenceRomDeg, analysis.referenceRomDegrees);
-      expect(template.referenceTempoS, analysis.referenceTempoSeconds);
+    test('every catalog exercise builds an analyzer template from its '
+        'vendored asset', () async {
+      final MotionReferenceLibrary library = MotionReferenceLibrary();
+      for (final MotionExerciseDefinition exercise in motionExerciseCatalog) {
+        final Map<String, Object?> json = await library.templateFor(
+          exercise.exerciseId,
+        );
+        final ExerciseTemplate template = motionCoachTemplateFromJson(json);
+        expect(template.exerciseId, exercise.exerciseId);
+        // The template's measured signal must be the one the live engine
+        // watches, or live and offline feedback would describe different
+        // movements.
+        expect(template.primarySignal, exercise.engineSpec.primarySignal);
+        // The substitution swaps only the pose model identity, never the
+        // coordinate space the reference statistics were measured in.
+        expect(template.poseContract.coordinateSpace, 'mediapipe_world_3d');
+        expect(template.poseContract.model, motionPoseModelName);
+        expect(template.allowedOrientations, <String>{'portrait'});
+        expect(template.referenceRomDeg, greaterThan(0));
+        expect(template.referenceTempoS, greaterThan(0));
+      }
     });
 
-    test('refuses an analyzer template where no offline path exists', () {
-      // `analyzePoseStream` only supports `arm_elevation_mean`, so building a
-      // template for anything else would produce one the engine rejects.
-      expect(sitToStandExercise.supportsDetailedAnalysis, isFalse);
+    test('rejects a template measured in another coordinate space', () async {
+      final MotionReferenceLibrary library = MotionReferenceLibrary();
+      final Map<String, Object?> json = Map<String, Object?>.of(
+        await library.templateFor('seated_bilateral_lateral_arm_raise'),
+      );
+      json['pose_contract'] = <String, Object?>{
+        ...json['pose_contract']! as Map<String, Object?>,
+        'coordinate_space': 'normalized_2d',
+      };
       expect(
-        () => motionCoachTemplateFor(sitToStandExercise),
-        throwsArgumentError,
+        () => motionCoachTemplateFromJson(json),
+        throwsFormatException,
       );
     });
   });

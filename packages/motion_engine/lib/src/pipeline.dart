@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'confidence.dart';
+import 'exercise_specs.dart';
 import 'features.dart';
 import 'filtering.dart';
 import 'metrics.dart';
@@ -28,9 +29,19 @@ AnalysisDocument analyzePoseStream(
   required String engineVersion,
 }) {
   _validatePoseCompatibility(poseStream, exerciseTemplate);
-  if (exerciseTemplate.primarySignal != 'arm_elevation_mean') {
+  final ExerciseSpec spec;
+  try {
+    spec = exerciseSpecById(exerciseTemplate.exerciseId);
+  } on ArgumentError {
     throw UnsupportedError(
-      'unsupported primary signal: ${exerciseTemplate.primarySignal}',
+      'unknown exercise: ${exerciseTemplate.exerciseId}',
+    );
+  }
+  if (exerciseTemplate.primarySignal != spec.primarySignal) {
+    throw UnsupportedError(
+      'template primary signal ${exerciseTemplate.primarySignal} does not '
+      'match the registered specification ${spec.primarySignal} '
+      'for ${exerciseTemplate.exerciseId}',
     );
   }
   final List<int> requiredLandmarks =
@@ -75,7 +86,7 @@ AnalysisDocument analyzePoseStream(
   }
 
   final Map<String, List<double>> rawFeatures =
-      computeArmRaiseFeatures(poseStream);
+      computeFeatures(poseStream, spec);
   final double effectiveCutoffHz =
       samplingHz > 0 ? math.min(filterCutoffHz, 0.4 * samplingHz) : 0.1;
   final Map<String, List<double>> features = timestampsMs.length > 1
@@ -113,11 +124,11 @@ AnalysisDocument analyzePoseStream(
       'maximum_interpolated_gap_frames': policy.maximumInterpolatedGapFrames,
     },
   };
-  return analyzeArmRaiseSession(
+  return analyzeSession(
     features: features,
     timestampsMs: timestampsMs,
     coverage: coverage,
-    exerciseId: exerciseTemplate.exerciseId,
+    spec: spec,
     templateVersion: exerciseTemplate.templateVersion,
     referenceRomDeg: exerciseTemplate.referenceRomDeg,
     referenceTempoS: exerciseTemplate.referenceTempoS,

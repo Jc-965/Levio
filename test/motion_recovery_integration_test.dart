@@ -56,7 +56,7 @@ void main() {
         routineId: 'full_body',
         title: 'Motion coach: Full body',
       );
-      final String backup = singleton.exportBackupJson();
+      final String backup = await singleton.exportBackupJson();
       singleton.recoverySessions.clear();
 
       expect(await singleton.importBackupJson(backup), isTrue);
@@ -76,7 +76,7 @@ void main() {
       'YouTube sessions still normalize through the same round trip',
       () async {
         await singleton.recordPhysicalExerciseSession('AZV3_NfcpVs');
-        final String backup = singleton.exportBackupJson();
+        final String backup = await singleton.exportBackupJson();
         singleton.recoverySessions.clear();
 
         expect(await singleton.importBackupJson(backup), isTrue);

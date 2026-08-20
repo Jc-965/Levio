@@ -366,6 +366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       SyncEntityType.schedule => 'Medication schedule',
       SyncEntityType.recoverySession => 'Exercise session',
       SyncEntityType.medicationEvent => 'Medication dose record',
+      SyncEntityType.motionSession => 'Motion coach session',
     };
     final action = mutation.operation == SyncMutationOperation.delete
         ? 'deletion'
@@ -375,6 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         mutation.payload['name'] ??
         mutation.payload['medication_name'] ??
         mutation.payload['title'] ??
+        mutation.payload['routine_name'] ??
         '';
     return detail.toString().trim().isEmpty
         ? '$what $action'
@@ -407,7 +409,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final payload = singleton.exportBackupJson();
+    final payload = await singleton.exportBackupJson();
+    if (!mounted) return;
     try {
       // Share as a file, not raw text: text payloads land in clipboard
       // histories and message previews.

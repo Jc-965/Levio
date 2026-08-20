@@ -1,23 +1,60 @@
+/// Deterministic session metrics for every registered exercise.
+///
+/// Dart mirror of `motion_coach_cv.metrics`: the analysis is parameterized
+/// by an [ExerciseSpec], side features gate or attribute repetitions
+/// according to the exercise's laterality, and the emitted
+/// `analysis-metrics.v2` document names the signal every aggregate refers
+/// to. Cross-language behavior is pinned by the golden parity fixtures.
+library;
+
 import 'confidence.dart';
+import 'exercise_specs.dart';
 import 'filtering.dart';
 import 'segmentation.dart';
 
-Map<String, Object?> analyzeArmRaiseSession({
+const String sideLeft = 'left';
+const String sideRight = 'right';
+const String sideBoth = 'both';
+
+/// Deterministic measurements for one accepted repetition.
+final class RepMetrics {
+  const RepMetrics({
+    required this.boundary,
+    required this.side,
+    required this.romDeg,
+    required this.romPctOfReference,
+    required this.leftRomDeg,
+    required this.rightRomDeg,
+    required this.symmetryLrRomRatio,
+  });
+
+  final RepBoundary boundary;
+  final String side;
+  final double romDeg;
+  final double romPctOfReference;
+  final double? leftRomDeg;
+  final double? rightRomDeg;
+  final double? symmetryLrRomRatio;
+}
+
+Map<String, Object?> analyzeSession({
   required Map<String, List<double>> features,
   required List<num> timestampsMs,
   required CoverageAssessment coverage,
-  required String exerciseId,
+  required ExerciseSpec spec,
   required int templateVersion,
   required double referenceRomDeg,
   required double referenceTempoS,
   required String engineVersion,
   required Map<String, Object?> provenance,
 }) {
-  final List<double> primary = _feature(features, 'arm_elevation_mean');
-  final List<double> left = _feature(features, 'arm_elevation_l');
-  final List<double> right = _feature(features, 'arm_elevation_r');
-  for (final List<double> values in <List<double>>[primary, left, right]) {
-    if (values.length != timestampsMs.length) {
+  final List<double> primary = _feature(features, spec.primarySignal);
+  final List<String> requiredNames = <String>[
+    spec.primarySignal,
+    ...?spec.sideFeatures,
+  ];
+  for (final String name in requiredNames) {
+    if (_feature(features, name).length != timestampsMs.length) {
       throw ArgumentError('features and timestampsMs must have equal length');
     }
   }
@@ -25,12 +62,13 @@ Map<String, Object?> analyzeArmRaiseSession({
       ? (timestampsMs.last.toDouble() - timestampsMs.first.toDouble()) / 1000
       : 0;
   final Map<String, Object?> base = <String, Object?>{
-    'schema_version': 'analysis-metrics.v1',
+    'schema_version': 'analysis-metrics.v2',
     'engine_version': engineVersion,
     'provenance': provenance,
     'exercise': <String, Object?>{
-      'exercise_id': exerciseId,
+      'exercise_id': spec.exerciseId,
       'template_version': templateVersion,
+      'primary_signal': spec.primarySignal,
     },
     'session': <String, Object?>{
       'duration_s': durationS,
@@ -60,28 +98,36 @@ Map<String, Object?> analyzeArmRaiseSession({
     return base;
   }
 
-  final ArmRaiseSegmentationConfig config = ArmRaiseSegmentationConfig(
+  final SegmentationConfig config = SegmentationConfig(
     referenceRomDeg: referenceRomDeg,
     referenceTempoS: referenceTempoS,
   );
-  final List<RepBoundary> candidates = segmentArmRaiseReps(
+  final List<RepBoundary> candidates = segmentReps(
     primary,
     timestampsMs,
     config,
   );
-  final List<RepBoundary> repetitions = selectBilateralArmRaiseReps(
-    left: left,
-    right: right,
-    timestampsMs: timestampsMs,
-    repetitions: candidates,
-    referenceRomDeg: referenceRomDeg,
-    referenceTempoS: referenceTempoS,
-  );
+  final List<RepBoundary> repetitions;
+  if (spec.laterality == ExerciseLaterality.bilateralSync) {
+    final List<String> sideFeatures = spec.sideFeatures!;
+    repetitions = selectBilateralReps(
+      left: _feature(features, sideFeatures[0]),
+      right: _feature(features, sideFeatures[1]),
+      timestampsMs: timestampsMs,
+      repetitions: candidates,
+      referenceRomDeg: referenceRomDeg,
+      referenceTempoS: referenceTempoS,
+    );
+  } else {
+    // Alternating and unsided exercises have no two-side synchrony to
+    // verify; every segmented repetition is a real movement candidate.
+    repetitions = List<RepBoundary>.of(candidates);
+  }
   base['metrics'] = _summarizeMetrics(
-    left,
-    right,
+    features,
     timestampsMs,
     repetitions,
+    spec: spec,
     referenceRomDeg: referenceRomDeg,
     sessionCoverage: coverage.coverage,
   );
@@ -99,7 +145,7 @@ Map<String, Object?> analyzeArmRaiseSession({
   return base;
 }
 
-List<RepBoundary> selectBilateralArmRaiseReps({
+List<RepBoundary> selectBilateralReps({
   required List<double> left,
   required List<double> right,
   required List<num> timestampsMs,
@@ -139,11 +185,62 @@ List<RepBoundary> selectBilateralArmRaiseReps({
   return accepted;
 }
 
+/// Measure accepted repetitions without ignoring missing side samples.
+List<RepMetrics> measureReps(
+  Map<String, List<double>> features,
+  List<RepBoundary> repetitions, {
+  required double referenceRomDeg,
+  required List<String>? sideFeatures,
+  required ExerciseLaterality laterality,
+}) {
+  List<double>? left;
+  List<double>? right;
+  if (sideFeatures != null) {
+    left = _feature(features, sideFeatures[0]);
+    right = _feature(features, sideFeatures[1]);
+  }
+  final List<RepMetrics> measurements = <RepMetrics>[];
+  for (final RepBoundary rep in repetitions) {
+    double? leftRom;
+    double? rightRom;
+    double? symmetry;
+    String side = sideBoth;
+    if (left != null && right != null) {
+      leftRom = _finiteRange(left.sublist(rep.startIndex, rep.endIndex + 1));
+      rightRom = _finiteRange(right.sublist(rep.startIndex, rep.endIndex + 1));
+      if (laterality == ExerciseLaterality.alternating) {
+        // Mirrors the live engine: the moving side is the one with the
+        // larger observed range in this repetition's window.
+        if (leftRom != null && rightRom != null) {
+          side = leftRom >= rightRom ? sideLeft : sideRight;
+        }
+      } else if (leftRom != null && rightRom != null) {
+        final double larger = leftRom > rightRom ? leftRom : rightRom;
+        if (larger > 0) {
+          symmetry = (leftRom < rightRom ? leftRom : rightRom) / larger;
+        }
+      }
+    }
+    measurements.add(
+      RepMetrics(
+        boundary: rep,
+        side: side,
+        romDeg: rep.amplitudeDeg,
+        romPctOfReference: 100 * rep.amplitudeDeg / referenceRomDeg,
+        leftRomDeg: leftRom,
+        rightRomDeg: rightRom,
+        symmetryLrRomRatio: symmetry,
+      ),
+    );
+  }
+  return measurements;
+}
+
 Map<String, Object?> _summarizeMetrics(
-  List<double> left,
-  List<double> right,
+  Map<String, List<double>> features,
   List<num> timestampsMs,
   List<RepBoundary> repetitions, {
+  required ExerciseSpec spec,
   required double referenceRomDeg,
   required double sessionCoverage,
 }) {
@@ -159,44 +256,41 @@ Map<String, Object?> _summarizeMetrics(
         : <String>[ReasonCode.incompleteSessionTracking.serialized],
   };
   if (repetitions.isEmpty) {
+    final List<String> reason = <String>[ReasonCode.noCompleteReps.serialized];
     return <String, Object?>{
       'rep_count': repCount,
-      'arm_elevation_rom_pct':
-          _emptyAggregate(<String>[ReasonCode.noCompleteReps.serialized]),
-      'tempo_s':
-          _emptyAggregate(<String>[ReasonCode.noCompleteReps.serialized]),
-      'symmetry_lr_rom_ratio':
-          _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]),
-      'amplitude_sequence_last_first_ratio':
-          _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]),
+      'rom_pct': _emptyAggregate(reason),
+      'tempo_s': _emptyAggregate(reason),
+      'symmetry_lr_rom_ratio': spec.laterality == ExerciseLaterality.none
+          ? _emptyNumber(
+              <String>[ReasonCode.symmetryNotApplicable.serialized],
+            )
+          : _emptyNumber(reason),
+      'amplitude_sequence_last_first_ratio': _emptyNumber(reason),
       'repetitions': <Map<String, Object?>>[],
     };
   }
 
-  final List<double> romPercent = <double>[];
-  final List<double> tempos = <double>[];
-  final List<double> sideRatios = <double>[];
-  for (final RepBoundary rep in repetitions) {
-    romPercent.add(100 * rep.amplitudeDeg / referenceRomDeg);
-    tempos.add(rep.durationS);
-    final List<double> leftSegment =
-        left.sublist(rep.startIndex, rep.endIndex + 1);
-    final List<double> rightSegment =
-        right.sublist(rep.startIndex, rep.endIndex + 1);
-    if (leftSegment.every((double value) => value.isFinite) &&
-        rightSegment.every((double value) => value.isFinite)) {
-      final double leftRom = _range(leftSegment);
-      final double rightRom = _range(rightSegment);
-      final double larger = leftRom > rightRom ? leftRom : rightRom;
-      if (larger > 0) {
-        sideRatios.add((leftRom < rightRom ? leftRom : rightRom) / larger);
-      }
-    }
-  }
+  final List<RepMetrics> measurements = measureReps(
+    features,
+    repetitions,
+    referenceRomDeg: referenceRomDeg,
+    sideFeatures: spec.sideFeatures,
+    laterality: spec.laterality,
+  );
+  final List<double> romPercent = <double>[
+    for (final RepMetrics measurement in measurements)
+      measurement.romPctOfReference,
+  ];
+  final List<double> tempos = <double>[
+    for (final RepMetrics measurement in measurements)
+      measurement.boundary.durationS,
+  ];
   final Map<String, Object?> rom = _aggregate(romPercent, count);
   final Map<String, Object?> tempo = _aggregate(tempos, count);
-  final Map<String, Object?> symmetry = _numberSummary(sideRatios, count);
-  final Map<String, Object?> sequence = _amplitudeSequenceSummary(repetitions);
+  final Map<String, Object?> symmetry =
+      _sessionSymmetry(spec, measurements, expectedCount: count);
+  final Map<String, Object?> sequence = _amplitudeSequenceSummary(measurements);
   if (!completeTracking) {
     for (final Map<String, Object?> metric in <Map<String, Object?>>[
       rom,
@@ -209,49 +303,95 @@ Map<String, Object?> _summarizeMetrics(
   }
   return <String, Object?>{
     'rep_count': repCount,
-    'arm_elevation_rom_pct': rom,
+    'rom_pct': rom,
     'tempo_s': tempo,
     'symmetry_lr_rom_ratio': symmetry,
     'amplitude_sequence_last_first_ratio': sequence,
     'repetitions': _serializeRepetitions(
-      left,
-      right,
+      measurements,
       timestampsMs,
-      repetitions,
-      referenceRomDeg: referenceRomDeg,
       completeTracking: completeTracking,
     ),
   };
 }
 
+Map<String, Object?> _sessionSymmetry(
+  ExerciseSpec spec,
+  List<RepMetrics> measurements, {
+  required int expectedCount,
+}) {
+  if (spec.laterality == ExerciseLaterality.none) {
+    // The exercise has no left/right decomposition; an unsided angle cannot
+    // say which direction moved less. Abstain with its own code so "not
+    // measurable" is distinguishable from "tracking failed".
+    return _emptyNumber(<String>[ReasonCode.symmetryNotApplicable.serialized]);
+  }
+  if (spec.laterality == ExerciseLaterality.alternating) {
+    // Symmetry across repetitions: the mean range of left-attributed
+    // movements against the mean range of right-attributed ones, exactly
+    // like the routine engine's step symmetry.
+    final List<double> left = <double>[
+      for (final RepMetrics m in measurements)
+        if (m.side == sideLeft) m.romDeg,
+    ];
+    final List<double> right = <double>[
+      for (final RepMetrics m in measurements)
+        if (m.side == sideRight) m.romDeg,
+    ];
+    if (left.isEmpty || right.isEmpty) {
+      return _emptyNumber(<String>[ReasonCode.noValidSideFeatures.serialized]);
+    }
+    final double leftMean = _mean(left);
+    final double rightMean = _mean(right);
+    final double larger = leftMean > rightMean ? leftMean : rightMean;
+    if (larger <= 0) {
+      return _emptyNumber(<String>[ReasonCode.noValidSideFeatures.serialized]);
+    }
+    final (ConfidenceLevel level, List<String> reasons) =
+        _measurementConfidence(
+      left.length + right.length,
+      expectedCount,
+      sideMetric: true,
+    );
+    return <String, Object?>{
+      'value': (leftMean < rightMean ? leftMean : rightMean) / larger,
+      'confidence': level.serialized,
+      'reason_codes': reasons,
+    };
+  }
+  final List<double> sideRatios = <double>[
+    for (final RepMetrics measurement in measurements)
+      if (measurement.symmetryLrRomRatio != null)
+        measurement.symmetryLrRomRatio!,
+  ];
+  return _numberSummary(sideRatios, expectedCount);
+}
+
 Map<String, Object?> _amplitudeSequenceSummary(
-  List<RepBoundary> repetitions,
+  List<RepMetrics> measurements,
 ) {
-  if (repetitions.length < 3) {
+  if (measurements.length < 3) {
     return _emptyNumber(
       <String>[ReasonCode.insufficientRepsForSequence.serialized],
     );
   }
-  final double first = repetitions.first.amplitudeDeg;
+  final double first = measurements.first.romDeg;
   if (first <= 0) {
     return _emptyNumber(<String>[ReasonCode.noCompleteReps.serialized]);
   }
   return <String, Object?>{
-    'value': repetitions.last.amplitudeDeg / first,
+    'value': measurements.last.romDeg / first,
     'confidence': ConfidenceLevel.high.serialized,
     'reason_codes': <String>[],
   };
 }
 
 List<Map<String, Object?>> _serializeRepetitions(
-  List<double> left,
-  List<double> right,
-  List<num> timestampsMs,
-  List<RepBoundary> repetitions, {
-  required double referenceRomDeg,
+  List<RepMetrics> measurements,
+  List<num> timestampsMs, {
   required bool completeTracking,
 }) {
-  if (repetitions.isEmpty) {
+  if (measurements.isEmpty) {
     return <Map<String, Object?>>[];
   }
   final double originMs = timestampsMs.first.toDouble();
@@ -262,55 +402,32 @@ List<Map<String, Object?>> _serializeRepetitions(
       ? <String>[]
       : <String>[ReasonCode.incompleteSessionTracking.serialized];
   return <Map<String, Object?>>[
-    for (int index = 0; index < repetitions.length; index += 1)
-      _serializeRepetition(
-        index + 1,
-        repetitions[index],
-        left,
-        right,
-        timestampsMs,
-        originMs: originMs,
-        referenceRomDeg: referenceRomDeg,
-        confidence: confidence,
-        reasons: reasons,
-      ),
+    for (int index = 0; index < measurements.length; index += 1)
+      <String, Object?>{
+        'index': index + 1,
+        'side': measurements[index].side,
+        'start_s':
+            (timestampsMs[measurements[index].boundary.startIndex].toDouble() -
+                    originMs) /
+                1000,
+        'peak_s':
+            (timestampsMs[measurements[index].boundary.peakIndex].toDouble() -
+                    originMs) /
+                1000,
+        'end_s':
+            (timestampsMs[measurements[index].boundary.endIndex].toDouble() -
+                    originMs) /
+                1000,
+        'rom_deg': measurements[index].romDeg,
+        'rom_pct_of_reference': measurements[index].romPctOfReference,
+        'tempo_s': measurements[index].boundary.durationS,
+        'left_rom_deg': measurements[index].leftRomDeg,
+        'right_rom_deg': measurements[index].rightRomDeg,
+        'symmetry_lr_rom_ratio': measurements[index].symmetryLrRomRatio,
+        'confidence': confidence,
+        'reason_codes': List<String>.from(reasons),
+      },
   ];
-}
-
-Map<String, Object?> _serializeRepetition(
-  int index,
-  RepBoundary repetition,
-  List<double> left,
-  List<double> right,
-  List<num> timestampsMs, {
-  required double originMs,
-  required double referenceRomDeg,
-  required String confidence,
-  required List<String> reasons,
-}) {
-  final List<double> leftSegment =
-      left.sublist(repetition.startIndex, repetition.endIndex + 1);
-  final List<double> rightSegment =
-      right.sublist(repetition.startIndex, repetition.endIndex + 1);
-  final double leftRom = _range(leftSegment);
-  final double rightRom = _range(rightSegment);
-  final double larger = leftRom > rightRom ? leftRom : rightRom;
-  return <String, Object?>{
-    'index': index,
-    'start_s':
-        (timestampsMs[repetition.startIndex].toDouble() - originMs) / 1000,
-    'peak_s': (timestampsMs[repetition.peakIndex].toDouble() - originMs) / 1000,
-    'end_s': (timestampsMs[repetition.endIndex].toDouble() - originMs) / 1000,
-    'rom_deg': repetition.amplitudeDeg,
-    'rom_pct_of_reference': 100 * repetition.amplitudeDeg / referenceRomDeg,
-    'tempo_s': repetition.durationS,
-    'left_rom_deg': leftRom,
-    'right_rom_deg': rightRom,
-    'symmetry_lr_rom_ratio':
-        larger > 0 ? (leftRom < rightRom ? leftRom : rightRom) / larger : null,
-    'confidence': confidence,
-    'reason_codes': List<String>.from(reasons),
-  };
 }
 
 Map<String, Object?> _aggregate(List<double> values, int expectedCount) {
@@ -369,7 +486,7 @@ Map<String, Object?> _abstainedMetrics(List<String> reasons) =>
         'confidence': ConfidenceLevel.insufficient.serialized,
         'reason_codes': reasons,
       },
-      'arm_elevation_rom_pct': <String, Object?>{
+      'rom_pct': <String, Object?>{
         'median': null,
         'iqr': null,
         'confidence': ConfidenceLevel.insufficient.serialized,
@@ -426,6 +543,14 @@ List<double> _feature(Map<String, List<double>> features, String name) {
   return values;
 }
 
+double _mean(List<double> values) {
+  double total = 0;
+  for (final double value in values) {
+    total += value;
+  }
+  return total / values.length;
+}
+
 double _range(List<double> values) {
   double minimum = values.first;
   double maximum = values.first;
@@ -438,6 +563,15 @@ double _range(List<double> values) {
     }
   }
   return maximum - minimum;
+}
+
+double? _finiteRange(List<double> values) {
+  for (final double value in values) {
+    if (!value.isFinite) {
+      return null;
+    }
+  }
+  return _range(values);
 }
 
 int _argMax(List<double> values) {

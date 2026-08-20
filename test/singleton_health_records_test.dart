@@ -137,7 +137,7 @@ void main() {
         '08:00,13:00,18:00',
       ]);
 
-      final backup = singleton.exportBackupJson();
+      final backup = await singleton.exportBackupJson();
       singleton.schedule.clear();
       singleton.scheduleIDs.clear();
       expect(await singleton.importBackupJson(backup), isTrue);
@@ -183,7 +183,7 @@ void main() {
       await singleton.saveLog('08:00, 1 July 2026', 'Tremor', '3');
       await singleton.saveSchedule('Levodopa', '100mg', 'Everyday');
 
-      final backup = singleton.exportBackupJson();
+      final backup = await singleton.exportBackupJson();
 
       singleton.log.clear();
       singleton.logIDs.clear();

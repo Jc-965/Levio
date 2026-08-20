@@ -7,6 +7,7 @@ class HealthSyncSnapshot {
     required this.schedules,
     required this.recoverySessions,
     required this.medicationEvents,
+    required this.motionSessions,
   });
 
   final Map<String, dynamic>? user;
@@ -14,6 +15,7 @@ class HealthSyncSnapshot {
   final List<Map<String, dynamic>> schedules;
   final List<Map<String, dynamic>> recoverySessions;
   final List<Map<String, dynamic>> medicationEvents;
+  final List<Map<String, dynamic>> motionSessions;
 }
 
 class HealthSyncCoordinator {
@@ -25,6 +27,7 @@ class HealthSyncCoordinator {
     required AsyncLoader<List<Map<String, dynamic>>> schedules,
     required AsyncLoader<List<Map<String, dynamic>>> recoverySessions,
     required AsyncLoader<List<Map<String, dynamic>>> medicationEvents,
+    required AsyncLoader<List<Map<String, dynamic>>> motionSessions,
   }) async {
     final values = await Future.wait<dynamic>(<Future<dynamic>>[
       user(),
@@ -32,6 +35,7 @@ class HealthSyncCoordinator {
       schedules(),
       recoverySessions(),
       medicationEvents(),
+      motionSessions(),
     ]);
     return _snapshotFrom(values);
   }
@@ -42,6 +46,7 @@ class HealthSyncCoordinator {
     required AsyncLoader<List<Map<String, dynamic>>> schedules,
     required AsyncLoader<List<Map<String, dynamic>>> recoverySessions,
     required AsyncLoader<List<Map<String, dynamic>>> medicationEvents,
+    required AsyncLoader<List<Map<String, dynamic>>> motionSessions,
   }) async {
     final values = <dynamic>[
       await user(),
@@ -49,6 +54,7 @@ class HealthSyncCoordinator {
       await schedules(),
       await recoverySessions(),
       await medicationEvents(),
+      await motionSessions(),
     ];
     return _snapshotFrom(values);
   }
@@ -60,6 +66,7 @@ class HealthSyncCoordinator {
       schedules: List<Map<String, dynamic>>.from(values[2] as List),
       recoverySessions: List<Map<String, dynamic>>.from(values[3] as List),
       medicationEvents: List<Map<String, dynamic>>.from(values[4] as List),
+      motionSessions: List<Map<String, dynamic>>.from(values[5] as List),
     );
   }
 }

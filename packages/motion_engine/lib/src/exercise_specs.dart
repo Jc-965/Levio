@@ -97,6 +97,29 @@ final class ExerciseSpec {
   final List<String>? sideFeatures;
 }
 
+/// Evaluate every feature of [spec] across a pose stream, one series per
+/// feature. Mirrors the Python engine's vectorized `compute_features`; the
+/// per-frame math is shared with the live path so offline and live analysis
+/// can never disagree about what an angle means.
+Map<String, List<double>> computeFeatures(
+  PoseStream stream,
+  ExerciseSpec spec,
+) {
+  final Map<String, List<double>> series = <String, List<double>>{
+    for (final String name in spec.features.keys) name: <double>[],
+  };
+  for (final PoseFrame frame in stream.frames) {
+    final Map<String, double> values = computeFrameFeatures(
+      frame.landmarks,
+      spec,
+    );
+    for (final String name in spec.features.keys) {
+      series[name]!.add(values[name] ?? double.nan);
+    }
+  }
+  return series;
+}
+
 /// Per-frame feature evaluation; missing data propagates as NaN exactly like
 /// the Python engine (`bilateral_mean`/`pair_max` are valid only when both
 /// sides are valid).
@@ -405,6 +428,188 @@ final Map<String, ExerciseSpec> exerciseRegistry = <String, ExerciseSpec>{
     ],
     cues: const ExerciseCueTexts(
       amplitude: 'If comfortable, lean just a little further next time.',
+    ),
+  ),
+  'standing_hip_flexion': ExerciseSpec(
+    exerciseId: 'standing_hip_flexion',
+    displayName: 'Standing knee raise',
+    instruction:
+        'Holding a stable chair, lift one knee toward hip height, lower it, '
+        'then lift the other.',
+    posture: ExercisePosture.standing,
+    features: <String, FeatureDefinition>{
+      'hip_flexion_l': const AngleFeatureDefinition(
+        'left_shoulder',
+        'left_hip',
+        'left_knee',
+        invert: true,
+      ),
+      'hip_flexion_r': const AngleFeatureDefinition(
+        'right_shoulder',
+        'right_hip',
+        'right_knee',
+        invert: true,
+      ),
+      'hip_flexion_peak': const PairFeatureDefinition(
+        PairCombine.max,
+        'hip_flexion_l',
+        'hip_flexion_r',
+      ),
+      'trunk_lean': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        midHipPoint,
+        midShoulderPoint,
+      ),
+    },
+    primarySignal: 'hip_flexion_peak',
+    laterality: ExerciseLaterality.alternating,
+    sideFeatures: const <String>['hip_flexion_l', 'hip_flexion_r'],
+    requiredLandmarks: const <String>[
+      'left_shoulder',
+      'right_shoulder',
+      'left_hip',
+      'right_hip',
+      'left_knee',
+      'right_knee',
+    ],
+    cues: const ExerciseCueTexts(
+      amplitude: 'If comfortable, lift your knee a little higher.',
+    ),
+  ),
+  'standing_knee_flexion': ExerciseSpec(
+    exerciseId: 'standing_knee_flexion',
+    displayName: 'Standing leg curl',
+    instruction:
+        'Holding a stable chair, bend one knee to bring your heel toward '
+        'your seat, lower it, then switch legs.',
+    posture: ExercisePosture.standing,
+    features: <String, FeatureDefinition>{
+      'knee_flexion_l': const AngleFeatureDefinition(
+        'left_hip',
+        'left_knee',
+        'left_ankle',
+        invert: true,
+      ),
+      'knee_flexion_r': const AngleFeatureDefinition(
+        'right_hip',
+        'right_knee',
+        'right_ankle',
+        invert: true,
+      ),
+      'knee_flexion_peak': const PairFeatureDefinition(
+        PairCombine.max,
+        'knee_flexion_l',
+        'knee_flexion_r',
+      ),
+      'trunk_lean': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        midHipPoint,
+        midShoulderPoint,
+      ),
+    },
+    primarySignal: 'knee_flexion_peak',
+    laterality: ExerciseLaterality.alternating,
+    sideFeatures: const <String>['knee_flexion_l', 'knee_flexion_r'],
+    requiredLandmarks: const <String>[
+      'left_hip',
+      'right_hip',
+      'left_knee',
+      'right_knee',
+      'left_ankle',
+      'right_ankle',
+    ],
+    cues: const ExerciseCueTexts(
+      amplitude: 'If comfortable, bring your heel a little higher.',
+    ),
+  ),
+  'standing_side_leg_raise': ExerciseSpec(
+    exerciseId: 'standing_side_leg_raise',
+    displayName: 'Standing side leg raise',
+    instruction:
+        'Holding a stable chair, lift one leg out to the side with the knee '
+        'straight, lower it, then switch legs.',
+    posture: ExercisePosture.standing,
+    features: <String, FeatureDefinition>{
+      'hip_abduction_l': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        'left_hip',
+        'left_ankle',
+        invert: true,
+      ),
+      'hip_abduction_r': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        'right_hip',
+        'right_ankle',
+        invert: true,
+      ),
+      'hip_abduction_peak': const PairFeatureDefinition(
+        PairCombine.max,
+        'hip_abduction_l',
+        'hip_abduction_r',
+      ),
+      'trunk_lean': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        midHipPoint,
+        midShoulderPoint,
+      ),
+    },
+    primarySignal: 'hip_abduction_peak',
+    laterality: ExerciseLaterality.alternating,
+    sideFeatures: const <String>['hip_abduction_l', 'hip_abduction_r'],
+    requiredLandmarks: const <String>[
+      'left_hip',
+      'right_hip',
+      'left_knee',
+      'right_knee',
+      'left_ankle',
+      'right_ankle',
+    ],
+    cues: const ExerciseCueTexts(
+      amplitude: 'If comfortable, lift your leg a little further out.',
+    ),
+  ),
+  'standing_heel_raise': ExerciseSpec(
+    exerciseId: 'standing_heel_raise',
+    displayName: 'Standing heel raises',
+    instruction:
+        'Holding a stable chair, rise slowly onto the balls of both feet, '
+        'then lower your heels with control.',
+    posture: ExercisePosture.standing,
+    features: <String, FeatureDefinition>{
+      'plantar_flexion_l': const AngleFeatureDefinition(
+        'left_knee',
+        'left_ankle',
+        'left_foot_index',
+      ),
+      'plantar_flexion_r': const AngleFeatureDefinition(
+        'right_knee',
+        'right_ankle',
+        'right_foot_index',
+      ),
+      'plantar_flexion_mean': const PairFeatureDefinition(
+        PairCombine.mean,
+        'plantar_flexion_l',
+        'plantar_flexion_r',
+      ),
+      'trunk_lean': const AngleFeatureDefinition(
+        worldVerticalUpPoint,
+        midHipPoint,
+        midShoulderPoint,
+      ),
+    },
+    primarySignal: 'plantar_flexion_mean',
+    laterality: ExerciseLaterality.bilateralSync,
+    sideFeatures: const <String>['plantar_flexion_l', 'plantar_flexion_r'],
+    requiredLandmarks: const <String>[
+      'left_knee',
+      'right_knee',
+      'left_ankle',
+      'right_ankle',
+      'left_foot_index',
+      'right_foot_index',
+    ],
+    cues: const ExerciseCueTexts(
+      amplitude: 'If comfortable, rise a little higher on the next one.',
     ),
   ),
 };

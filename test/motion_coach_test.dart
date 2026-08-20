@@ -153,6 +153,9 @@ void main() {
             width: 480,
             height: 640,
             runtime: 'mediapipe_tasks_test',
+            template: await MotionReferenceLibrary().templateFor(
+              'seated_bilateral_lateral_arm_raise',
+            ),
           );
 
       expect(result.needsSetupHelp, isTrue);
@@ -169,6 +172,9 @@ void main() {
           width: 480,
           height: 640,
           runtime: 'mediapipe_tasks_test',
+          template: await MotionReferenceLibrary().templateFor(
+            'seated_bilateral_lateral_arm_raise',
+          ),
         );
 
     expect(result.needsSetupHelp, isTrue);
@@ -204,7 +210,7 @@ void main() {
       22,
       10,
     ];
-    final AnalysisDocument document = analyzeArmRaiseSession(
+    final AnalysisDocument document = analyzeSession(
       features: <String, List<double>>{
         'arm_elevation_mean': signal,
         'arm_elevation_l': signal,
@@ -220,7 +226,7 @@ void main() {
         totalFrames: signal.length,
         reasons: const <ReasonCode>[],
       ),
-      exerciseId: 'seated_bilateral_lateral_arm_raise',
+      spec: exerciseSpecById('seated_bilateral_lateral_arm_raise'),
       templateVersion: 1,
       referenceRomDeg: 80,
       referenceTempoS: 0.8,
@@ -241,7 +247,7 @@ void main() {
     expect(result.amplitudeSequenceLastFirstRatio, closeTo(0.6, 1e-9));
     expect(
       result.sequenceSummary,
-      contains('first complete raise measured 80°'),
+      contains('first complete movement measured 80°'),
     );
     expect(result.sequenceSummary, contains('last measured 48°'));
   });
@@ -265,7 +271,7 @@ void main() {
         find.textContaining('did not analyze frames quickly enough'),
         findsOneWidget,
       );
-      expect(find.text('Complete raises'), findsNothing);
+      expect(find.text('Complete movements'), findsNothing);
       expect(find.text('Keep private recording'), findsOneWidget);
       expect(find.textContaining('not a diagnosis'), findsOneWidget);
     });
@@ -286,6 +292,7 @@ void main() {
             amplitudeSequenceLastFirstRatio: 0.8,
             repetitions: const <MotionRepObservation>[
               MotionRepObservation(
+                side: 'both',
                 index: 1,
                 startSeconds: 0,
                 peakSeconds: 0.5,
@@ -300,6 +307,7 @@ void main() {
                 reasonCodes: <String>[],
               ),
               MotionRepObservation(
+                side: 'both',
                 index: 2,
                 startSeconds: 1,
                 peakSeconds: 1.5,
@@ -314,6 +322,7 @@ void main() {
                 reasonCodes: <String>[],
               ),
               MotionRepObservation(
+                side: 'both',
                 index: 3,
                 startSeconds: 2,
                 peakSeconds: 2.5,
@@ -333,7 +342,7 @@ void main() {
       );
 
       expect(find.text('Movement captured'), findsOneWidget);
-      expect(find.text('Complete raises'), findsOneWidget);
+      expect(find.text('Complete movements'), findsOneWidget);
       expect(find.text('3'), findsOneWidget);
       expect(find.text('64°'), findsOneWidget);
       expect(find.text('1.1 sec'), findsOneWidget);
@@ -829,7 +838,7 @@ class _CannedAnalyzer extends MotionCoachAnalyzer {
     required List<PoseFrame> frames,
     required int width,
     required int height,
+    required Map<String, Object?> template,
     String? runtime,
-    MotionExerciseDefinition exercise = seatedArmRaiseExercise,
   }) async => result;
 }

@@ -728,6 +728,7 @@ class CloudBackendService {
       await _deleteByUserIfExists('sync_tombstones', userId);
       await _deleteByUserIfExists('medication_events', userId);
       await _deleteByUserIfExists('recovery_sessions', userId);
+      await _deleteByUserIfExists('motion_sessions', userId);
       await _deleteByUserIfExists('logs', userId);
       await _deleteByUserIfExists('schedules', userId);
       // Verify the terminal delete actually removed the profile row; a
@@ -868,6 +869,39 @@ class CloudBackendService {
       // Rethrow rather than returning []: a failed load must never render
       // as an empty health history downstream.
       _logger.error('Cloud get recovery sessions failed', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMotionSessions(String userId) async {
+    if (!isEnabled) return <Map<String, dynamic>>[];
+
+    try {
+      final effectiveUserId = _effectiveUser;
+      if (effectiveUserId == null) return <Map<String, dynamic>>[];
+
+      final result = await _withRetry<List<dynamic>>(
+        'get motion sessions',
+        () async {
+          // The raw evaluation document is deliberately excluded: history
+          // screens render the parsed record, and hydrating evidence
+          // payloads for every session would multiply restore bandwidth.
+          return _client!
+              .from('motion_sessions')
+              .select(
+                'id, routine_id, routine_name, engine_version, completed_at, '
+                'overall_score, record, client_updated_at, last_mutation_id',
+              )
+              .eq('user_id', effectiveUserId)
+              .order('completed_at', ascending: false)
+              .limit(500);
+        },
+      );
+      return List<Map<String, dynamic>>.from(result);
+    } catch (e, stackTrace) {
+      // Rethrow rather than returning []: a failed load must never render
+      // as an empty health history downstream.
+      _logger.error('Cloud get motion sessions failed', e, stackTrace);
       rethrow;
     }
   }

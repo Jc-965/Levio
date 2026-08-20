@@ -23,8 +23,13 @@ The package deliberately has no Flutter, camera, MediaPipe, network, or storage
 dependency. ParkiWell's app adapter owns frame capture and translates its native
 MediaPipe runtime into the shared pose contract.
 
+Cross-language parity (golden analysis fixtures and live/routine parity
+replays) is enforced in the engine repository's own CI on every change; this
+vendored copy carries only the fixture-free unit tests. Re-vendor with the
+engine repo's sync procedure rather than editing files here.
+
 This copy is synchronized with the motion-coach-cv reference implementation at
-commit `960dfd6`. Keeping it in this repository makes ParkiWell builds
+commit `7d992d1`. Keeping it in this repository makes ParkiWell builds
 self-contained while preserving the independently verified Dart/Python parity
 boundary (live-engine and routine behavior are pinned there by cross-language
 parity fixtures).

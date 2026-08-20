@@ -26,8 +26,8 @@ final class RepBoundary {
   final List<ReasonCode> reasonCodes;
 }
 
-final class ArmRaiseSegmentationConfig {
-  ArmRaiseSegmentationConfig({
+final class SegmentationConfig {
+  SegmentationConfig({
     required this.referenceRomDeg,
     required this.referenceTempoS,
     this.minimumRomRatio = 0.25,
@@ -55,10 +55,10 @@ final class ArmRaiseSegmentationConfig {
   final double maximumDurationRatio;
 }
 
-List<RepBoundary> segmentArmRaiseReps(
+List<RepBoundary> segmentReps(
   List<double> signal,
   List<num> timestampsMs,
-  ArmRaiseSegmentationConfig config,
+  SegmentationConfig config,
 ) {
   if (signal.length != timestampsMs.length) {
     throw ArgumentError('signal and timestampsMs must have equal length');
@@ -90,7 +90,7 @@ List<RepBoundary> _segmentFiniteRun(
   List<num> timestamps,
   int runStart,
   int runEnd,
-  ArmRaiseSegmentationConfig config,
+  SegmentationConfig config,
 ) {
   if (runEnd - runStart < 3) {
     return <RepBoundary>[];
@@ -103,18 +103,25 @@ List<RepBoundary> _segmentFiniteRun(
   final double maximumDuration =
       config.maximumDurationRatio * config.referenceTempoS;
   _SegmentState state = _SegmentState.seekingStart;
+  int valley = runStart;
   int start = runStart;
   int peak = runStart;
-  int? returnIndex;
   final List<RepBoundary> repetitions = <RepBoundary>[];
 
   for (int index = runStart + 1; index < runEnd; index += 1) {
     final double value = values[index];
     if (state == _SegmentState.seekingStart) {
-      if (value <= values[start]) {
-        start = index;
-      } else if (value - values[start] >= activation) {
+      if (value <= values[valley]) {
+        valley = index;
+      } else if (value - values[valley] >= activation) {
+        // The boundary start is the activation-crossing sample, not the
+        // valley index: on a flat rest plateau, sub-degree filter ripple
+        // decides where the minimum lands, and a tempo measured from that
+        // index would differ between implementations (and runs) by up to
+        // the whole rest period. The valley VALUE stays authoritative for
+        // amplitude.
         state = _SegmentState.raising;
+        start = index;
         peak = index;
       }
       continue;
@@ -127,32 +134,30 @@ List<RepBoundary> _segmentFiniteRun(
       if (values[peak] - value < reversal) {
         continue;
       }
-      if (values[peak] - values[start] < minimumRom) {
+      if (values[peak] - values[valley] < minimumRom) {
         state = _SegmentState.seekingStart;
-        start = index;
+        valley = index;
         continue;
       }
       state = _SegmentState.lowering;
-      returnIndex = index;
       continue;
     }
 
-    if (value <= values[returnIndex!]) {
-      returnIndex = index;
-    }
-    final double observedRom = values[peak] - values[start];
-    final double returnLimit = values[start] + config.returnRatio * observedRom;
-    final bool hasReturned = values[returnIndex] <= returnLimit;
-    final bool hasReversedUp = value - values[returnIndex] >= reversal;
-    if (!hasReturned || !hasReversedUp) {
+    // Lowering: the repetition ends at the first sample back within the
+    // return band, mirroring the activation-crossing start rule.
+    final double observedRom = values[peak] - values[valley];
+    final double returnLimit =
+        values[valley] + config.returnRatio * observedRom;
+    if (value > returnLimit) {
       continue;
     }
     final RepBoundary? repetition = _buildBoundary(
       values,
       timestamps,
+      valley,
       start,
       peak,
-      returnIndex,
+      index,
       minimumRom,
       minimumDuration,
       maximumDuration,
@@ -161,39 +166,16 @@ List<RepBoundary> _segmentFiniteRun(
       repetitions.add(repetition);
     }
     state = _SegmentState.seekingStart;
-    start = returnIndex;
-    returnIndex = null;
-    if (value - values[start] >= activation) {
-      state = _SegmentState.raising;
-      peak = index;
-    }
+    valley = index;
   }
 
-  if (state == _SegmentState.lowering && returnIndex != null) {
-    final double observedRom = values[peak] - values[start];
-    final double returnLimit = values[start] + config.returnRatio * observedRom;
-    if (values[returnIndex] <= returnLimit) {
-      final RepBoundary? repetition = _buildBoundary(
-        values,
-        timestamps,
-        start,
-        peak,
-        returnIndex,
-        minimumRom,
-        minimumDuration,
-        maximumDuration,
-      );
-      if (repetition != null) {
-        repetitions.add(repetition);
-      }
-    }
-  }
   return repetitions;
 }
 
 RepBoundary? _buildBoundary(
   List<double> values,
   List<num> timestamps,
+  int valley,
   int start,
   int peak,
   int end,
@@ -201,11 +183,11 @@ RepBoundary? _buildBoundary(
   double minimumDuration,
   double maximumDuration,
 ) {
-  if (!(start < peak && peak < end)) {
+  if (!(start <= peak && peak < end)) {
     return null;
   }
   final double amplitude = values[peak] -
-      (values[start] < values[end] ? values[start] : values[end]);
+      (values[valley] < values[end] ? values[valley] : values[end]);
   final double duration =
       (timestamps[end].toDouble() - timestamps[start].toDouble()) / 1000;
   if (amplitude < minimumRom ||

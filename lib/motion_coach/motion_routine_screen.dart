@@ -352,6 +352,16 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       // The coach's own history above is the authoritative record.
       _logger.warning('Recovery tracking log failed', error, stackTrace);
     }
+    // Queue the full result for account backup. Fire-and-forget: it
+    // respects the sync preference internally and never blocks results.
+    if (saved && widget.onSessionLogged == null) {
+      unawaited(
+        Singleton().queueMotionSessionSync(
+          record: record,
+          evaluation: evaluation,
+        ),
+      );
+    }
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(

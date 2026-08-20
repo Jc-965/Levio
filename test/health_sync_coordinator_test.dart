@@ -16,6 +16,7 @@ void main() {
       recoverySessions: () async => <Map<String, dynamic>>[
         <String, dynamic>{'id': 'therapy-1'},
       ],
+      motionSessions: () async => <Map<String, dynamic>>[],
       medicationEvents: () async => <Map<String, dynamic>>[
         <String, dynamic>{'id': 'medication-1'},
       ],
@@ -51,6 +52,7 @@ void main() {
           schedules: records,
           recoverySessions: records,
           medicationEvents: records,
+          motionSessions: records,
         );
         stopwatch.stop();
         sequentialSamples.add(stopwatch.elapsedMicroseconds);
@@ -62,6 +64,7 @@ void main() {
           schedules: records,
           recoverySessions: records,
           medicationEvents: records,
+          motionSessions: records,
         );
         stopwatch.stop();
         parallelSamples.add(stopwatch.elapsedMicroseconds);

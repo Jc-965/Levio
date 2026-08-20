@@ -23,7 +23,8 @@ enum ReasonCode {
   lowSamplingRate('low_sampling_rate'),
   incompleteSessionTracking('incomplete_session_tracking'),
   bilateralMovementRequired('bilateral_movement_required'),
-  poseDiscontinuity('pose_discontinuity');
+  poseDiscontinuity('pose_discontinuity'),
+  symmetryNotApplicable('symmetry_not_applicable');
 
   const ReasonCode(this.serialized);
 

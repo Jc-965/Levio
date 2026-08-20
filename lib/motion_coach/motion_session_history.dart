@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../services/app_logger.dart';
 import '../services/encrypted_cache_store.dart';
@@ -8,11 +9,12 @@ import '../services/encrypted_cache_store.dart';
 /// On-device history of completed motion routines.
 ///
 /// Only derived numbers are kept — scores, repetition counts, and the
-/// allowlisted summary sentences the engine already produced. No video, no
-/// pose landmarks, and nothing that leaves the device: this store is
-/// deliberately local-only, and cloud sync stays out of scope until the
-/// export/deletion/RLS work is done. [clear] exists so the record is always
-/// removable from inside the app.
+/// allowlisted summary sentences the engine already produced. No video and
+/// no pose landmarks, ever. This store is the on-device source of truth;
+/// when the person is signed in and has kept the backup toggle on, the same
+/// derived records sync to their account through the offline mutation
+/// journal. [clear] exists so the record is always removable from inside
+/// the app.
 class MotionSessionHistory {
   /// Shared instance so screens reuse one decoded history instead of
   /// re-reading and re-parsing the store per screen visit.
@@ -51,10 +53,24 @@ class MotionSessionHistory {
     final bool wasPlaintext = !raw.startsWith(
       EncryptedCacheStore.payloadPrefix,
     );
+    bool backfilledIds = false;
     final String? opened = await _store.open(raw);
-    _entries = opened == null ? const <MotionSessionRecord>[] : _decode(opened);
+    if (opened == null) {
+      _entries = const <MotionSessionRecord>[];
+    } else {
+      final (List<MotionSessionRecord> entries, bool backfilled) = _decode(
+        opened,
+      );
+      _entries = entries;
+      backfilledIds = backfilled;
+    }
     _loaded = true;
-    if (wasPlaintext && !_store.keystoreUnavailable && opened != null) {
+    final bool rewritePlaintext =
+        wasPlaintext && !_store.keystoreUnavailable && opened != null;
+    // Records written before ids existed get one assigned exactly once;
+    // persisting immediately keeps the id stable across launches, which
+    // cloud sync depends on for dedupe.
+    if (rewritePlaintext || backfilledIds) {
       await _write();
     }
     return _entries;
@@ -71,6 +87,57 @@ class MotionSessionHistory {
     );
     await add(entry);
     return entry;
+  }
+
+  MotionSessionRecord? byId(String id) {
+    for (final MotionSessionRecord entry in _entries) {
+      if (entry.id == id) return entry;
+    }
+    return null;
+  }
+
+  /// Remove one session; returns whether it existed.
+  Future<bool> removeById(String id) async {
+    if (!_loaded) await load();
+    final List<MotionSessionRecord> next = <MotionSessionRecord>[
+      for (final MotionSessionRecord entry in _entries)
+        if (entry.id != id) entry,
+    ];
+    if (next.length == _entries.length) return false;
+    _entries = List<MotionSessionRecord>.unmodifiable(next);
+    await _write();
+    return true;
+  }
+
+  /// Merge records restored from the account backend into local history.
+  ///
+  /// Union by id with local-wins on collision: the local copy is the one
+  /// the person watched being created, and cloud rows can only ever be
+  /// older uploads of the same session. Returns how many were added.
+  Future<int> mergeFromCloud(List<MotionSessionRecord> cloud) async {
+    if (!_loaded) await load();
+    final Set<String> known = <String>{
+      for (final MotionSessionRecord entry in _entries) entry.id,
+    };
+    final List<MotionSessionRecord> added = <MotionSessionRecord>[
+      for (final MotionSessionRecord entry in cloud)
+        if (known.add(entry.id)) entry,
+    ];
+    if (added.isEmpty) return 0;
+    final List<MotionSessionRecord> merged = <MotionSessionRecord>[
+      ..._entries,
+      ...added,
+    ]..sort(
+        (MotionSessionRecord a, MotionSessionRecord b) =>
+            b.completedAt.compareTo(a.completedAt),
+      );
+    _entries = merged.length > maximumEntries
+        ? List<MotionSessionRecord>.unmodifiable(
+            merged.sublist(0, maximumEntries),
+          )
+        : List<MotionSessionRecord>.unmodifiable(merged);
+    await _write();
+    return added.length;
   }
 
   /// Persist an already-parsed record.
@@ -205,22 +272,23 @@ class MotionSessionHistory {
   Future<SharedPreferences> _resolve() async =>
       _preferences ??= await SharedPreferences.getInstance();
 
-  static List<MotionSessionRecord> _decode(String raw) {
+  static (List<MotionSessionRecord>, bool) _decode(String raw) {
     final Object? decoded;
     try {
       decoded = jsonDecode(raw);
     } on FormatException {
-      return const <MotionSessionRecord>[];
+      return (const <MotionSessionRecord>[], false);
     }
-    if (decoded is! List<Object?>) return const <MotionSessionRecord>[];
+    if (decoded is! List<Object?>) return (const <MotionSessionRecord>[], false);
     // Entries are decoded one at a time: a single record written by a future
     // or corrupted build must cost that one entry, never the whole history.
     final List<MotionSessionRecord> entries = <MotionSessionRecord>[];
+    bool backfilled = false;
     for (final Object? value in decoded) {
       try {
-        entries.add(
-          MotionSessionRecord.fromJson(value! as Map<String, Object?>),
-        );
+        final Map<String, Object?> json = value! as Map<String, Object?>;
+        if (json['id'] is! String) backfilled = true;
+        entries.add(MotionSessionRecord.fromJson(json));
       } on Object catch (error, stackTrace) {
         AppLogger().warning(
           'Dropped one unreadable motion session record',
@@ -230,12 +298,13 @@ class MotionSessionHistory {
         continue;
       }
     }
-    return List<MotionSessionRecord>.unmodifiable(entries);
+    return (List<MotionSessionRecord>.unmodifiable(entries), backfilled);
   }
 }
 
 class MotionSessionRecord {
   const MotionSessionRecord({
+    required this.id,
     required this.completedAt,
     required this.routineId,
     required this.routineName,
@@ -251,6 +320,7 @@ class MotionSessionRecord {
   factory MotionSessionRecord.fromEvaluation(
     Map<String, Object?> evaluation, {
     required DateTime completedAt,
+    String? id,
   }) {
     if (evaluation['schema_version'] != 'session-evaluation.v1') {
       throw const FormatException('unsupported evaluation schema');
@@ -262,6 +332,7 @@ class MotionSessionRecord {
     final Map<String, Object?> summary =
         evaluation['summary']! as Map<String, Object?>;
     return MotionSessionRecord(
+      id: id ?? const Uuid().v4(),
       completedAt: completedAt,
       routineId: routine['routine_id']! as String,
       routineName: routine['display_name']! as String,
@@ -283,6 +354,7 @@ class MotionSessionRecord {
 
   factory MotionSessionRecord.fromJson(Map<String, Object?> json) =>
       MotionSessionRecord(
+        id: json['id'] as String? ?? const Uuid().v4(),
         completedAt: DateTime.parse(json['completed_at']! as String),
         routineId: json['routine_id']! as String,
         routineName: json['routine_name']! as String,
@@ -300,6 +372,8 @@ class MotionSessionRecord {
             .toList(growable: false),
       );
 
+  /// Stable identity for cloud sync and restore dedupe.
+  final String id;
   final DateTime completedAt;
   final String routineId;
   final String routineName;
@@ -317,6 +391,7 @@ class MotionSessionRecord {
   );
 
   Map<String, Object?> toJson() => <String, Object?>{
+    'id': id,
     'completed_at': completedAt.toIso8601String(),
     'routine_id': routineId,
     'routine_name': routineName,
@@ -345,6 +420,8 @@ class MotionSessionStep {
     required this.smoothnessScore,
     required this.symmetryScore,
     this.repetitions = const <MotionSessionRep>[],
+    this.reasonCodes = const <String>[],
+    this.cueCounts = const <String, int>{},
   });
 
   factory MotionSessionStep.fromEvaluation(Map<String, Object?> step) {
@@ -366,6 +443,15 @@ class MotionSessionStep {
                 MotionSessionRep.fromEvaluation(value! as Map<String, Object?>),
           )
           .toList(growable: false),
+      reasonCodes: List<String>.from(
+        step['reason_codes'] as List<Object?>? ?? const <Object?>[],
+      ),
+      cueCounts: <String, int>{
+        for (final Object? cue
+            in step['cues'] as List<Object?>? ?? const <Object?>[])
+          if (cue is Map<String, Object?> && cue['code'] is String)
+            cue['code']! as String: (cue['count'] as num?)?.toInt() ?? 0,
+      },
     );
   }
 
@@ -389,6 +475,16 @@ class MotionSessionStep {
               MotionSessionRep.fromJson(value! as Map<String, Object?>),
         )
         .toList(growable: false),
+    reasonCodes: List<String>.from(
+      json['reason_codes'] as List<Object?>? ?? const <Object?>[],
+    ),
+    cueCounts: <String, int>{
+      for (final MapEntry<String, Object?> entry
+          in (json['cue_counts'] as Map<String, Object?>? ??
+                  const <String, Object?>{})
+              .entries)
+        entry.key: (entry.value as num?)?.toInt() ?? 0,
+    },
   );
 
   final String exerciseId;
@@ -410,6 +506,15 @@ class MotionSessionStep {
   /// movement size against the reference and whether amplitude held up
   /// across the set are only visible at this granularity.
   final List<MotionSessionRep> repetitions;
+
+  /// Machine-readable reasons a step went unassessed (engine allowlist,
+  /// e.g. `no_complete_reps`, `low_coverage`). Empty for assessed steps.
+  final List<String> reasonCodes;
+
+  /// How often each allowlisted live cue fired during this step, keyed by
+  /// cue code. Frequent amplitude cues, for example, are themselves
+  /// evidence worth showing.
+  final Map<String, int> cueCounts;
 
   /// Last complete repetition's amplitude as a fraction of the first's, or
   /// null with fewer than three reps (mirroring the engine's own rule that
@@ -488,6 +593,8 @@ class MotionSessionStep {
     'repetitions': <Object?>[
       for (final MotionSessionRep rep in repetitions) rep.toJson(),
     ],
+    'reason_codes': reasonCodes,
+    'cue_counts': cueCounts,
   };
 }
 

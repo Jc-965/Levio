@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// gate: the motion-check flow, guided routines, and single-exercise practice
 /// all process camera frames the same way, so consent given on any one of
 /// them covers the others.
-const String motionCoachConsentKey = 'motion_coach_mediapipe_consent_v1';
+/// v2 added the derived-results backup disclosure; bumping the key re-asks
+/// everyone who consented before score sync existed.
+const String motionCoachConsentKey = 'motion_coach_mediapipe_consent_v2';
 
 Future<bool> ensureMotionCoachConsent(BuildContext context) async {
   final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -20,9 +22,12 @@ Future<bool> ensureMotionCoachConsent(BuildContext context) async {
       title: const Text('Motion check privacy'),
       content: const Text(
         'Your camera images, recording, and pose landmarks are processed '
-        'on this device. Google MediaPipe may receive performance and usage '
-        'metrics about its on-device API, but not your images, video, or '
-        'pose landmarks.\n\n'
+        'on this device and never leave it. Google MediaPipe may receive '
+        'performance and usage metrics about its on-device API, but not '
+        'your images, video, or pose landmarks.\n\n'
+        'When you are signed in, derived results (scores and repetition '
+        'counts) are backed up to your account so they survive a new '
+        'phone. You can turn this off any time in Motion coach settings.\n\n'
         'Motion check offers general movement observations. It is not a '
         'diagnosis or medical assessment.',
       ),

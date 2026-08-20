@@ -4,8 +4,6 @@ enum MotionExercisePosture { seated, standing }
 
 enum MotionExerciseClinicalStatus { development, clinicianApproved }
 
-enum MotionAnalysisKind { bilateralLateralArmRaise }
-
 /// A licensed reference video segment shown as the demonstration.
 ///
 /// Only exercises that have a reviewed, linkable source carry one. The rest
@@ -58,30 +56,6 @@ class MotionExerciseVideoSegment {
   }
 }
 
-/// Parameters the offline detailed-analysis pipeline needs.
-///
-/// Present only where `analyzePoseStream` actually supports the exercise's
-/// primary signal — today that is the bilateral arm raise alone. Every other
-/// exercise is measured by the live/routine engine, which is fully
-/// spec-driven. Modelling this as a nullable field rather than a flag keeps
-/// the reference constants from being invented for exercises that have no
-/// offline path.
-class MotionDetailedAnalysisSpec {
-  const MotionDetailedAnalysisSpec({
-    required this.kind,
-    required this.templateVersion,
-    required this.referenceRomDegrees,
-    required this.referenceTempoSeconds,
-  }) : assert(templateVersion > 0),
-       assert(referenceRomDegrees > 0),
-       assert(referenceTempoSeconds > 0);
-
-  final MotionAnalysisKind kind;
-  final int templateVersion;
-  final double referenceRomDegrees;
-  final double referenceTempoSeconds;
-}
-
 class MotionExerciseDefinition {
   const MotionExerciseDefinition({
     required this.exerciseId,
@@ -93,7 +67,6 @@ class MotionExerciseDefinition {
     required this.posture,
     required this.clinicalStatus,
     this.videoSegment,
-    this.detailedAnalysis,
   }) : assert(minimumRecordingRepetitions > 0),
        assert(maximumRecordingRepetitions >= minimumRecordingRepetitions);
 
@@ -112,7 +85,6 @@ class MotionExerciseDefinition {
   final MotionExercisePosture posture;
   final MotionExerciseClinicalStatus clinicalStatus;
   final MotionExerciseVideoSegment? videoSegment;
-  final MotionDetailedAnalysisSpec? detailedAnalysis;
 
   /// The engine's declarative specification for this exercise. Throws if the
   /// catalog names an exercise the engine does not implement, which the
@@ -120,8 +92,6 @@ class MotionExerciseDefinition {
   ExerciseSpec get engineSpec => exerciseSpecById(exerciseId);
 
   bool get hasVideoDemonstration => videoSegment != null;
-
-  bool get supportsDetailedAnalysis => detailedAnalysis != null;
 
   String get recordingRepetitionLabel =>
       '$minimumRecordingRepetitions–$maximumRecordingRepetitions';
@@ -157,12 +127,6 @@ const MotionExerciseDefinition seatedArmRaiseExercise =
       posture: MotionExercisePosture.seated,
       clinicalStatus: MotionExerciseClinicalStatus.development,
       videoSegment: sitNFitArmRaiseSegment,
-      detailedAnalysis: MotionDetailedAnalysisSpec(
-        kind: MotionAnalysisKind.bilateralLateralArmRaise,
-        templateVersion: 1,
-        referenceRomDegrees: 68,
-        referenceTempoSeconds: 0.964,
-      ),
     );
 
 const MotionExerciseDefinition seatedForwardReachExercise =
@@ -242,6 +206,71 @@ const MotionExerciseDefinition seatedTrunkLeanExercise =
       clinicalStatus: MotionExerciseClinicalStatus.development,
     );
 
+
+const MotionExerciseDefinition standingHipFlexionExercise =
+    MotionExerciseDefinition(
+      exerciseId: 'standing_hip_flexion',
+      title: 'Standing knee raise',
+      instructions:
+          'Holding a stable chair, lift one knee toward hip height, lower '
+          'it, then lift the other.',
+      setupHint:
+          'Stand beside a stable chair with the phone far enough back that '
+          'your head and feet both stay in view.',
+      minimumRecordingRepetitions: 4,
+      maximumRecordingRepetitions: 8,
+      posture: MotionExercisePosture.standing,
+      clinicalStatus: MotionExerciseClinicalStatus.development,
+    );
+
+const MotionExerciseDefinition standingKneeFlexionExercise =
+    MotionExerciseDefinition(
+      exerciseId: 'standing_knee_flexion',
+      title: 'Standing leg curl',
+      instructions:
+          'Holding a stable chair, bend one knee to bring your heel toward '
+          'your seat, lower it, then switch legs.',
+      setupHint:
+          'Stand facing the phone, holding a chair, with your whole body in '
+          'view.',
+      minimumRecordingRepetitions: 4,
+      maximumRecordingRepetitions: 8,
+      posture: MotionExercisePosture.standing,
+      clinicalStatus: MotionExerciseClinicalStatus.development,
+    );
+
+const MotionExerciseDefinition standingSideLegRaiseExercise =
+    MotionExerciseDefinition(
+      exerciseId: 'standing_side_leg_raise',
+      title: 'Standing side leg raise',
+      instructions:
+          'Holding a stable chair, lift one leg out to the side with the '
+          'knee straight, lower it, then switch legs.',
+      setupHint:
+          'Stand facing the phone with space to your sides so the raised '
+          'leg stays in view.',
+      minimumRecordingRepetitions: 4,
+      maximumRecordingRepetitions: 8,
+      posture: MotionExercisePosture.standing,
+      clinicalStatus: MotionExerciseClinicalStatus.development,
+    );
+
+const MotionExerciseDefinition standingHeelRaiseExercise =
+    MotionExerciseDefinition(
+      exerciseId: 'standing_heel_raise',
+      title: 'Standing heel raises',
+      instructions:
+          'Holding a stable chair, rise slowly onto the balls of both feet, '
+          'then lower your heels with control.',
+      setupHint:
+          'Stand facing the phone and make sure your feet are clearly '
+          'visible in the frame.',
+      minimumRecordingRepetitions: 3,
+      maximumRecordingRepetitions: 8,
+      posture: MotionExercisePosture.standing,
+      clinicalStatus: MotionExerciseClinicalStatus.development,
+    );
+
 /// Every exercise the motion engine can measure, in a reasonable warm-up to
 /// weight-bearing order.
 const List<MotionExerciseDefinition> motionExerciseCatalog =
@@ -252,6 +281,10 @@ const List<MotionExerciseDefinition> motionExerciseCatalog =
       seatedTrunkLeanExercise,
       seatedAlternatingMarchExercise,
       sitToStandExercise,
+      standingHipFlexionExercise,
+      standingKneeFlexionExercise,
+      standingSideLegRaiseExercise,
+      standingHeelRaiseExercise,
     ];
 
 const String youTubeEmbeddedPlayerReferer = 'https://com.parkiwell.app';

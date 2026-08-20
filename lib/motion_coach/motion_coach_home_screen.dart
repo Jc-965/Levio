@@ -355,6 +355,17 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                           'A light tap confirms every counted movement.',
                         ),
                       ),
+                      SwitchListTile.adaptive(
+                        value: _preferences.syncResultsEnabled,
+                        onChanged: (bool enabled) => unawaited(
+                          _preferences.setSyncResultsEnabled(enabled),
+                        ),
+                        title: const Text('Back up results to my account'),
+                        subtitle: const Text(
+                          'Scores and movement counts only, when signed in. '
+                          'Video and camera data never leave this phone.',
+                        ),
+                      ),
                     ],
                   ),
                 ),

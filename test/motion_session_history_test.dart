@@ -290,6 +290,89 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('assigns a stable id that round-trips through storage', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final MotionSessionRecord entry = await history.record(
+        _evaluation(score: 80),
+        completedAt: DateTime.utc(2026, 8, 1, 9),
+      );
+
+      expect(entry.id, isNotEmpty);
+      final MotionSessionHistory reloaded = MotionSessionHistory();
+      final List<MotionSessionRecord> entries = await reloaded.load();
+      expect(entries.single.id, entry.id);
+    });
+
+    test('backfills ids for records written before ids existed', () async {
+      final MotionSessionHistory seed = MotionSessionHistory();
+      final MotionSessionRecord entry = await seed.record(
+        _evaluation(score: 75),
+        completedAt: DateTime.utc(2026, 8, 1, 9),
+      );
+      // Simulate a legacy store: strip the id and write plaintext.
+      final Map<String, Object?> legacy = entry.toJson()..remove('id');
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        MotionSessionHistory.storageKey: jsonEncode(<Object?>[legacy]),
+      });
+
+      final MotionSessionHistory history = MotionSessionHistory();
+      final String firstLoadId = (await history.load()).single.id;
+      expect(firstLoadId, isNotEmpty);
+
+      // The backfilled id must persist, not regenerate per launch: cloud
+      // dedupe depends on it staying put.
+      final MotionSessionHistory again = MotionSessionHistory();
+      expect((await again.load()).single.id, firstLoadId);
+    });
+
+    test('removes one session by id', () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final MotionSessionRecord entry = await history.record(
+        _evaluation(score: 70),
+        completedAt: DateTime.utc(2026, 8, 1, 9),
+      );
+
+      expect(await history.removeById('missing'), isFalse);
+      expect(await history.removeById(entry.id), isTrue);
+      expect(history.entries, isEmpty);
+      expect(await MotionSessionHistory().load(), isEmpty);
+    });
+
+    test('merges cloud records by id with local winning collisions',
+        () async {
+      final MotionSessionHistory history = MotionSessionHistory();
+      final MotionSessionRecord local = await history.record(
+        _evaluation(score: 90),
+        completedAt: DateTime.utc(2026, 8, 2, 9),
+      );
+
+      final MotionSessionRecord duplicate = MotionSessionRecord.fromEvaluation(
+        _evaluation(score: 10),
+        completedAt: DateTime.utc(2026, 8, 2, 9),
+        id: local.id,
+      );
+      final MotionSessionRecord older = MotionSessionRecord.fromEvaluation(
+        _evaluation(score: 55),
+        completedAt: DateTime.utc(2026, 7, 20, 9),
+        id: 'cloud-1',
+      );
+
+      final int added = await history.mergeFromCloud(<MotionSessionRecord>[
+        duplicate,
+        older,
+      ]);
+
+      expect(added, 1);
+      expect(history.entries, hasLength(2));
+      // Local copy survives; cloud rows sort by completion time.
+      expect(history.entries.first.id, local.id);
+      expect(history.entries.first.overallScore, 90);
+      expect(history.entries.last.id, 'cloud-1');
+
+      final MotionSessionHistory reloaded = MotionSessionHistory();
+      expect(await reloaded.load(), hasLength(2));
+    });
   });
 }
 

@@ -13,6 +13,7 @@ import 'package:parkiwell/services/encrypted_mutation_journal_store.dart';
 import 'package:parkiwell/services/feature_flags.dart';
 import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
+import 'package:parkiwell/motion_coach/motion_coach_preferences.dart';
 import 'package:parkiwell/motion_coach/motion_session_history.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
@@ -498,6 +499,98 @@ class Singleton extends ChangeNotifier {
   /// a distinct namespace while still counting as physical sessions for the
   /// weekly plan, history, and cloud sync (the backend accepts any text id).
   static const String motionSessionIdPrefix = 'motion:';
+
+  /// Queue a full motion session result (scores and repetition evidence,
+  /// never video or pose landmarks) for account backup.
+  ///
+  /// Best-effort by design: local history is the authoritative record and
+  /// is already written before this runs. Respects the person's sync
+  /// toggle, and anonymous sessions never replay health mutations, so
+  /// nothing here can upload under a bootstrap identity.
+  Future<void> queueMotionSessionSync({
+    required MotionSessionRecord record,
+    required Map<String, Object?> evaluation,
+  }) async {
+    final MotionCoachPreferences preferences = MotionCoachPreferences.shared;
+    if (!preferences.isLoaded) await preferences.load();
+    if (!preferences.syncResultsEnabled) return;
+
+    final payload = <String, dynamic>{
+      'routine_id': record.routineId,
+      'routine_name': record.routineName,
+      'engine_version': record.engineVersion,
+      'completed_at': record.completedAt.toUtc().toIso8601String(),
+      'overall_score': record.overallScore,
+      'record': record.toJson(),
+      'evaluation': evaluation,
+    };
+    // The backend caps the evidence document; a payload that would be
+    // rejected on every replay must not enter the journal, or it
+    // dead-letters forever. Dropping the raw evaluation keeps the parsed
+    // record (everything the app renders) syncable.
+    if (jsonEncode(payload).length > 120000) {
+      _logger.warning(
+        'Motion session ${record.id} evaluation too large to sync; '
+        'keeping parsed record only',
+      );
+      payload['evaluation'] = const <String, Object?>{};
+    }
+    try {
+      await _queueHealthMutation(
+        entityType: SyncEntityType.motionSession,
+        entityId: record.id,
+        operation: SyncMutationOperation.upsert,
+        payload: payload,
+      );
+      unawaited(syncPendingMutations());
+    } catch (error, stackTrace) {
+      _logger.warning('Motion session sync enqueue failed', error, stackTrace);
+    }
+  }
+
+  /// Delete one synced motion session locally and from the account.
+  Future<bool> deleteMotionSession(String id) async {
+    final bool removed = await MotionSessionHistory.shared.removeById(id);
+    try {
+      await _queueHealthMutation(
+        entityType: SyncEntityType.motionSession,
+        entityId: id,
+        operation: SyncMutationOperation.delete,
+      );
+      unawaited(syncPendingMutations());
+    } catch (error, stackTrace) {
+      _logger.warning('Motion session delete enqueue failed', error, stackTrace);
+    }
+    return removed;
+  }
+
+  /// Fold cloud motion session rows into local history (restore path).
+  Future<void> _mergeCloudMotionSessions(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    final List<MotionSessionRecord> records = <MotionSessionRecord>[];
+    for (final row in rows) {
+      try {
+        final Object? record = row['record'];
+        if (record is! Map<String, dynamic> || record.isEmpty) continue;
+        records.add(
+          MotionSessionRecord.fromJson(Map<String, Object?>.from(record)),
+        );
+      } catch (error, stackTrace) {
+        // One unreadable cloud row must never abort the whole restore.
+        _logger.warning(
+          'Dropped one unreadable cloud motion session',
+          error,
+          stackTrace,
+        );
+      }
+    }
+    final int added = await MotionSessionHistory.shared.mergeFromCloud(records);
+    if (added > 0) {
+      _logger.info('Restored $added motion sessions from account backup');
+    }
+  }
 
   /// Log a completed motion coach session as a physical recovery session.
   ///
@@ -1633,6 +1726,10 @@ class Singleton extends ChangeNotifier {
           _applyPendingRecoveryMutation(mutation);
         case SyncEntityType.medicationEvent:
           _applyPendingMedicationMutation(mutation);
+        case SyncEntityType.motionSession:
+          // Local truth lives in MotionSessionHistory, which already holds
+          // the record before its mutation is queued; nothing to re-apply.
+          break;
       }
     }
 
@@ -1829,6 +1926,7 @@ class Singleton extends ChangeNotifier {
         schedules: () => _cloud.getSchedules(uid),
         recoverySessions: () => _cloud.getRecoverySessions(uid),
         medicationEvents: () => _cloud.getMedicationEvents(uid),
+        motionSessions: () => _cloud.getMotionSessions(uid),
       );
       // A result exactly at the fetch cap almost certainly means older
       // rows were cut off server-side; surface it instead of letting a
@@ -1878,6 +1976,8 @@ class Singleton extends ChangeNotifier {
       _observeCloudVersions(snapshot.schedules);
       _observeCloudVersions(snapshot.recoverySessions);
       _observeCloudVersions(snapshot.medicationEvents);
+      _observeCloudVersions(snapshot.motionSessions);
+      await _mergeCloudMotionSessions(snapshot.motionSessions);
 
       log.clear();
       logIDs.clear();
@@ -2034,7 +2134,9 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  String exportBackupJson() {
+  Future<String> exportBackupJson() async {
+    final MotionSessionHistory history = MotionSessionHistory.shared;
+    if (!history.isLoaded) await history.load();
     final payload = <String, dynamic>{
       'backup_version': 1,
       'exported_at': DateTime.now().toIso8601String(),
@@ -2043,6 +2145,12 @@ class Singleton extends ChangeNotifier {
         'last_sync_status': _lastSyncStatus,
       },
       'snapshot': _buildLocalCacheSnapshot(),
+      // Kept beside (not inside) the snapshot: the snapshot format belongs
+      // to the shared health cache, while motion history has its own store.
+      'motion_sessions': <Object?>[
+        for (final MotionSessionRecord entry in history.entries)
+          entry.toJson(),
+      ],
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
@@ -2056,6 +2164,28 @@ class Singleton extends ChangeNotifier {
 
       _applyLocalCacheSnapshot(snapshot);
       _hasHydratedLocalCache = true;
+      final Object? motionSessions = decoded['motion_sessions'];
+      if (motionSessions is List) {
+        final List<MotionSessionRecord> records = <MotionSessionRecord>[];
+        for (final Object? value in motionSessions) {
+          try {
+            records.add(
+              MotionSessionRecord.fromJson(
+                Map<String, Object?>.from(value! as Map),
+              ),
+            );
+          } catch (_) {
+            // One unreadable backup entry must not abort the import.
+          }
+        }
+        await MotionSessionHistory.shared.mergeFromCloud(records);
+        for (final MotionSessionRecord record in records) {
+          await queueMotionSessionSync(
+            record: record,
+            evaluation: const <String, Object?>{},
+          );
+        }
+      }
       // Restored entities must enter the mutation journal, or the next
       // successful cloud load would clear local state, repopulate it from
       // the server, and silently destroy everything just restored.

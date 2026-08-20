@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_exercise_catalog.dart';
+import 'motion_feedback_copy.dart';
 import 'motion_session_history.dart';
 
 /// Renders a completed `session-evaluation.v1` document.
@@ -21,7 +22,8 @@ class MotionRoutineResultsScreen extends StatelessWidget {
     required this.title,
     required this.record,
     this.saved = true,
-  });
+    MotionSessionHistory? history,
+  }) : _history = history;
 
   /// Heading shown above the score; the record's routine name in every
   /// current flow. Only presentation, so a full routine description object
@@ -31,6 +33,26 @@ class MotionRoutineResultsScreen extends StatelessWidget {
 
   /// False when the session finished but could not be written to history.
   final bool saved;
+
+  final MotionSessionHistory? _history;
+
+  /// Signed difference between this session's score and the mean of the
+  /// most recent previous scored sessions, or null when this is the first.
+  double? get _trendDelta {
+    final double? score = record.overallScore;
+    if (score == null) return null;
+    final MotionSessionHistory history = _history ?? MotionSessionHistory.shared;
+    final List<double> previous = <double>[
+      for (final MotionSessionRecord entry in history.entries)
+        if (entry.id != record.id && entry.overallScore != null)
+          entry.overallScore!,
+    ];
+    if (previous.isEmpty) return null;
+    final List<double> window = previous.take(5).toList(growable: false);
+    final double mean =
+        window.reduce((double a, double b) => a + b) / window.length;
+    return score - mean;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +117,40 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                           color: colors.textSecondary,
                         ),
                       ),
+                      if (assessed) ...[
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (BuildContext context) {
+                            final double? delta = _trendDelta;
+                            final String text = delta == null
+                                ? 'Your first scored session'
+                                : delta.abs() < 1
+                                    ? 'Right at your recent average'
+                                    : delta > 0
+                                        ? '${delta.round()} points above your '
+                                            'recent average'
+                                        : '${delta.abs().round()} points below '
+                                            'your recent average';
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.surface.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                text,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -150,9 +206,10 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         saved
-                            ? 'These scores are stored only on this phone. No '
-                                  'video or pose data was recorded at any '
-                                  'point, and nothing was uploaded.'
+                            ? 'These scores are stored on this phone and, '
+                                  'when you are signed in with backup turned '
+                                  'on, in your account. No video or pose data '
+                                  'was recorded at any point.'
                             : 'This summary could not be written to your '
                                   'history, so it will be gone when you leave '
                                   'this screen.',
@@ -273,6 +330,33 @@ class _StepCard extends StatelessWidget {
               context,
             ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
           ),
+          if (!step.assessed)
+            for (final String sentence in <String>[
+              for (final String code in step.reasonCodes)
+                if (reasonCodeLabel(code) != null) reasonCodeLabel(code)!,
+            ]) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      sentence,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           if (step.assessed) ...[
             const SizedBox(height: 12),
             _ComponentBar(label: 'Movement size', value: step.rangeScore),
@@ -280,11 +364,42 @@ class _StepCard extends StatelessWidget {
             _ComponentBar(label: 'Smoothness', value: step.smoothnessScore),
             if (step.symmetryScore != null)
               _ComponentBar(label: 'Evenness', value: step.symmetryScore),
+            if (_cueInsight() case final String insight) ...[
+              const SizedBox(height: 4),
+              Text(
+                insight,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
             if (step.repetitions.isNotEmpty) _StepEvidence(step: step),
           ],
         ],
       ),
     );
+  }
+
+  /// The most frequent corrective live cue, when it fired at least twice.
+  /// Repeated guidance is evidence about the session, not a judgment made
+  /// here: both the code and its count come from the engine.
+  String? _cueInsight() {
+    String? topCode;
+    int topCount = 0;
+    for (final MapEntry<String, int> entry in step.cueCounts.entries) {
+      if (entry.key == 'positive') continue;
+      if (entry.value > topCount) {
+        topCode = entry.key;
+        topCount = entry.value;
+      }
+    }
+    if (topCode == null || topCount < 2) return null;
+    final String? label = cueLabel(topCode);
+    if (label == null) return null;
+    final String times = topCount == 2 ? 'twice' : '$topCount times';
+    return 'Live guidance to $label came up $times.';
   }
 
   static String _titleFor(String exerciseId) {

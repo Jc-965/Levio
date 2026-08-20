@@ -16,6 +16,8 @@ const Map<String, int> landmarkIndex = <String, int>{
   'right_knee': 26,
   'left_ankle': 27,
   'right_ankle': 28,
+  'left_foot_index': 31,
+  'right_foot_index': 32,
 };
 
 double jointAngle(

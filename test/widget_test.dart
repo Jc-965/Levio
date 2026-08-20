@@ -454,7 +454,7 @@ void main() {
     singleton.schedule.add(<String>['Levodopa', '100mg', 'Everyday']);
     singleton.scheduleIDs.add('schedule-1');
 
-    final backup = singleton.exportBackupJson();
+    final backup = await singleton.exportBackupJson();
 
     singleton.name = '[Name]';
     singleton.email = '[Email]';

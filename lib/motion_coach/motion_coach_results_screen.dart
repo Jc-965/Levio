@@ -89,18 +89,18 @@ class MotionCoachResultsScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   _ObservationCard(
                     icon: Icons.repeat_rounded,
-                    title: 'Complete raises',
+                    title: 'Complete movements',
                     value: '${result.repCount}',
-                    detail: 'Both arms moved through a complete cycle.',
+                    detail: 'Movements measured through a complete cycle.',
                   ),
                   const SizedBox(height: 10),
                   if (result.rangeDegrees != null)
                     _ObservationCard(
                       icon: Icons.expand_rounded,
-                      title: 'Observed arm range',
+                      title: 'Observed movement range',
                       value: '${result.rangeDegrees!.round()}°',
                       detail:
-                          'Median change in arm elevation during complete raises'
+                          'Median measured range during complete movements'
                           '${result.rangePercentOfReference == null ? '.' : ' — '
                                     '${result.rangePercentOfReference!.round()}% of '
                                     'this exercise reference.'}',
@@ -111,7 +111,7 @@ class MotionCoachResultsScreen extends StatelessWidget {
                       icon: Icons.timer_outlined,
                       title: 'Observed pace',
                       value: '${result.tempoSeconds!.toStringAsFixed(1)} sec',
-                      detail: 'Median duration of one complete raise.',
+                      detail: 'Median duration of one complete movement.',
                     ),
                   if (result.tempoSeconds != null) const SizedBox(height: 10),
                   if (result.sideRangeRatio != null)
@@ -120,7 +120,7 @@ class MotionCoachResultsScreen extends StatelessWidget {
                       title: 'Side-to-side range ratio',
                       value: '${(result.sideRangeRatio! * 100).round()}%',
                       detail:
-                          'Smaller observed arm range divided by the larger range.',
+                          'Smaller observed side range divided by the larger.',
                     ),
                   if (result.sequenceSummary != null) ...[
                     const SizedBox(height: 10),
@@ -136,6 +136,20 @@ class MotionCoachResultsScreen extends StatelessWidget {
                           'fatigue score.',
                     ),
                   ],
+                  if (result.repetitions.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _RepetitionDetailCard(result: result),
+                  ],
+                  const SizedBox(height: 10),
+                  _ObservationCard(
+                    icon: Icons.visibility_outlined,
+                    title: 'Measurement coverage',
+                    value: '${(result.coverage * 100).round()}%',
+                    detail: result.coverage >= 0.99
+                        ? 'The camera tracked you for the whole recording.'
+                        : 'Part of the recording could not be tracked, so '
+                              'treat these numbers as a rough reading.',
+                  ),
                   const SizedBox(height: 14),
                 ],
                 ModernCard(
@@ -276,6 +290,72 @@ String _setupMessage(MotionAnalysisResult result) {
   }
   return 'Keep your face, shoulders, wrists, and hips visible in steady light, '
       'then try the movement again.';
+}
+
+/// Every measured repetition, movement by movement. Chips are engine
+/// measurements verbatim; nothing is judged or generated in the UI.
+class _RepetitionDetailCard extends StatelessWidget {
+  const _RepetitionDetailCard({required this.result});
+
+  final MotionAnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final bool alternating = result.repetitions.any(
+      (MotionRepObservation rep) => rep.side != 'both',
+    );
+    return ModernCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Movement by movement',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: <Widget>[
+              for (final MotionRepObservation rep in result.repetitions)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${rep.index}'
+                    '${alternating ? (rep.side == 'left' ? ' L' : ' R') : ''}'
+                    ' · ${rep.romDegrees.round()}° · '
+                    '${rep.tempoSeconds.toStringAsFixed(1)}s',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Each chip is one complete movement: its measured range and how '
+            'long it took.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ObservationCard extends StatelessWidget {

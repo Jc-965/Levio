@@ -138,6 +138,50 @@ insert into public.app_flags (key, enabled)
   values ('motion_coach', true)
   on conflict (key) do nothing;
 
+-- Motion coach session results: derived scores and repetition evidence only,
+-- never video or pose landmarks. `record` is the app's parsed session record
+-- (what history screens render); `evaluation` is the engine's raw
+-- session-evaluation.v1 evidence document. Size caps keep a malformed or
+-- runaway document from bloating rows; an oversized payload rejects only its
+-- own mutation. The llm_summary columns are written exclusively by the
+-- motion_summary edge function (service role) and are deliberately absent
+-- from the sync upsert so a replayed mutation can never clobber a cached
+-- summary.
+create table if not exists public.motion_sessions (
+  id text primary key,
+  user_id text not null references public.users(id) on delete cascade,
+  routine_id text not null,
+  routine_name text not null,
+  engine_version text not null,
+  completed_at timestamptz not null,
+  overall_score double precision,
+  record jsonb not null default '{}'::jsonb,
+  evaluation jsonb not null default '{}'::jsonb,
+  llm_summary text,
+  llm_summary_model text,
+  llm_summary_generated_at timestamptz,
+  client_updated_at timestamptz not null default timezone('utc', now()),
+  last_mutation_id text not null default '',
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.motion_sessions
+  drop constraint if exists motion_sessions_field_length_caps;
+alter table public.motion_sessions
+  add constraint motion_sessions_field_length_caps check (
+    length(id) <= 64
+    and length(routine_id) <= 64
+    and length(routine_name) <= 120
+    and length(engine_version) <= 32
+    and pg_column_size(record) <= 65536
+    and pg_column_size(evaluation) <= 131072
+    and (llm_summary is null or length(llm_summary) <= 2000)
+  );
+
+create index if not exists idx_motion_sessions_user_completed
+  on public.motion_sessions(user_id, completed_at desc);
+
 alter table public.logs
   add column if not exists client_updated_at timestamptz not null
     default timezone('utc', now());
@@ -285,6 +329,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists trg_schedules_updated_at on public.schedules;
 create trigger trg_schedules_updated_at
 before update on public.schedules
+for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_motion_sessions_updated_at on public.motion_sessions;
+create trigger trg_motion_sessions_updated_at
+before update on public.motion_sessions
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_recovery_sessions_updated_at on public.recovery_sessions;
@@ -629,7 +678,8 @@ begin
       'log',
       'schedule',
       'recoverySession',
-      'medicationEvent'
+      'medicationEvent',
+      'motionSession'
     ) then
       raise exception 'Unsupported entity type: %', v_entity_type;
     end if;
@@ -686,6 +736,12 @@ begin
                 <= (v_client_updated_at, v_mutation_id);
         elsif v_entity_type = 'medicationEvent' then
           delete from public.medication_events
+          where id = v_entity_id
+            and user_id = v_user_id
+            and (client_updated_at, last_mutation_id)
+                <= (v_client_updated_at, v_mutation_id);
+        elsif v_entity_type = 'motionSession' then
+          delete from public.motion_sessions
           where id = v_entity_id
             and user_id = v_user_id
             and (client_updated_at, last_mutation_id)
@@ -843,6 +899,49 @@ begin
           and (public.medication_events.client_updated_at,
                public.medication_events.last_mutation_id)
               <= (excluded.client_updated_at, excluded.last_mutation_id);
+      elsif v_entity_type = 'motionSession' then
+        insert into public.motion_sessions (
+          id,
+          user_id,
+          routine_id,
+          routine_name,
+          engine_version,
+          completed_at,
+          overall_score,
+          record,
+          evaluation,
+          client_updated_at,
+          last_mutation_id
+        ) values (
+          v_entity_id,
+          v_user_id,
+          coalesce(v_payload ->> 'routine_id', ''),
+          coalesce(v_payload ->> 'routine_name', ''),
+          coalesce(v_payload ->> 'engine_version', ''),
+          coalesce(
+            nullif(v_payload ->> 'completed_at', '')::timestamptz,
+            v_client_updated_at
+          ),
+          (v_payload ->> 'overall_score')::double precision,
+          coalesce(v_payload -> 'record', '{}'::jsonb),
+          coalesce(v_payload -> 'evaluation', '{}'::jsonb),
+          v_client_updated_at,
+          v_mutation_id
+        )
+        on conflict (id) do update
+          set routine_id = excluded.routine_id,
+              routine_name = excluded.routine_name,
+              engine_version = excluded.engine_version,
+              completed_at = excluded.completed_at,
+              overall_score = excluded.overall_score,
+              record = excluded.record,
+              evaluation = excluded.evaluation,
+              client_updated_at = excluded.client_updated_at,
+              last_mutation_id = excluded.last_mutation_id
+        where public.motion_sessions.user_id = v_user_id
+          and (public.motion_sessions.client_updated_at,
+               public.motion_sessions.last_mutation_id)
+              <= (excluded.client_updated_at, excluded.last_mutation_id);
       end if;
 
       -- A zero-row guarded upsert is fine when our own newer row won LWW,
@@ -865,6 +964,9 @@ begin
         elsif v_entity_type = 'medicationEvent' then
           select user_id into v_owner
           from public.medication_events where id = v_entity_id;
+        elsif v_entity_type = 'motionSession' then
+          select user_id into v_owner
+          from public.motion_sessions where id = v_entity_id;
         end if;
         if v_owner is not null and v_owner <> v_user_id then
           continue;
@@ -1005,6 +1107,34 @@ create policy recovery_sessions_update_own on public.recovery_sessions
   with check (user_id = public.current_uid() and public.is_full_account());
 
 create policy recovery_sessions_delete_own on public.recovery_sessions
+  for delete to authenticated
+  using (user_id = public.current_uid() and public.is_full_account());
+
+alter table public.motion_sessions enable row level security;
+
+drop policy if exists motion_sessions_select_own on public.motion_sessions;
+drop policy if exists motion_sessions_insert_own on public.motion_sessions;
+drop policy if exists motion_sessions_update_own on public.motion_sessions;
+drop policy if exists motion_sessions_delete_own on public.motion_sessions;
+
+create policy motion_sessions_select_own on public.motion_sessions
+  for select to authenticated
+  using (user_id = public.current_uid() and public.is_full_account());
+
+create policy motion_sessions_insert_own on public.motion_sessions
+  for insert to authenticated
+  with check (
+    user_id = public.current_uid()
+    and public.is_full_account()
+    and length(trim(routine_id)) > 0
+  );
+
+create policy motion_sessions_update_own on public.motion_sessions
+  for update to authenticated
+  using (user_id = public.current_uid() and public.is_full_account())
+  with check (user_id = public.current_uid() and public.is_full_account());
+
+create policy motion_sessions_delete_own on public.motion_sessions
   for delete to authenticated
   using (user_id = public.current_uid() and public.is_full_account());
 

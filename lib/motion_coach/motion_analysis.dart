@@ -4,7 +4,6 @@ import 'dart:isolate';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../services/feature_flags.dart';
-import 'motion_exercise_catalog.dart';
 import 'motion_pose_bridge.dart';
 
 const String motionCoachEngineVersion = '0.3.0';
@@ -31,22 +30,31 @@ String get motionPoseRuntime {
   return 'mediapipe_tasks_test';
 }
 
-/// Build the offline analyzer template for an exercise.
+/// Build the offline analyzer template from the exercise's vendored
+/// `exercise-template.v1` asset.
 ///
-/// Only exercises with a [MotionDetailedAnalysisSpec] have an offline path;
-/// `analyzePoseStream` rejects any other primary signal outright, so this
-/// fails fast rather than producing a template the engine will refuse.
-ExerciseTemplate motionCoachTemplateFor(MotionExerciseDefinition exercise) {
-  final MotionDetailedAnalysisSpec? analysis = exercise.detailedAnalysis;
-  if (analysis == null) {
-    throw ArgumentError(
-      '${exercise.exerciseId} has no detailed-analysis specification',
+/// Everything measured (template version, primary signal, required
+/// landmarks, reference range and tempo, confidence policy) comes from the
+/// asset, which is a generated artifact of the engine repo. Only the pose
+/// contract and orientation are substituted with the app's own runtime
+/// constants: the reference statistics were measured with the engine's
+/// capture model, while this device streams the vendored
+/// `pose_landmarker_lite`, and the engine's exact-equality contract check
+/// would otherwise refuse every real recording.
+ExerciseTemplate motionCoachTemplateFromJson(Map<String, Object?> json) {
+  final ExerciseTemplate parsed = ExerciseTemplate.fromJson(json);
+  if (parsed.poseContract.coordinateSpace != 'mediapipe_world_3d') {
+    // Never substitute across coordinate spaces: angles measured in another
+    // space are not comparable to what this device produces.
+    throw FormatException(
+      'template ${parsed.exerciseId} uses unsupported coordinate space '
+      '${parsed.poseContract.coordinateSpace}',
     );
   }
   return ExerciseTemplate(
-    schemaVersion: 'exercise-template.v1',
-    templateVersion: analysis.templateVersion,
-    exerciseId: exercise.exerciseId,
+    schemaVersion: parsed.schemaVersion,
+    templateVersion: parsed.templateVersion,
+    exerciseId: parsed.exerciseId,
     poseContract: const PoseModelContract(
       runtime: 'mediapipe_tasks',
       model: motionPoseModelName,
@@ -54,49 +62,33 @@ ExerciseTemplate motionCoachTemplateFor(MotionExerciseDefinition exercise) {
       coordinateSpace: 'mediapipe_world_3d',
     ),
     allowedOrientations: const <String>{'portrait'},
-    primarySignal: switch (analysis.kind) {
-      MotionAnalysisKind.bilateralLateralArmRaise => 'arm_elevation_mean',
-    },
-    requiredLandmarks: switch (analysis.kind) {
-      MotionAnalysisKind.bilateralLateralArmRaise => const <String>[
-        'left_shoulder',
-        'right_shoulder',
-        'left_wrist',
-        'right_wrist',
-        'left_hip',
-        'right_hip',
-      ],
-    },
-    referenceRomDeg: analysis.referenceRomDegrees,
-    referenceTempoS: analysis.referenceTempoSeconds,
-    confidencePolicy: const ConfidencePolicy(
-      visibilityThreshold: 0.6,
-      minimumSessionCoverage: 0.8,
-      minimumSamplingHz: 15,
-      maximumInterpolatedGapFrames: 3,
-    ),
+    primarySignal: parsed.primarySignal,
+    requiredLandmarks: parsed.requiredLandmarks,
+    referenceRomDeg: parsed.referenceRomDeg,
+    referenceTempoS: parsed.referenceTempoS,
+    confidencePolicy: parsed.confidencePolicy,
   );
 }
-
-ExerciseTemplate get motionCoachTemplate =>
-    motionCoachTemplateFor(seatedArmRaiseExercise);
 
 class MotionCoachAnalyzer {
   const MotionCoachAnalyzer();
 
+  /// [template] is the exercise's raw `exercise-template.v1` document, as
+  /// loaded by `MotionReferenceLibrary.templateFor`. Passing the JSON keeps
+  /// the request isolate-sendable.
   Future<MotionAnalysisResult> analyze({
     required List<PoseFrame> frames,
     required int width,
     required int height,
+    required Map<String, Object?> template,
     String? runtime,
-    MotionExerciseDefinition exercise = seatedArmRaiseExercise,
   }) {
     final _AnalysisRequest request = _AnalysisRequest(
       frames: frames,
       width: width,
       height: height,
       runtime: runtime ?? motionPoseRuntime,
-      exercise: exercise,
+      template: template,
     );
     return Isolate.run(() => _analyze(request));
   }
@@ -120,7 +112,9 @@ MotionAnalysisResult _analyze(_AnalysisRequest request) {
     ),
     frames: request.frames,
   );
-  final ExerciseTemplate template = motionCoachTemplateFor(request.exercise);
+  final ExerciseTemplate template = motionCoachTemplateFromJson(
+    request.template,
+  );
   return MotionAnalysisResult.fromDocument(
     analyzePoseStream(
       stream,
@@ -138,14 +132,14 @@ class _AnalysisRequest {
     required this.width,
     required this.height,
     required this.runtime,
-    required this.exercise,
+    required this.template,
   });
 
   final List<PoseFrame> frames;
   final int width;
   final int height;
   final String runtime;
-  final MotionExerciseDefinition exercise;
+  final Map<String, Object?> template;
 }
 
 class MotionAnalysisResult {
@@ -179,7 +173,7 @@ class MotionAnalysisResult {
     final Map<String, Object?> repCountMetric =
         metrics['rep_count']! as Map<String, Object?>;
     final Map<String, Object?> range =
-        metrics['arm_elevation_rom_pct']! as Map<String, Object?>;
+        metrics['rom_pct']! as Map<String, Object?>;
     final Map<String, Object?> tempo =
         metrics['tempo_s']! as Map<String, Object?>;
     final Map<String, Object?> side =
@@ -240,7 +234,7 @@ class MotionAnalysisResult {
     final List<String> observations = <String>[];
     if (repCount != null) {
       observations.add(
-        '$repCount complete bilateral ${repCount == 1 ? 'raise was' : 'raises were'} detected',
+        '$repCount complete ${repCount == 1 ? 'movement was' : 'movements were'} detected',
       );
     }
     if (rangeDegrees != null && rangePercentOfReference != null) {
@@ -274,7 +268,7 @@ class MotionAnalysisResult {
     }
     final MotionRepObservation first = repetitions.first;
     final MotionRepObservation last = repetitions.last;
-    return 'The first complete raise measured ${first.romDegrees.round()}° and '
+    return 'The first complete movement measured ${first.romDegrees.round()}° and '
         'the last measured ${last.romDegrees.round()}° '
         '(${(amplitudeSequenceLastFirstRatio! * 100).round()}% of the first).';
   }
@@ -288,6 +282,7 @@ class MotionAnalysisResult {
 class MotionRepObservation {
   const MotionRepObservation({
     required this.index,
+    required this.side,
     required this.startSeconds,
     required this.peakSeconds,
     required this.endSeconds,
@@ -304,6 +299,7 @@ class MotionRepObservation {
   factory MotionRepObservation.fromDocument(Map<String, Object?> document) =>
       MotionRepObservation(
         index: (document['index']! as num).toInt(),
+        side: document['side'] as String? ?? 'both',
         startSeconds: (document['start_s']! as num).toDouble(),
         peakSeconds: (document['peak_s']! as num).toDouble(),
         endSeconds: (document['end_s']! as num).toDouble(),
@@ -321,6 +317,9 @@ class MotionRepObservation {
       );
 
   final int index;
+
+  /// Which side performed the movement: 'left', 'right', or 'both'.
+  final String side;
   final double startSeconds;
   final double peakSeconds;
   final double endSeconds;

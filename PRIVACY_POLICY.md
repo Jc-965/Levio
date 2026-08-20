@@ -56,6 +56,13 @@ specific law requires them.
 - **Recovery activity:** your weekly speech and movement goals, and a
   history of completed guided sessions (session type, video title, and
   completion time).
+- **Motion coach results** (synced accounts only, optional): when you use
+  the camera-guided motion coach while signed in, derived results —
+  movement scores, repetition counts, and short pre-written summary
+  sentences — are backed up to your account so they survive a new phone.
+  You can turn this backup off at any time in Motion coach settings.
+  Camera images, video, and body-pose landmarks are **never** part of
+  this backup and never leave your device.
 - **Community content** (optional feature): posts, comments, likes,
   shares, group memberships, and the display name and profile image shown
   alongside them.
@@ -67,6 +74,10 @@ specific law requires them.
   against a guided exercise. These recordings are stored only on your
   device and are **never uploaded** to ParkiWell's servers or any third
   party. Deleting the app deletes them.
+- **Camera frames and body-pose landmarks:** the motion coach analyzes
+  camera frames on your device with an on-device pose model. Frames and
+  the body landmark points computed from them are processed in memory and
+  are never uploaded anywhere.
 - **On-device insights:** trends, streaks, weekly progress, and pattern
   summaries (for example, comparisons of logged severity across therapy
   days) are computed locally from your own records.

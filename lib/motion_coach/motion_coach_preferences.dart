@@ -13,6 +13,7 @@ class MotionCoachPreferences extends ChangeNotifier {
 
   static const String speechKey = 'parkiwell_motion_coach_speech_enabled_v1';
   static const String hapticsKey = 'parkiwell_motion_coach_haptics_enabled_v1';
+  static const String syncResultsKey = 'parkiwell_motion_coach_sync_enabled_v1';
 
   /// Process-wide instance so every screen observes the same toggles.
   static final MotionCoachPreferences shared = MotionCoachPreferences();
@@ -20,16 +21,22 @@ class MotionCoachPreferences extends ChangeNotifier {
   SharedPreferences? _preferences;
   bool _speechEnabled = true;
   bool _hapticsEnabled = true;
+  bool _syncResultsEnabled = true;
   bool _loaded = false;
 
   bool get isLoaded => _loaded;
   bool get speechEnabled => _speechEnabled;
   bool get hapticsEnabled => _hapticsEnabled;
 
+  /// Whether derived session results (scores and repetition counts, never
+  /// video or pose data) are backed up to the signed-in account.
+  bool get syncResultsEnabled => _syncResultsEnabled;
+
   Future<void> load() async {
     final SharedPreferences preferences = await _resolve();
     _speechEnabled = preferences.getBool(speechKey) ?? true;
     _hapticsEnabled = preferences.getBool(hapticsKey) ?? true;
+    _syncResultsEnabled = preferences.getBool(syncResultsKey) ?? true;
     _loaded = true;
     notifyListeners();
   }
@@ -48,6 +55,14 @@ class MotionCoachPreferences extends ChangeNotifier {
     notifyListeners();
     final SharedPreferences preferences = await _resolve();
     await preferences.setBool(hapticsKey, enabled);
+  }
+
+  Future<void> setSyncResultsEnabled(bool enabled) async {
+    if (_syncResultsEnabled == enabled) return;
+    _syncResultsEnabled = enabled;
+    notifyListeners();
+    final SharedPreferences preferences = await _resolve();
+    await preferences.setBool(syncResultsKey, enabled);
   }
 
   Future<SharedPreferences> _resolve() async =>

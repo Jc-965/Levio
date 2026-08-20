@@ -362,7 +362,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         frames: frames,
         width: width,
         height: height,
-        exercise: widget.exercise,
+        template: await widget.library.templateFor(widget.exercise.exerciseId),
       );
       if (!mounted) {
         await _deleteVideo(videoPath);

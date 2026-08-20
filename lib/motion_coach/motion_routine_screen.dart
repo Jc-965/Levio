@@ -369,7 +369,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     // dead session screen with a disposed camera underneath the results.
     final ModalRoute<Object?>? ownRoute = ModalRoute.of(context);
     if (ownRoute != null && !ownRoute.isCurrent) {
-      Navigator.of(context).popUntil((Route<Object?> route) => route == ownRoute);
+      Navigator.of(
+        context,
+      ).popUntil((Route<Object?> route) => route == ownRoute);
     }
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
@@ -734,6 +736,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
         MotionFramingStatus.showMoreBody =>
           'Part of you is out of frame. Move so your head, hands, and hips '
               'are all visible.',
+        MotionFramingStatus.showLowerBody =>
+          'Your legs are out of frame. Step back or tilt the phone down so '
+              'your knees and feet stay visible.',
         MotionFramingStatus.moveCloser =>
           'You look far away. Move a little closer to the phone.',
         MotionFramingStatus.lookingForPerson =>
@@ -750,6 +755,9 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
             'in frame.',
       MotionFramingStatus.showMoreBody =>
         'Move so your head, both hands, and both hips are inside the frame.',
+      MotionFramingStatus.showLowerBody =>
+        'This exercise measures your legs. Step back or tilt the phone down '
+            'so your knees and feet are inside the frame.',
       MotionFramingStatus.moveCloser =>
         'Move a little closer to the phone, or lift it higher.',
       MotionFramingStatus.lookingForPerson => 'Looking for you…',

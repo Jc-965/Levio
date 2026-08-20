@@ -213,7 +213,6 @@ const MotionExerciseDefinition seatedTrunkLeanExercise =
       clinicalStatus: MotionExerciseClinicalStatus.development,
     );
 
-
 const MotionExerciseDefinition standingHipFlexionExercise =
     MotionExerciseDefinition(
       exerciseId: 'standing_hip_flexion',
@@ -254,8 +253,8 @@ const MotionExerciseDefinition standingSideLegRaiseExercise =
           'Holding a stable chair, lift one leg out to the side with the '
           'knee straight, lower it, then switch legs.',
       setupHint:
-          'Stand facing the phone with space to your sides so the raised '
-          'leg stays in view.',
+          'Stand facing the phone, far enough back that your feet stay in '
+          'view, with space to your sides for the raised leg.',
       minimumRecordingRepetitions: 4,
       maximumRecordingRepetitions: 8,
       posture: MotionExercisePosture.standing,

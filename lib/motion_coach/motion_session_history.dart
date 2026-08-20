@@ -124,13 +124,11 @@ class MotionSessionHistory {
         if (known.add(entry.id)) entry,
     ];
     if (added.isEmpty) return 0;
-    final List<MotionSessionRecord> merged = <MotionSessionRecord>[
-      ..._entries,
-      ...added,
-    ]..sort(
-        (MotionSessionRecord a, MotionSessionRecord b) =>
-            b.completedAt.compareTo(a.completedAt),
-      );
+    final List<MotionSessionRecord> merged =
+        <MotionSessionRecord>[..._entries, ...added]..sort(
+          (MotionSessionRecord a, MotionSessionRecord b) =>
+              b.completedAt.compareTo(a.completedAt),
+        );
     _entries = merged.length > maximumEntries
         ? List<MotionSessionRecord>.unmodifiable(
             merged.sublist(0, maximumEntries),
@@ -279,7 +277,9 @@ class MotionSessionHistory {
     } on FormatException {
       return (const <MotionSessionRecord>[], false);
     }
-    if (decoded is! List<Object?>) return (const <MotionSessionRecord>[], false);
+    if (decoded is! List<Object?>) {
+      return (const <MotionSessionRecord>[], false);
+    }
     // Entries are decoded one at a time: a single record written by a future
     // or corrupted build must cost that one entry, never the whole history.
     final List<MotionSessionRecord> entries = <MotionSessionRecord>[];

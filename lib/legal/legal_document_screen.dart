@@ -150,7 +150,7 @@ class LegalDocumentScreen extends StatelessWidget {
       _LegalSection(
         title: 'Summary',
         body:
-            'ParkiWell works local-first: your records live in private storage on your device and remain usable offline. Cloud sync is optional and happens only when you sign in. We do not sell personal data, show ads, track you across apps, or operate remote analytics or crash reporting. The optional motion check uses Google MediaPipe, which sends API performance and utilization metrics to Google but does not send your camera input. Practice recordings never leave your device, and you can delete your account and synced data in-app at any time.',
+            'ParkiWell works local-first: your records live in private storage on your device and remain usable offline. Cloud sync is optional and happens only when you sign in. We do not sell personal data, show ads, track you across apps, or operate remote analytics or crash reporting. The optional motion coach analyzes camera frames on-device with Google MediaPipe, which sends API performance and utilization metrics to Google but never your camera input; when you are signed in with backup on, only derived movement scores and repetition counts sync to your account. Practice recordings and camera data never leave your device, and you can delete your account, your movement history, and synced data in-app at any time.',
       ),
       _LegalSection(
         title: 'Information You Provide',
@@ -180,7 +180,7 @@ class LegalDocumentScreen extends StatelessWidget {
       _LegalSection(
         title: 'Sharing',
         body:
-            'We do not sell personal data or share it with advertisers or data brokers. Service providers include Supabase for hosting and authentication and Google when you choose Google sign-in or use MediaPipe motion check. MediaPipe processes camera input on-device and sends Google API performance and utilization metrics, not images, video, or pose landmarks. Recovery videos are embedded from YouTube, which may collect data under its own policy when a video loads. We may disclose information if required by law.',
+            'We do not sell personal data or share it with advertisers or data brokers. Service providers include Supabase for hosting and authentication, Google when you choose Google sign-in or use MediaPipe motion check, and Anthropic only if you turn on the optional AI session summary. MediaPipe processes camera input on-device and sends Google API performance and utilization metrics, not images, video, or pose landmarks. With the AI summary enabled, the derived scores and repetition counts of a backed-up motion session (never your name, camera images, video, or pose data) are sent to Anthropic\'s Claude API to write a short summary; it is off by default and can be disabled any time in Motion coach settings. Recovery videos are embedded from YouTube, which may collect data under its own policy when a video loads. We may disclose information if required by law.',
       ),
       _LegalSection(
         title: 'Community Visibility',

@@ -220,8 +220,25 @@ class MotionRoutineController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Cached per target exercise: this runs at camera rate and must not
+  // rebuild the landmark list or re-resolve the catalog every frame.
+  List<int> _framingExtra = const <int>[];
+  String? _framingExerciseId;
+
   void _updateFraming(MotionPoseSample sample) {
-    final MotionFramingStatus raw = assessFraming(sample.detection);
+    // Frame against the exercise the person is setting up for: during rest
+    // that is the next step, mirroring the demonstration preview. A green
+    // "ready" that the engine would immediately invalidate (legs out of
+    // frame for a leg exercise) would misdirect the whole session.
+    final MotionExerciseDefinition target = upcomingExercise ?? currentExercise;
+    if (_framingExerciseId != target.exerciseId) {
+      _framingExerciseId = target.exerciseId;
+      _framingExtra = framingLandmarksFor(target.engineSpec);
+    }
+    final MotionFramingStatus raw = assessFraming(
+      sample.detection,
+      additionalLandmarks: _framingExtra,
+    );
     // The published status is debounced: landmarks hovering at a threshold
     // can reclassify every frame, and the status feeds user-visible (and
     // screen-reader live-region) guidance that must not flap. A new reading

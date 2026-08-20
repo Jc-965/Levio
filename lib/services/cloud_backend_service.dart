@@ -838,7 +838,8 @@ class CloudBackendService {
           .timeout(const Duration(seconds: 4));
       return <String, bool>{
         for (final row in List<Map<String, dynamic>>.from(result))
-          if (row['key'] is String) row['key'] as String: row['enabled'] == true,
+          if (row['key'] is String)
+            row['key'] as String: row['enabled'] == true,
       };
     } catch (e, stackTrace) {
       _logger.warning('App flags fetch failed', e, stackTrace);

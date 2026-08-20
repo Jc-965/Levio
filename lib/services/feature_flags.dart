@@ -34,8 +34,7 @@ class FeatureFlags {
   /// Last known value for [key]; [fallback] when the flag has never been
   /// fetched. Callers should default to enabled so the flag can only turn a
   /// broken feature off, never strand a healthy one.
-  bool isEnabled(String key, {bool fallback = true}) =>
-      _flags[key] ?? fallback;
+  bool isEnabled(String key, {bool fallback = true}) => _flags[key] ?? fallback;
 
   /// Hydrate the cached map from local storage.
   Future<void> load() async {

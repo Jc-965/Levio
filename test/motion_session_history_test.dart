@@ -376,8 +376,7 @@ void main() {
       expect(step.repetitions.single.romPctOfReference, 95);
     });
 
-    test('merges cloud records by id with local winning collisions',
-        () async {
+    test('merges cloud records by id with local winning collisions', () async {
       final MotionSessionHistory history = MotionSessionHistory();
       final MotionSessionRecord local = await history.record(
         _evaluation(score: 90),

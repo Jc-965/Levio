@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
   }
   const anthropic = new Anthropic({ apiKey });
   let text = "";
+  let servedBy = MODEL;
   try {
     const response = await anthropic.beta.messages.create({
       model: MODEL,
@@ -171,6 +172,9 @@ Deno.serve(async (req) => {
     for (const block of response.content) {
       if (block.type === "text") text += block.text;
     }
+    // A server-side fallback may have answered; record the model that
+    // actually wrote the text.
+    servedBy = response.model ?? MODEL;
   } catch (_) {
     return json({ summary: null }, 200);
   }
@@ -187,7 +191,7 @@ Deno.serve(async (req) => {
     .from("motion_sessions")
     .update({
       llm_summary: summary,
-      llm_summary_model: MODEL,
+      llm_summary_model: servedBy,
       llm_summary_generated_at: new Date().toISOString(),
     })
     .eq("id", sessionId)

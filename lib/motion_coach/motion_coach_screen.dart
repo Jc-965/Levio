@@ -398,7 +398,9 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     // the dialog and the final pop would hand the outcome to it.
     final ModalRoute<Object?>? ownRoute = ModalRoute.of(context);
     if (ownRoute != null && !ownRoute.isCurrent) {
-      Navigator.of(context).popUntil((Route<Object?> route) => route == ownRoute);
+      Navigator.of(
+        context,
+      ).popUntil((Route<Object?> route) => route == ownRoute);
     }
     setState(() => _phase = _CapturePhase.analyzing);
 
@@ -659,11 +661,15 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
                     color: Colors.black.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    '${_session.liveRepCount} complete',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
+                  child: Semantics(
+                    liveRegion: true,
+                    label: '${_session.liveRepCount} movements complete',
+                    child: Text(
+                      '${_session.liveRepCount} complete',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -821,6 +827,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         'Keep only one person in the camera view.',
       MotionFramingStatus.showMoreBody =>
         'Keep your face, shoulders, wrists, and hips visible.',
+      MotionFramingStatus.showLowerBody =>
+        'Step back or tilt the phone down so your legs and feet are in view.',
       MotionFramingStatus.moveCloser =>
         'Move the phone a little closer and keep it steady.',
       MotionFramingStatus.ready =>
@@ -894,48 +902,42 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
 
   Widget _buildActions(BuildContext context) {
     if (_phase == _CapturePhase.error) {
-      return SizedBox(
-        height: 54,
-        child: FilledButton.icon(
-          onPressed: _initialize,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Try again'),
-        ),
+      return FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+        onPressed: _initialize,
+        icon: const Icon(Icons.refresh_rounded),
+        label: const Text('Try again'),
       );
     }
     if (_phase == _CapturePhase.recording) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: _finishRecording,
-              icon: const Icon(Icons.stop_circle_outlined),
-              label: const Text('Finish and review'),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
             ),
+            onPressed: _finishRecording,
+            icon: const Icon(Icons.stop_circle_outlined),
+            label: const Text('Finish and review'),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 48,
-            child: TextButton(
-              onPressed: () => _confirmCancel(exitAfter: false),
-              child: const Text('Cancel recording'),
-            ),
+          TextButton(
+            style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            onPressed: () => _confirmCancel(exitAfter: false),
+            child: const Text('Cancel recording'),
           ),
         ],
       );
     }
-    return SizedBox(
-      height: 56,
-      child: FilledButton.icon(
-        onPressed: _phase == _CapturePhase.framing && _session.isReady
-            ? _startRecording
-            : null,
-        icon: const Icon(Icons.fiber_manual_record_rounded),
-        label: Text(
-          _phase == _CapturePhase.analyzing ? 'Reviewing…' : 'Start movement',
-        ),
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+      onPressed: _phase == _CapturePhase.framing && _session.isReady
+          ? _startRecording
+          : null,
+      icon: const Icon(Icons.fiber_manual_record_rounded),
+      label: Text(
+        _phase == _CapturePhase.analyzing ? 'Reviewing…' : 'Start movement',
       ),
     );
   }
@@ -957,6 +959,7 @@ class _TrackingPill extends StatelessWidget {
             MotionFramingStatus.lookingForPerson => 'Move into view',
             MotionFramingStatus.multiplePeople => 'Keep one person in view',
             MotionFramingStatus.showMoreBody => 'Show more of your upper body',
+            MotionFramingStatus.showLowerBody => 'Show your legs and feet',
             MotionFramingStatus.moveCloser => 'Move a little closer',
             MotionFramingStatus.ready => 'Ready',
           };

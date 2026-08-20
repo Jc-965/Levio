@@ -28,27 +28,31 @@ void main() {
       expect(mutation.payload['routine_id'], 'seated_foundation_v1');
     });
 
-    test('an unknown entity type from a future build is dropped, not fatal',
-        () async {
-      final store = _MemoryMutationJournalStore();
-      final engine = OfflineSyncEngine(store);
-      await engine.initialize();
-      await engine.enqueue(
-        mutationId: 'known-1',
-        entityType: SyncEntityType.log,
-        entityId: 'log-1',
-        operation: SyncMutationOperation.upsert,
-        payload: const <String, dynamic>{},
-        clientUpdatedAt: DateTime.utc(2026, 8, 2),
-      );
-      // Simulate a downgrade reading a journal with a type it cannot name.
-      store.encoded = store.encoded!
-          .replaceFirst('"entity_type":"log"', '"entity_type":"hologram"');
+    test(
+      'an unknown entity type from a future build is dropped, not fatal',
+      () async {
+        final store = _MemoryMutationJournalStore();
+        final engine = OfflineSyncEngine(store);
+        await engine.initialize();
+        await engine.enqueue(
+          mutationId: 'known-1',
+          entityType: SyncEntityType.log,
+          entityId: 'log-1',
+          operation: SyncMutationOperation.upsert,
+          payload: const <String, dynamic>{},
+          clientUpdatedAt: DateTime.utc(2026, 8, 2),
+        );
+        // Simulate a downgrade reading a journal with a type it cannot name.
+        store.encoded = store.encoded!.replaceFirst(
+          '"entity_type":"log"',
+          '"entity_type":"hologram"',
+        );
 
-      final restored = OfflineSyncEngine(store);
-      await restored.initialize();
-      expect(restored.pendingCount, 0);
-    });
+        final restored = OfflineSyncEngine(store);
+        await restored.initialize();
+        expect(restored.pendingCount, 0);
+      },
+    );
 
     test('keeps the newest deterministic mutation for each entity', () async {
       final store = _MemoryMutationJournalStore();

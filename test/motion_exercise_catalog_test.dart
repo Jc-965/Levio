@@ -138,10 +138,7 @@ void main() {
         ...json['pose_contract']! as Map<String, Object?>,
         'coordinate_space': 'normalized_2d',
       };
-      expect(
-        () => motionCoachTemplateFromJson(json),
-        throwsFormatException,
-      );
+      expect(() => motionCoachTemplateFromJson(json), throwsFormatException);
     });
   });
 }

@@ -7,13 +7,27 @@ import 'motion_pose_bridge.dart';
 
 const List<int> _framingLandmarks = <int>[0, 11, 12, 15, 16, 23, 24];
 
+/// First landmark index of the lower body (knees and below). Framing
+/// failures at or past it get their own guidance: "show more of your body"
+/// reads as an upper-body instruction and misdirects someone whose feet
+/// are simply out of frame.
+const int _lowerBodyLandmarkStart = 25;
+
 enum MotionFramingStatus {
   lookingForPerson,
   multiplePeople,
   showMoreBody,
+  showLowerBody,
   moveCloser,
   ready,
 }
+
+/// Landmark indices an exercise needs beyond the base framing set, derived
+/// from its engine specification.
+List<int> framingLandmarksFor(ExerciseSpec spec) => <int>[
+  for (final String name in spec.requiredLandmarks)
+    if (!_framingLandmarks.contains(landmarkIndex[name]!)) landmarkIndex[name]!,
+];
 
 class MotionPoseSample {
   const MotionPoseSample({
@@ -35,9 +49,14 @@ class MotionPoseSample {
 /// score comes from the exercise's template rather than from the app.
 class MotionCoachSession extends ChangeNotifier {
   MotionCoachSession({required LiveExerciseCoach liveCoach})
-    : _liveCoach = liveCoach;
+    : _liveCoach = liveCoach,
+      _exerciseLandmarks = framingLandmarksFor(liveCoach.spec);
 
   final LiveExerciseCoach _liveCoach;
+
+  /// Landmarks this exercise measures beyond the base framing set; a green
+  /// "ready" that the engine would immediately invalidate is a lie.
+  final List<int> _exerciseLandmarks;
   final List<PoseFrame> _frames = <PoseFrame>[];
   bool _disposed = false;
   int _goodFramingFrames = 0;
@@ -103,7 +122,10 @@ class MotionCoachSession extends ChangeNotifier {
     final Object before = _observableState();
     _frameWidth = math.max(1, sample.frameWidth);
     _frameHeight = math.max(1, sample.frameHeight);
-    final MotionFramingStatus raw = assessFraming(sample.detection);
+    final MotionFramingStatus raw = assessFraming(
+      sample.detection,
+      additionalLandmarks: _exerciseLandmarks,
+    );
     // Debounced like the routine controller: the published status feeds
     // user-visible guidance and must not reclassify frame to frame while a
     // landmark hovers at a threshold.
@@ -268,7 +290,10 @@ PoseFrame poseFrameFromDetection(MotionPoseDetection detection) {
   );
 }
 
-MotionFramingStatus assessFraming(MotionPoseDetection detection) {
+MotionFramingStatus assessFraming(
+  MotionPoseDetection detection, {
+  List<int> additionalLandmarks = const <int>[],
+}) {
   if (detection.poseCount > 1) {
     return MotionFramingStatus.multiplePeople;
   }
@@ -276,17 +301,28 @@ MotionFramingStatus assessFraming(MotionPoseDetection detection) {
   if (landmarks == null || landmarks.length != 33) {
     return MotionFramingStatus.lookingForPerson;
   }
-  for (final int index in _framingLandmarks) {
+  bool visible(int index) {
     final MotionPoseLandmark point = landmarks[index];
-    if (!point.x.isFinite ||
-        !point.y.isFinite ||
-        point.visibility < 0.6 ||
-        point.presence < 0.6 ||
-        point.x < -0.05 ||
-        point.x > 1.05 ||
-        point.y < -0.05 ||
-        point.y > 1.05) {
+    return point.x.isFinite &&
+        point.y.isFinite &&
+        point.visibility >= 0.6 &&
+        point.presence >= 0.6 &&
+        point.x >= -0.05 &&
+        point.x <= 1.05 &&
+        point.y >= -0.05 &&
+        point.y <= 1.05;
+  }
+
+  for (final int index in _framingLandmarks) {
+    if (!visible(index)) {
       return MotionFramingStatus.showMoreBody;
+    }
+  }
+  for (final int index in additionalLandmarks) {
+    if (!visible(index)) {
+      return index >= _lowerBodyLandmarkStart
+          ? MotionFramingStatus.showLowerBody
+          : MotionFramingStatus.showMoreBody;
     }
   }
   final double shoulderSpan = (landmarks[11].x - landmarks[12].x).abs();

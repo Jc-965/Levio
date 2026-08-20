@@ -5,7 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Serialized by name; a journal entry whose name an older build does not
 // know decodes to null and is dropped, so appending new members is safe
 // forward and a one-way loss on downgrade (accepted).
-enum SyncEntityType { log, schedule, recoverySession, medicationEvent, motionSession }
+enum SyncEntityType {
+  log,
+  schedule,
+  recoverySession,
+  medicationEvent,
+  motionSession,
+}
 
 enum SyncMutationOperation { upsert, delete }
 

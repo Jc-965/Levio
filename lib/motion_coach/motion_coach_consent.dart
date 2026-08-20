@@ -20,16 +20,20 @@ Future<bool> ensureMotionCoachConsent(BuildContext context) async {
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
       title: const Text('Motion check privacy'),
-      content: const Text(
-        'Your camera images, recording, and pose landmarks are processed '
-        'on this device and never leave it. Google MediaPipe may receive '
-        'performance and usage metrics about its on-device API, but not '
-        'your images, video, or pose landmarks.\n\n'
-        'When you are signed in, derived results (scores and repetition '
-        'counts) are backed up to your account so they survive a new '
-        'phone. You can turn this off any time in Motion coach settings.\n\n'
-        'Motion check offers general movement observations. It is not a '
-        'diagnosis or medical assessment.',
+      // Scrollable: three paragraphs at a large accessibility text scale
+      // overflow a fixed dialog, and this dialog gates the whole feature.
+      content: const SingleChildScrollView(
+        child: Text(
+          'Your camera images, recording, and pose landmarks are processed '
+          'on this device and never leave it. Google MediaPipe may receive '
+          'performance and usage metrics about its on-device API, but not '
+          'your images, video, or pose landmarks.\n\n'
+          'When you are signed in, derived results (scores and repetition '
+          'counts) are backed up to your account so they survive a new '
+          'phone. You can turn this off any time in Motion coach settings.\n\n'
+          'Motion check offers general movement observations. It is not a '
+          'diagnosis or medical assessment.',
+        ),
       ),
       actions: [
         TextButton(

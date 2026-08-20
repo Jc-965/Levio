@@ -46,6 +46,8 @@ class _MotionDemoVideoViewState extends State<MotionDemoVideoView> {
       await controller.setLooping(true);
       await controller.setVolume(0);
       if (!mounted) return;
+      // With reduce-motion on, hold the first frame; a tap still starts
+      // playback deliberately, so the demonstration is never unreachable.
       final bool reduceMotion = MediaQuery.of(context).disableAnimations;
       if (!reduceMotion) {
         await controller.play();
@@ -86,12 +88,50 @@ class _MotionDemoVideoViewState extends State<MotionDemoVideoView> {
     if (controller == null || !controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator());
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: controller.value.aspectRatio,
-          child: VideoPlayer(controller),
+    final bool playing = controller.value.isPlaying;
+    return Semantics(
+      button: true,
+      label: playing
+          ? 'Demonstration video playing. Double tap to pause.'
+          : 'Demonstration video paused. Double tap to play.',
+      child: GestureDetector(
+        onTap: () async {
+          // Read the live state, not the build-time capture: two quick
+          // taps must toggle twice, not repeat the same command.
+          if (controller.value.isPlaying) {
+            await controller.pause();
+          } else {
+            await controller.play();
+          }
+          if (mounted) setState(() {});
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: controller.value.aspectRatio,
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  VideoPlayer(controller),
+                  if (!playing)
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

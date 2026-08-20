@@ -178,6 +178,7 @@ alter table public.motion_sessions
     and pg_column_size(record) <= 65536
     and pg_column_size(evaluation) <= 131072
     and (llm_summary is null or length(llm_summary) <= 2000)
+    and (llm_summary_model is null or length(llm_summary_model) <= 64)
   );
 
 alter table public.motion_sessions
@@ -1213,19 +1214,11 @@ create policy motion_sessions_select_own on public.motion_sessions
   for select to authenticated
   using (user_id = public.current_uid() and public.is_full_account());
 
-create policy motion_sessions_insert_own on public.motion_sessions
-  for insert to authenticated
-  with check (
-    user_id = public.current_uid()
-    and public.is_full_account()
-    and length(trim(routine_id)) > 0
-  );
-
-create policy motion_sessions_update_own on public.motion_sessions
-  for update to authenticated
-  using (user_id = public.current_uid() and public.is_full_account())
-  with check (user_id = public.current_uid() and public.is_full_account());
-
+-- No insert/update policies on purpose: every client write flows through
+-- apply_health_mutations (security definer), and a direct row UPDATE would
+-- let an owner rewrite the llm_summary_* budget columns and defeat the AI
+-- spend limits. Deletion stays client-reachable for the account-deletion
+-- fallback path.
 create policy motion_sessions_delete_own on public.motion_sessions
   for delete to authenticated
   using (user_id = public.current_uid() and public.is_full_account());

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:motion_engine/motion_engine.dart';
 
 import '../services/app_logger.dart';
+import '../services/cloud_backend_service.dart';
+import '../services/feature_flags.dart';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
@@ -57,6 +59,10 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     if (!_preferences.isLoaded) unawaited(_preferences.load());
     unawaited(_loadHistory());
     unawaited(_loadRoutinePreviews());
+    // Phones keep apps resident for days; a kill switch that is only read
+    // at cold start could lag indefinitely. Entering the coach is the
+    // moment its freshness matters.
+    unawaited(FeatureFlags.shared.refresh(CloudBackendService()));
   }
 
   /// Best effort: each routine card previews its first exercise's reference

@@ -35,7 +35,7 @@ final class SegmentationConfig {
     this.reversalRatio = 0.08,
     this.returnRatio = 0.20,
     this.minimumDurationRatio = 0.35,
-    this.maximumDurationRatio = 3,
+    this.maximumDurationRatio = 6,
   }) {
     if (!referenceRomDeg.isFinite || referenceRomDeg <= 0) {
       throw ArgumentError.value(referenceRomDeg, 'referenceRomDeg');
@@ -62,6 +62,13 @@ List<RepBoundary> segmentReps(
 ) {
   if (signal.length != timestampsMs.length) {
     throw ArgumentError('signal and timestampsMs must have equal length');
+  }
+  for (final num timestamp in timestampsMs) {
+    // NaN defeats ordering comparisons below (every comparison is false),
+    // so finiteness must be validated explicitly, as the Python engine does.
+    if (!timestamp.toDouble().isFinite) {
+      throw ArgumentError('timestampsMs must contain only finite values');
+    }
   }
   for (int index = 1; index < timestampsMs.length; index += 1) {
     if (timestampsMs[index].toDouble() <= timestampsMs[index - 1].toDouble()) {

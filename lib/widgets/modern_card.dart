@@ -42,65 +42,70 @@ class _ModernCardState extends State<ModernCard> {
     final cardColor = widget.backgroundColor ?? colors.cardBackground;
     final hasGradient = widget.gradient != null;
 
-    return GestureDetector(
-      onTapDown: widget.onTap != null
-          ? (_) => setState(() => _isPressed = true)
-          : null,
-      onTapUp: widget.onTap != null
-          ? (_) => setState(() => _isPressed = false)
-          : null,
-      onTapCancel: widget.onTap != null
-          ? () => setState(() => _isPressed = false)
-          : null,
-      onTap: widget.onTap != null
-          ? () {
-              HapticUtils.lightImpact();
-              widget.onTap!();
-            }
-          : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        margin: widget.margin ?? const EdgeInsets.symmetric(vertical: 6),
-        transform: Matrix4.identity()
-          ..scaleByDouble(
-            _isPressed ? 0.99 : 1.0,
-            _isPressed ? 0.99 : 1.0,
-            1.0,
-            1.0,
-          )
-          ..translateByDouble(0.0, _isPressed ? 1.0 : 0.0, 0.0, 1.0),
-        decoration: BoxDecoration(
-          color: hasGradient
-              ? null
-              : (_isPressed
-                    ? Color.lerp(cardColor, colors.surfaceVariant, 0.45)
-                    : cardColor),
-          gradient: widget.gradient,
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          border:
-              widget.border ??
-              (widget.showBorder
-                  ? Border.all(
-                      color: _isPressed
-                          ? colors.border.blend(colors.primary, 0.38)
-                          : colors.border,
-                    )
-                  : null),
-          boxShadow: [
-            BoxShadow(
-              color: colors.shadow,
-              blurRadius: _isPressed ? 5 : 12,
-              spreadRadius: 0,
-              offset: Offset(0, _isPressed ? 2 : 5),
+    // Tappable cards must read as buttons to assistive tech; without this
+    // a screen reader announces plain text with no hint that it activates.
+    return Semantics(
+      button: widget.onTap != null,
+      child: GestureDetector(
+        onTapDown: widget.onTap != null
+            ? (_) => setState(() => _isPressed = true)
+            : null,
+        onTapUp: widget.onTap != null
+            ? (_) => setState(() => _isPressed = false)
+            : null,
+        onTapCancel: widget.onTap != null
+            ? () => setState(() => _isPressed = false)
+            : null,
+        onTap: widget.onTap != null
+            ? () {
+                HapticUtils.lightImpact();
+                widget.onTap!();
+              }
+            : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          margin: widget.margin ?? const EdgeInsets.symmetric(vertical: 6),
+          transform: Matrix4.identity()
+            ..scaleByDouble(
+              _isPressed ? 0.99 : 1.0,
+              _isPressed ? 0.99 : 1.0,
+              1.0,
+              1.0,
+            )
+            ..translateByDouble(0.0, _isPressed ? 1.0 : 0.0, 0.0, 1.0),
+          decoration: BoxDecoration(
+            color: hasGradient
+                ? null
+                : (_isPressed
+                      ? Color.lerp(cardColor, colors.surfaceVariant, 0.45)
+                      : cardColor),
+            gradient: widget.gradient,
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border:
+                widget.border ??
+                (widget.showBorder
+                    ? Border.all(
+                        color: _isPressed
+                            ? colors.border.blend(colors.primary, 0.38)
+                            : colors.border,
+                      )
+                    : null),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow,
+                blurRadius: _isPressed ? 5 : 12,
+                spreadRadius: 0,
+                offset: Offset(0, _isPressed ? 2 : 5),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            child: Padding(
+              padding: widget.padding ?? const EdgeInsets.all(16),
+              child: widget.child,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          child: Padding(
-            padding: widget.padding ?? const EdgeInsets.all(16),
-            child: widget.child,
           ),
         ),
       ),

@@ -109,6 +109,40 @@ void main() {
       expect(session.maximumDecisionMicros, lessThan(100000));
     });
 
+    test('a leg exercise reports lower-body framing separately', () {
+      final MotionPoseDetection detection = _detection(timestampMs: 0);
+      final List<MotionPoseLandmark> normalized = List<MotionPoseLandmark>.of(
+        detection.normalizedLandmarks!,
+      );
+      // Hide the left ankle only: upper-body framing is perfect, but a
+      // standing leg exercise cannot be measured.
+      normalized[27] = const MotionPoseLandmark(
+        x: 0.4,
+        y: 1.4,
+        z: 0,
+        visibility: 0.1,
+        presence: 0.1,
+      );
+      final MotionPoseDetection cropped = MotionPoseDetection(
+        timestampMs: 0,
+        normalizedLandmarks: normalized,
+        worldLandmarks: detection.worldLandmarks,
+        inferenceMs: 8,
+        poseCount: 1,
+      );
+      final List<int> legLandmarks = framingLandmarksFor(
+        exerciseSpecById('standing_side_leg_raise'),
+      );
+
+      // Without exercise context the crop is invisible; with it, the
+      // status names the actual problem instead of "show more body".
+      expect(assessFraming(cropped), MotionFramingStatus.ready);
+      expect(
+        assessFraming(cropped, additionalLandmarks: legLandmarks),
+        MotionFramingStatus.showLowerBody,
+      );
+    });
+
     test('distinguishes missing, cropped, and distant framing', () {
       expect(
         assessFraming(MotionPoseDetection.empty(timestampMs: 0)),

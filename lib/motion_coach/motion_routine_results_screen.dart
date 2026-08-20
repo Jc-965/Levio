@@ -43,7 +43,8 @@ class MotionRoutineResultsScreen extends StatelessWidget {
   double? get _trendDelta {
     final double? score = record.overallScore;
     if (score == null) return null;
-    final MotionSessionHistory history = _history ?? MotionSessionHistory.shared;
+    final MotionSessionHistory history =
+        _history ?? MotionSessionHistory.shared;
     final List<double> previous = <double>[
       for (final MotionSessionRecord entry in history.entries)
         if (entry.id != record.id && entry.overallScore != null)
@@ -142,12 +143,12 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                             final String text = delta == null
                                 ? 'Your first scored session'
                                 : delta.abs() < 1
-                                    ? 'Right at your recent average'
-                                    : delta > 0
-                                        ? '${delta.round()} points above your '
-                                            'recent average'
-                                        : '${delta.abs().round()} points below '
-                                            'your recent average';
+                                ? 'Right at your recent average'
+                                : delta > 0
+                                ? '${delta.round()} points above your '
+                                      'recent average'
+                                : '${delta.abs().round()} points below '
+                                      'your recent average';
                             return Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -159,9 +160,7 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                               ),
                               child: Text(
                                 text,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
+                                style: Theme.of(context).textTheme.labelMedium
                                     ?.copyWith(fontWeight: FontWeight.w700),
                               ),
                             );
@@ -359,9 +358,9 @@ class _AiSummaryCardState extends State<_AiSummaryCard> {
               Text(
                 'Written by an AI service from the measurements above. Not '
                 'medical advice.',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: colors.textSecondary),
               ),
             ],
           ),
@@ -470,10 +469,9 @@ class _StepCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       sentence,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(height: 1.4),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(height: 1.4),
                     ),
                   ),
                 ],

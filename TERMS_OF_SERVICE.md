@@ -46,6 +46,15 @@ stop immediately and seek medical attention if you experience pain,
 dizziness, chest discomfort, shortness of breath, or distress. You assume
 responsibility for exercising within your own limits.
 
+The optional camera motion coach measures movement with your device's
+camera and reports scores, counts, and observations. These are wellness
+measurements produced by automated software, not a clinical assessment,
+diagnosis, or physical-therapy service, and their accuracy depends on
+camera placement, lighting, and framing. The optional AI session summary
+is machine-generated text derived from those measurements; it may be
+imperfect and is never medical advice. Demonstration clips from the
+National Institute on Aging are shown for general guidance only.
+
 ## 4. Eligibility
 
 You must be at least 13 years old (or the higher minimum age required in
@@ -131,9 +140,10 @@ covered by any cloud license because we never receive them.
   Service and Google's Privacy Policy. Videos may become unavailable if
   removed by their owners, and we may change the video catalog at any
   time.
-- **Sign-in and infrastructure providers.** Google (optional sign-in) and
-  Supabase (authentication and database hosting) act under their own
-  terms with us; their availability affects synced features.
+- **Sign-in and infrastructure providers.** Google (optional sign-in),
+  Supabase (authentication and database hosting), and Anthropic (the
+  optional AI session summary) act under their own terms with us; their
+  availability affects the related optional features.
 - We are not responsible for third-party services, and linking to or
   embedding them is not an endorsement.
 

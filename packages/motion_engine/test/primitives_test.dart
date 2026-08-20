@@ -66,6 +66,33 @@ void main() {
     );
   });
 
+  test('segmentation accepts a slow repetition up to six times reference', () {
+    // Bradykinetic users move slowly; live coaching tolerates up to 8x the
+    // reference tempo and the offline analysis must stay within sight of
+    // it (6x), or reps counted live would vanish from the results.
+    final List<double> values = <double>[
+      for (double phase in <double>[0, .2, .4, .6, .8, 1, .8, .6, .4, .2, 0])
+        10 + 80 * phase,
+    ];
+    final List<int> timestamps = <int>[
+      for (int index = 0; index < values.length; index += 1) index * 400,
+    ];
+    final List<RepBoundary> repetitions = segmentReps(
+      values,
+      timestamps,
+      SegmentationConfig(referenceRomDeg: 80, referenceTempoS: 0.8),
+    );
+    // 4 s of movement against a 0.8 s reference: exactly the slow-mover
+    // case; must be counted (5x < 6x), and the config must reject NaN
+    // timestamps like the Python engine.
+    expect(repetitions, hasLength(1));
+    expect(
+      () => segmentReps(values, <num>[double.nan, ...timestamps.skip(1)],
+          SegmentationConfig(referenceRomDeg: 80, referenceTempoS: 0.8)),
+      throwsArgumentError,
+    );
+  });
+
   test('segmentation ignores incomplete first and last repetitions', () {
     final List<double> values = <double>[
       90,

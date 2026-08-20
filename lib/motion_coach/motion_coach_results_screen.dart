@@ -180,28 +180,27 @@ class MotionCoachResultsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                SizedBox(
-                  height: 54,
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pop(MotionCoachResultAction.useRecording),
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text(
-                      setupHelp ? 'Keep private recording' : 'Use this result',
-                    ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(MotionCoachResultAction.useRecording),
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text(
+                    setupHelp ? 'Keep private recording' : 'Use this result',
                   ),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pop(MotionCoachResultAction.retry),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Try again'),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
                   ),
+                  onPressed: () =>
+                      Navigator.of(context).pop(MotionCoachResultAction.retry),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Try again'),
                 ),
               ],
             ),

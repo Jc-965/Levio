@@ -57,6 +57,24 @@ Schema already includes:
 - like increment RPC (`increment_post_like`)
 - unique per-user post likes (`community_post_likes` primary key)
 - persistent group membership (`community_group_memberships`)
+- motion coach session storage (`motion_sessions`, LWW like the other
+  health tables, plus `delete_my_motion_sessions` bulk deletion and
+  `claim_motion_summary_attempt` for AI-summary spend accounting)
+- remote kill switch (`app_flags`, read-only to clients)
+
+Motion coach operations:
+
+- **Kill switch:** disable or re-enable the motion coach without a store
+  release from the SQL editor:
+  `update public.app_flags set enabled = false where key = 'motion_coach';`
+  Clients pick it up on next app launch or next visit to the coach home
+  screen, and keep their last-known value while offline.
+- **AI session summary (optional feature):** deploy the edge function and
+  set its secret, or the feature silently stays unavailable (the app is
+  fully functional without it):
+  `supabase functions deploy motion_summary` (leave JWT verification on)
+  `supabase secrets set ANTHROPIC_API_KEY=...`
+  Architecture and safety properties: `docs/MOTION_COACH_AI.md`.
 
 Before production:
 
@@ -64,6 +82,10 @@ Before production:
 2. Add abuse/rate limits for post/comment endpoints.
 3. Add monitoring/alerts for auth failures and latency.
 4. Load test feed pagination and write throughput.
+5. Re-answer the App Store privacy nutrition labels and the Play Console
+   Data Safety form for the motion coach: camera use (on-device only),
+   derived health measurements synced to the account, and the optional
+   AI summary processed by Anthropic.
 
 ## 4. GitHub/CI Setup
 

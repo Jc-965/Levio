@@ -617,7 +617,11 @@ class Singleton extends ChangeNotifier {
       );
       unawaited(syncPendingMutations());
     } catch (error, stackTrace) {
-      _logger.warning('Motion session delete enqueue failed', error, stackTrace);
+      _logger.warning(
+        'Motion session delete enqueue failed',
+        error,
+        stackTrace,
+      );
     }
     return removed;
   }
@@ -2232,8 +2236,7 @@ class Singleton extends ChangeNotifier {
       // Kept beside (not inside) the snapshot: the snapshot format belongs
       // to the shared health cache, while motion history has its own store.
       'motion_sessions': <Object?>[
-        for (final MotionSessionRecord entry in history.entries)
-          entry.toJson(),
+        for (final MotionSessionRecord entry in history.entries) entry.toJson(),
       ],
     };
     return const JsonEncoder.withIndent('  ').convert(payload);

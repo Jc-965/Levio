@@ -95,7 +95,7 @@ void main() {
       session.beginRecording();
       for (int index = 0; index < _repPhase.length; index += 1) {
         session.handleSample(
-          _motionSampleForAngle(10 + 40 * _repPhase[index], index * 200),
+          _motionSampleForAngle(10 + 40 * _repPhase[index], index * 300),
         );
       }
 
@@ -415,7 +415,7 @@ void main() {
 
       for (int index = 0; index < _repPhase.length; index += 1) {
         driver.emit(
-          _motionSampleForAngle(10 + 40 * _repPhase[index], 400 + index * 200),
+          _motionSampleForAngle(10 + 40 * _repPhase[index], 400 + index * 300),
         );
       }
       await tester.pump();

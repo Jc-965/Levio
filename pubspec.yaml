@@ -218,6 +218,7 @@ flutter:
     - assets/motion/routines/
     - assets/motion/demonstrations/
     - assets/motion/models/
+    - assets/motion/videos/
 
   fonts:
     - family: PlusJakartaSans

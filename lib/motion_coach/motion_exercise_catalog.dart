@@ -93,6 +93,13 @@ class MotionExerciseDefinition {
 
   bool get hasVideoDemonstration => videoSegment != null;
 
+  /// Bundled public-domain demonstration clip, or null for exercises whose
+  /// demonstration is the animated guide. The set is compile-time because
+  /// the clips ship as assets.
+  String? get demoVideoAsset => _bundledDemoVideoIds.contains(exerciseId)
+      ? 'assets/motion/videos/$exerciseId.demo.mp4'
+      : null;
+
   String get recordingRepetitionLabel =>
       '$minimumRecordingRepetitions–$maximumRecordingRepetitions';
 
@@ -286,6 +293,25 @@ const List<MotionExerciseDefinition> motionExerciseCatalog =
       standingSideLegRaiseExercise,
       standingHeelRaiseExercise,
     ];
+
+/// Exercises with a bundled demonstration clip cut from the public-domain
+/// NIA exercise program (see assets/motion/videos/SOURCES.md). The seated
+/// march and side lean have no matching public-domain footage and keep the
+/// animated guide.
+const Set<String> _bundledDemoVideoIds = <String>{
+  'seated_bilateral_lateral_arm_raise',
+  'seated_bilateral_forward_reach',
+  'seated_bilateral_elbow_flexion',
+  'sit_to_stand',
+  'standing_hip_flexion',
+  'standing_knee_flexion',
+  'standing_side_leg_raise',
+  'standing_heel_raise',
+};
+
+/// Credit line shown wherever a bundled NIA clip plays; the NIA requests
+/// attribution for public-domain reuse.
+const String demoVideoCreditLine = 'Source: National Institute on Aging, NIH';
 
 const String youTubeEmbeddedPlayerReferer = 'https://com.parkiwell.app';
 const Map<String, String> youTubeEmbeddedPlayerHeaders = <String, String>{

@@ -9,16 +9,19 @@ import 'package:parkiwell/utils/session_wakelock.dart';
 import 'package:flutter/services.dart';
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../utils/orientation_policy.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_analysis.dart';
+import '../singleton.dart';
 import 'motion_capture_driver.dart';
 import 'motion_coach_preferences.dart';
 import 'motion_coach_results_screen.dart';
 import 'motion_coach_session.dart';
+import 'motion_session_history.dart';
 import 'motion_cue_speaker.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_reference_library.dart';
@@ -260,6 +263,43 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     });
   }
 
+  /// Persist a kept motion check into the shared session history so its
+  /// evidence appears alongside routine results and backs up with them.
+  /// Best-effort: the person already has the results on screen.
+  Future<void> _persistMotionCheck(MotionAnalysisResult analysis) async {
+    try {
+      final MotionSessionRecord record = MotionSessionRecord.fromMotionCheck(
+        exerciseId: widget.exercise.exerciseId,
+        exerciseTitle: widget.exercise.title,
+        completedAt: DateTime.now(),
+        assessed: !analysis.needsSetupHelp,
+        coverage: analysis.coverage,
+        targetRepetitions: widget.exercise.minimumRecordingRepetitions,
+        engineVersion: motionCoachEngineVersion,
+        repetitions: <MotionSessionRep>[
+          for (final MotionRepObservation rep in analysis.repetitions)
+            MotionSessionRep(
+              index: rep.index,
+              side: rep.side,
+              romDeg: rep.romDegrees,
+              romPctOfReference: rep.romPercentOfReference,
+              tempoSeconds: rep.tempoSeconds,
+              overallScore: null,
+            ),
+        ],
+      );
+      await MotionSessionHistory.shared.add(record);
+      unawaited(
+        Singleton().queueMotionSessionSync(
+          record: record,
+          evaluation: const <String, Object?>{},
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      AppLogger().warning('Motion check persistence failed', error, stackTrace);
+    }
+  }
+
   Future<void> _suspend() async {
     if (_phase == _CapturePhase.suspended) return;
     // A finish already owns the driver and is about to drain the session's
@@ -377,6 +417,8 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
           );
       if (!mounted) return;
       if (action == MotionCoachResultAction.useRecording) {
+        await _persistMotionCheck(analysis);
+        if (!mounted) return;
         Navigator.of(
           context,
         ).pop(MotionCoachOutcome(videoPath: videoPath, analysis: analysis));

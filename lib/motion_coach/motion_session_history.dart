@@ -352,6 +352,49 @@ class MotionSessionRecord {
     );
   }
 
+  /// A persisted single-exercise motion check.
+  ///
+  /// Motion checks measure evidence (ranges, tempos, sides) without live
+  /// scores, so the step and its repetitions carry null scores; assessed
+  /// mirrors whether the analysis produced usable measurements.
+  factory MotionSessionRecord.fromMotionCheck({
+    required String exerciseId,
+    required String exerciseTitle,
+    required DateTime completedAt,
+    required bool assessed,
+    required double coverage,
+    required int targetRepetitions,
+    required List<MotionSessionRep> repetitions,
+    required String engineVersion,
+    String? id,
+  }) => MotionSessionRecord(
+    id: id ?? const Uuid().v4(),
+    completedAt: completedAt,
+    routineId: 'check:$exerciseId',
+    routineName: 'Motion check · $exerciseTitle',
+    engineVersion: engineVersion,
+    overallScore: null,
+    assessedSteps: assessed ? 1 : 0,
+    totalSteps: 1,
+    strengths: const <String>[],
+    focusAreas: const <String>[],
+    steps: <MotionSessionStep>[
+      MotionSessionStep(
+        exerciseId: exerciseId,
+        assessed: assessed,
+        coverage: coverage,
+        completedRepetitions: repetitions.length,
+        targetRepetitions: targetRepetitions,
+        overallScore: null,
+        rangeScore: null,
+        tempoScore: null,
+        smoothnessScore: null,
+        symmetryScore: null,
+        repetitions: repetitions,
+      ),
+    ],
+  );
+
   factory MotionSessionRecord.fromJson(Map<String, Object?> json) =>
       MotionSessionRecord(
         id: json['id'] as String? ?? const Uuid().v4(),
@@ -628,7 +671,7 @@ class MotionSessionRep {
         romDeg: (json['rom_deg']! as num).toDouble(),
         romPctOfReference: (json['rom_pct']! as num).toDouble(),
         tempoSeconds: (json['tempo_s']! as num).toDouble(),
-        overallScore: (json['score']! as num).toDouble(),
+        overallScore: (json['score'] as num?)?.toDouble(),
       );
 
   final int index;
@@ -638,7 +681,10 @@ class MotionSessionRep {
   final double romDeg;
   final double romPctOfReference;
   final double tempoSeconds;
-  final double overallScore;
+
+  /// Live per-repetition score, or null for movements measured by the
+  /// offline motion check, which reports evidence without scoring.
+  final double? overallScore;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'index': index,

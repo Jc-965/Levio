@@ -6,6 +6,7 @@ import 'package:motion_engine/motion_engine.dart';
 import '../services/app_logger.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_card.dart';
+import 'motion_demo_video_view.dart';
 import 'motion_demonstration_view.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_reference_library.dart';
@@ -137,7 +138,14 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
                         children: <Widget>[
                           SizedBox(
                             height: 190,
-                            child: loop == null
+                            child: previewed.demoVideoAsset != null
+                                ? MotionDemoVideoView(
+                                    key: ValueKey<String>(
+                                      previewed.demoVideoAsset!,
+                                    ),
+                                    assetPath: previewed.demoVideoAsset!,
+                                  )
+                                : loop == null
                                 ? Center(
                                     child: Icon(
                                       Icons.accessibility_new_rounded,
@@ -158,7 +166,9 @@ class _MotionSessionIntroSheetState extends State<_MotionSessionIntroSheet> {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            'Reference movement, repeated on a loop',
+                            previewed.demoVideoAsset != null
+                                ? demoVideoCreditLine
+                                : 'Reference movement, repeated on a loop',
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: colors.textSecondary),
                           ),

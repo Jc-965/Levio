@@ -65,10 +65,10 @@ void main() {
         'seated_bilateral_lateral_arm_raise',
       );
 
-      expect(config.referenceRomDeg, closeTo(70, 0.5));
-      // Threshold-crossing tempo, which is shorter than the template's
-      // full valley-to-valley median.
-      expect(config.referenceTempoS, closeTo(2.93, 0.05));
+      // The measured public-domain reference: 75.4 degrees of arm
+      // elevation at a 4.3-second threshold-crossing tempo.
+      expect(config.referenceRomDeg, closeTo(75.4, 0.5));
+      expect(config.referenceTempoS, closeTo(4.34, 0.05));
     });
 
     test('loads every routine and preloads the templates it names', () async {
@@ -344,7 +344,7 @@ void main() {
       ) {
         for (final double phase in repPhase) {
           driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
-          timestampMs += 200;
+          timestampMs += 300;
         }
       }
       await tester.pumpAndSettle();
@@ -447,7 +447,7 @@ void main() {
       int timestampMs = 600;
       for (final double phase in repPhase) {
         driver.emit(armRaiseSample(10 + 60 * phase, timestampMs));
-        timestampMs += 200;
+        timestampMs += 300;
       }
       driver.emit(armRaiseSample(10, timestampMs + 1200));
       await tester.pump();
@@ -530,7 +530,9 @@ void _driveRepetitions(
   for (int repetition = 0; repetition < count; repetition += 1) {
     for (final double phase in repPhase) {
       controller.handleSample(armRaiseSample(10 + 60 * phase, timestampMs));
-      timestampMs += 200;
+      // 300 ms per sample keeps a synthetic repetition above the measured
+      // reference's minimum-tempo gate (0.35x of a 4.3 s reference).
+      timestampMs += 300;
     }
   }
 }

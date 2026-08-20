@@ -14,6 +14,7 @@ class MotionCoachPreferences extends ChangeNotifier {
   static const String speechKey = 'parkiwell_motion_coach_speech_enabled_v1';
   static const String hapticsKey = 'parkiwell_motion_coach_haptics_enabled_v1';
   static const String syncResultsKey = 'parkiwell_motion_coach_sync_enabled_v1';
+  static const String aiSummaryKey = 'parkiwell_motion_coach_ai_summary_v1';
 
   /// Process-wide instance so every screen observes the same toggles.
   static final MotionCoachPreferences shared = MotionCoachPreferences();
@@ -22,6 +23,7 @@ class MotionCoachPreferences extends ChangeNotifier {
   bool _speechEnabled = true;
   bool _hapticsEnabled = true;
   bool _syncResultsEnabled = true;
+  bool _aiSummaryEnabled = false;
   bool _loaded = false;
 
   bool get isLoaded => _loaded;
@@ -32,11 +34,17 @@ class MotionCoachPreferences extends ChangeNotifier {
   /// video or pose data) are backed up to the signed-in account.
   bool get syncResultsEnabled => _syncResultsEnabled;
 
+  /// Whether the optional cloud AI summary may be requested for a synced
+  /// session. Off by default: it is the only motion coach feature that
+  /// sends derived scores to an AI service, so it is strictly opt-in.
+  bool get aiSummaryEnabled => _aiSummaryEnabled;
+
   Future<void> load() async {
     final SharedPreferences preferences = await _resolve();
     _speechEnabled = preferences.getBool(speechKey) ?? true;
     _hapticsEnabled = preferences.getBool(hapticsKey) ?? true;
     _syncResultsEnabled = preferences.getBool(syncResultsKey) ?? true;
+    _aiSummaryEnabled = preferences.getBool(aiSummaryKey) ?? false;
     _loaded = true;
     notifyListeners();
   }
@@ -63,6 +71,14 @@ class MotionCoachPreferences extends ChangeNotifier {
     notifyListeners();
     final SharedPreferences preferences = await _resolve();
     await preferences.setBool(syncResultsKey, enabled);
+  }
+
+  Future<void> setAiSummaryEnabled(bool enabled) async {
+    if (_aiSummaryEnabled == enabled) return;
+    _aiSummaryEnabled = enabled;
+    notifyListeners();
+    final SharedPreferences preferences = await _resolve();
+    await preferences.setBool(aiSummaryKey, enabled);
   }
 
   Future<SharedPreferences> _resolve() async =>

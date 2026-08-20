@@ -366,6 +366,18 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
                           'Video and camera data never leave this phone.',
                         ),
                       ),
+                      SwitchListTile.adaptive(
+                        value: _preferences.aiSummaryEnabled,
+                        onChanged: (bool enabled) => unawaited(
+                          _preferences.setAiSummaryEnabled(enabled),
+                        ),
+                        title: const Text('AI session summary'),
+                        subtitle: const Text(
+                          'Optional. Sends the session\'s scores (never '
+                          'video) to a cloud AI service to write a short '
+                          'summary. Requires sign-in and backup.',
+                        ),
+                      ),
                     ],
                   ),
                 ),

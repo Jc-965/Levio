@@ -13,7 +13,10 @@ depth, visibility, and every second frame are dropped and coordinates are
 quantised to 1 mm. Nothing about the analysis path reads these loops.
 
 Usage:
-    python3 scripts/sync-motion-assets.py [path-to-motion-coach-cv]
+    python3 scripts/sync-motion-assets.py [path-to-motion-coach-cv] [--check]
+
+--check compares what would be written against the committed assets and
+fails on drift, so a stale vendored asset cannot ship silently.
 """
 
 from __future__ import annotations
@@ -31,11 +34,13 @@ TARGET_FPS = 12.0
 COORDINATE_DECIMALS = 3
 
 
+_OUTPUTS: dict[str, str] = {}
+
+
 def _write(path: str, document: object) -> int:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(document, handle, separators=(",", ":"), sort_keys=True)
-    return os.path.getsize(path)
+    rendered = json.dumps(document, separators=(",", ":"), sort_keys=True)
+    _OUTPUTS[path] = rendered
+    return len(rendered.encode("utf-8"))
 
 
 def sync_templates(engine_repo: str) -> None:
@@ -67,7 +72,12 @@ def sync_demonstrations(engine_repo: str) -> None:
     for path in sorted(glob.glob(f"{source}/*.reference-loop.v1.json")):
         exercise_id = os.path.basename(path).split(".")[0]
         loop = json.load(open(path, encoding="utf-8"))
-        frames = loop["frames"]
+        # Measured loops may contain the odd untracked frame; the stick
+        # figure has nothing to draw for those, so they are dropped before
+        # the stride is chosen.
+        frames = [
+            frame for frame in loop["frames"] if frame["landmarks"] is not None
+        ]
         if len(frames) < 2:
             raise SystemExit(f"{exercise_id}: reference loop is too short")
 
@@ -110,13 +120,36 @@ def sync_demonstrations(engine_repo: str) -> None:
 
 
 def main() -> int:
-    engine_repo = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ENGINE_REPO
+    arguments = [argument for argument in sys.argv[1:] if argument != "--check"]
+    check = "--check" in sys.argv[1:]
+    engine_repo = arguments[0] if arguments else DEFAULT_ENGINE_REPO
     if not os.path.isdir(engine_repo):
         print(f"engine repo not found: {engine_repo}", file=sys.stderr)
         return 1
     sync_templates(engine_repo)
     sync_routines(engine_repo)
     sync_demonstrations(engine_repo)
+
+    if check:
+        stale = []
+        for path, rendered in _OUTPUTS.items():
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    current = handle.read()
+            except FileNotFoundError:
+                current = None
+            if current != rendered:
+                stale.append(os.path.relpath(path, APP_ROOT))
+        if stale:
+            print("stale motion assets:", ", ".join(sorted(stale)), file=sys.stderr)
+            return 1
+        print(f"{len(_OUTPUTS)} motion assets are current")
+        return 0
+
+    for path, rendered in _OUTPUTS.items():
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
     return 0
 
 

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../services/cloud_backend_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
 import 'motion_exercise_catalog.dart';
+import 'motion_coach_preferences.dart';
 import 'motion_feedback_copy.dart';
 import 'motion_session_history.dart';
 
@@ -181,6 +183,12 @@ class MotionRoutineResultsScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 for (final MotionSessionStep step in record.steps)
                   _StepCard(step: step),
+                if (saved &&
+                    MotionCoachPreferences.shared.aiSummaryEnabled &&
+                    CloudBackendService().hasFullAccount) ...[
+                  const SizedBox(height: 18),
+                  _AiSummaryCard(sessionId: record.id),
+                ],
                 const SizedBox(height: 18),
                 ModernCard(
                   margin: EdgeInsets.zero,
@@ -245,6 +253,86 @@ class MotionRoutineResultsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Optional cloud-generated narrative, layered strictly on top of the
+/// deterministic feedback above it. Requested lazily, cached server-side,
+/// and simply absent on any failure — offline sessions never miss anything
+/// they need.
+class _AiSummaryCard extends StatefulWidget {
+  const _AiSummaryCard({required this.sessionId});
+
+  final String sessionId;
+
+  @override
+  State<_AiSummaryCard> createState() => _AiSummaryCardState();
+}
+
+class _AiSummaryCardState extends State<_AiSummaryCard> {
+  late final Future<String?> _summary;
+
+  @override
+  void initState() {
+    super.initState();
+    _summary = CloudBackendService().getMotionSessionSummary(widget.sessionId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return FutureBuilder<String?>(
+      future: _summary,
+      builder: (BuildContext context, AsyncSnapshot<String?> snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        final String? summary = snapshot.data;
+        if (summary == null || summary.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return ModernCard(
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: colors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI summary',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                summary,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Written by an AI service from the measurements above. Not '
+                'medical advice.',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

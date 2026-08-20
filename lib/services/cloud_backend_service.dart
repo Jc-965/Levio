@@ -873,6 +873,27 @@ class CloudBackendService {
     }
   }
 
+  /// Fetch (or lazily generate) the cloud AI summary for one synced motion
+  /// session. Returns null on any failure or when unavailable: the summary
+  /// is an enhancement layered over deterministic feedback, never required.
+  Future<String?> getMotionSessionSummary(String sessionId) async {
+    if (!isEnabled || !hasFullAccount) return null;
+    try {
+      final response = await _client!.functions.invoke(
+        'motion_summary',
+        body: <String, dynamic>{'session_id': sessionId},
+      );
+      final data = response.data;
+      if (data is Map && data['summary'] is String) {
+        return data['summary'] as String;
+      }
+      return null;
+    } catch (e) {
+      _logger.info('Motion summary unavailable: $e');
+      return null;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getMotionSessions(String userId) async {
     if (!isEnabled) return <Map<String, dynamic>>[];
 

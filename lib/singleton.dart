@@ -536,6 +536,14 @@ class Singleton extends ChangeNotifier {
       );
       payload['evaluation'] = const <String, Object?>{};
     }
+    if (jsonEncode(payload['record']).length > 60000) {
+      // The backend caps the parsed record independently; a payload that
+      // would be rejected on every replay must never enter the journal.
+      _logger.warning(
+        'Motion session ${record.id} record too large to sync; kept locally',
+      );
+      return;
+    }
     try {
       await _queueHealthMutation(
         entityType: SyncEntityType.motionSession,
@@ -549,11 +557,18 @@ class Singleton extends ChangeNotifier {
     }
   }
 
-  /// Delete every motion session locally AND queue account deletions.
+  /// Persisted marker that a full-history deletion still needs the
+  /// server-side sweep (device was offline when the person deleted).
+  static const String motionBulkDeletePendingKey =
+      'parkiwell_motion_bulk_delete_pending_v1';
+
+  /// Delete every motion session locally AND from the account.
   ///
-  /// "Delete history" must mean deleted: without the tombstones, the next
-  /// sign-in restore would quietly resurrect every score the person just
-  /// watched disappear.
+  /// "Delete history" must mean deleted. Local ids get tombstone mutations
+  /// (works offline, replays later), and a server-side sweep removes
+  /// account rows older than the device's capped local window. If the
+  /// sweep cannot run now, a persisted marker retries it on later syncs
+  /// and blocks restores from resurrecting anything in the meantime.
   Future<void> deleteAllMotionSessions({MotionSessionHistory? history}) async {
     final MotionSessionHistory store = history ?? MotionSessionHistory.shared;
     if (!store.isLoaded) await store.load();
@@ -576,7 +591,19 @@ class Singleton extends ChangeNotifier {
         );
       }
     }
+    final prefs = await _prefs;
+    await prefs.setBool(motionBulkDeletePendingKey, true);
+    await _completeMotionBulkDeleteIfPending();
     if (ids.isNotEmpty) unawaited(syncPendingMutations());
+  }
+
+  /// Run the server-side deletion sweep if one is still owed.
+  Future<void> _completeMotionBulkDeleteIfPending() async {
+    final prefs = await _prefs;
+    if (prefs.getBool(motionBulkDeletePendingKey) != true) return;
+    if (await _cloud.deleteAllMotionSessionsRemote()) {
+      await prefs.remove(motionBulkDeletePendingKey);
+    }
   }
 
   /// Delete one synced motion session locally and from the account.
@@ -600,9 +627,25 @@ class Singleton extends ChangeNotifier {
     List<Map<String, dynamic>> rows,
   ) async {
     if (rows.isEmpty) return;
+    // A deletion the person already performed must win over a restore
+    // whose snapshot predates it: skip entirely while the server sweep is
+    // owed, and never re-add an id with a pending or quarantined delete.
+    final prefs = await _prefs;
+    if (prefs.getBool(motionBulkDeletePendingKey) == true) return;
+    final Set<String> deletedIds = <String>{
+      for (final mutation in _offlineSyncEngine.pendingMutations)
+        if (mutation.entityType == SyncEntityType.motionSession &&
+            mutation.operation == SyncMutationOperation.delete)
+          mutation.entityId,
+      for (final mutation in _offlineSyncEngine.deadLetteredMutations)
+        if (mutation.entityType == SyncEntityType.motionSession &&
+            mutation.operation == SyncMutationOperation.delete)
+          mutation.entityId,
+    };
     final List<MotionSessionRecord> records = <MotionSessionRecord>[];
     for (final row in rows) {
       try {
+        if (deletedIds.contains(row['id'])) continue;
         final Object? record = row['record'];
         if (record is! Map<String, dynamic> || record.isEmpty) continue;
         records.add(
@@ -620,6 +663,11 @@ class Singleton extends ChangeNotifier {
     final int added = await MotionSessionHistory.shared.mergeFromCloud(records);
     if (added > 0) {
       _logger.info('Restored $added motion sessions from account backup');
+    }
+    if (records.length > MotionSessionHistory.maximumEntries) {
+      // The account holds more than this device keeps; say so instead of
+      // letting the older sessions vanish silently.
+      historyMayBeTruncated = true;
     }
   }
 
@@ -1702,6 +1750,7 @@ class Singleton extends ChangeNotifier {
     // replaying them under the anonymous bootstrap session would upload
     // unconsented health data to an unrecoverable identity.
     if (!_cloud.hasFullAccount) return 0;
+    await _completeMotionBulkDeleteIfPending();
     if (!_cloud.isEnabled || _offlineSyncEngine.pendingCount == 0) return 0;
 
     final uid = await _resolveUserId();
@@ -2213,8 +2262,18 @@ class Singleton extends ChangeNotifier {
             // One unreadable backup entry must not abort the import.
           }
         }
-        await MotionSessionHistory.shared.mergeFromCloud(records);
+        final MotionSessionHistory history = MotionSessionHistory.shared;
+        if (!history.isLoaded) await history.load();
+        final Set<String> known = <String>{
+          for (final MotionSessionRecord entry in history.entries) entry.id,
+        };
+        await history.mergeFromCloud(records);
+        // Only newly imported records are re-uploaded. Re-upserting ones
+        // the account already holds would overwrite their sync timestamps
+        // for no benefit (their evidence documents are preserved
+        // server-side regardless).
         for (final MotionSessionRecord record in records) {
+          if (known.contains(record.id)) continue;
           await queueMotionSessionSync(
             record: record,
             evaluation: const <String, Object?>{},
@@ -2988,6 +3047,9 @@ class Singleton extends ChangeNotifier {
       await prefs.remove('motion_coach_mediapipe_consent_v2');
       await prefs.remove(MotionCoachPreferences.syncResultsKey);
       await prefs.remove(MotionCoachPreferences.aiSummaryKey);
+      // The owed-deletion marker is scoped to the account that asked for
+      // it; surviving sign-out would sweep the NEXT account's history.
+      await prefs.remove(motionBulkDeletePendingKey);
       await MedicationReminderService().cancelAll();
       await _deleteStoredAvatarFiles();
       _lastSyncAt = null;

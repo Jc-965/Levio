@@ -876,6 +876,22 @@ class CloudBackendService {
   /// Fetch (or lazily generate) the cloud AI summary for one synced motion
   /// session. Returns null on any failure or when unavailable: the summary
   /// is an enhancement layered over deterministic feedback, never required.
+  /// Server-side sweep for "delete my movement history": removes every
+  /// motion session row the account owns and tombstones the ids. Needed
+  /// because the device only knows its capped local window of ids.
+  Future<bool> deleteAllMotionSessionsRemote() async {
+    if (!isEnabled || !hasFullAccount) return false;
+    try {
+      await _withRetry<void>('delete all motion sessions', () async {
+        await _client!.rpc('delete_my_motion_sessions');
+      });
+      return true;
+    } catch (e, stackTrace) {
+      _logger.warning('Bulk motion session deletion failed', e, stackTrace);
+      return false;
+    }
+  }
+
   Future<String?> getMotionSessionSummary(String sessionId) async {
     if (!isEnabled || !hasFullAccount) return null;
     try {

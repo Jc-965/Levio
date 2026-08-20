@@ -17,6 +17,7 @@ import { extractAllowedNumbers, validateSummary } from "./validate.ts";
 
 const MODEL = "claude-opus-5";
 const MAX_SUMMARIES_PER_DAY = 20;
+const MAX_ATTEMPTS_PER_SESSION = 3;
 
 const SYSTEM_PROMPT = [
   "You turn exercise-session measurements into a short, warm summary for a",
@@ -106,12 +107,19 @@ Deno.serve(async (req) => {
       countError ? 200 : 429,
     );
   }
-  const { error: attemptError } = await admin
-    .from("motion_sessions")
-    .update({ llm_summary_generated_at: new Date().toISOString() })
-    .eq("id", sessionId)
-    .eq("user_id", user.id);
-  if (attemptError) {
+  // Atomic attempt claim: a single SQL statement increments the counter
+  // and stamps the attempt time only while the session is under its
+  // budget, so concurrent duplicates and repeatedly-failing generations
+  // are both hard-bounded (total daily spend <= sessions x attempts).
+  const { data: claimed, error: attemptError } = await admin.rpc(
+    "claim_motion_summary_attempt",
+    {
+      p_session_id: sessionId,
+      p_user_id: user.id,
+      p_max_attempts: MAX_ATTEMPTS_PER_SESSION,
+    },
+  );
+  if (attemptError || claimed !== true) {
     return json({ summary: null }, 200);
   }
 

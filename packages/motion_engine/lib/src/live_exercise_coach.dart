@@ -110,7 +110,7 @@ final class LiveExerciseCoachConfig {
     this.returnRatio = defaultReturnRatio,
     this.reversalVelocityDegS = 3.0,
     this.minimumTempoRatio = 0.35,
-    this.maximumTempoRatio = 4.0,
+    this.maximumTempoRatio = 8.0,
     this.globalCueCooldownMs = 8000,
     this.sameCueCooldownMs = 30000,
     this.minimumRepsBetweenCorrections = 3,

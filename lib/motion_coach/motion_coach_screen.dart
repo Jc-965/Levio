@@ -339,10 +339,14 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     _handledLiveRepSerial = 0;
     _handledLiveCueSerial = 0;
     _spokenCue = null;
+    final int generation = _generation;
     _session.beginRecording();
     try {
       await driver.startRecording();
-      if (!mounted) return;
+      // A lifecycle suspend during the await already tore this session
+      // down; entering the recording phase now would tick a timer against
+      // a camera that no longer exists.
+      if (!mounted || generation != _generation) return;
       _warnedNearCap = false;
       _recordingClock
         ..reset()
@@ -389,6 +393,13 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     _driver = null;
     _timer?.cancel();
     _recordingClock.stop();
+    // The time cap can fire while a confirmation dialog is open; anything
+    // above this screen must close first or the results push would replace
+    // the dialog and the final pop would hand the outcome to it.
+    final ModalRoute<Object?>? ownRoute = ModalRoute.of(context);
+    if (ownRoute != null && !ownRoute.isCurrent) {
+      Navigator.of(context).popUntil((Route<Object?> route) => route == ownRoute);
+    }
     setState(() => _phase = _CapturePhase.analyzing);
 
     String? videoPath;
@@ -418,6 +429,14 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       if (!mounted) return;
       if (action == MotionCoachResultAction.useRecording) {
         await _persistMotionCheck(analysis);
+        if (!mounted) return;
+        // Only this screen's own route may carry the outcome; popping a
+        // dialog that appeared meanwhile would throw a type error and the
+        // catch below would delete the accepted recording.
+        final ModalRoute<Object?>? route = ModalRoute.of(context);
+        if (route != null && !route.isCurrent) {
+          Navigator.of(context).popUntil((Route<Object?> r) => r == route);
+        }
         if (!mounted) return;
         Navigator.of(
           context,

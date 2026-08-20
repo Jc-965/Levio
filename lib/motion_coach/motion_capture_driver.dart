@@ -102,6 +102,7 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
       await controller.initialize();
       _throwIfDisposedDuringInitialize();
       await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+      _throwIfDisposedDuringInitialize();
       await _poseBridge.initialize();
       _throwIfDisposedDuringInitialize();
       _clock
@@ -111,13 +112,19 @@ class CameraMotionCaptureDriver implements MotionCaptureDriver {
       _throwIfDisposedDuringInitialize();
     } on _DisposedDuringInitialize {
       // dispose() already ran and found nothing to clean up, so this camera
-      // would keep streaming with no owner. Tear it down here instead of
-      // leaving the hardware on after the user has left the screen.
+      // (and a pose landmarker initialized moments ago) would keep running
+      // with no owner. Tear both down here instead of leaving hardware on
+      // after the user has left the screen.
       _camera = null;
       try {
         await controller.dispose();
       } catch (_) {
         // Already-released platform resources are fine to ignore here.
+      }
+      try {
+        await _poseBridge.dispose();
+      } catch (_) {
+        // A bridge that never finished initializing has nothing to free.
       }
       return;
     }

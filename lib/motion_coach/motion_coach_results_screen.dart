@@ -281,12 +281,12 @@ String _setupMessage(MotionAnalysisResult result) {
     return 'Keep one person in view and hold the phone steady, then try again.';
   }
   if (reasons.contains('bilateral_movement_required')) {
-    return 'Move both arms out to the sides together, then return them to a '
-        'comfortable resting position.';
+    return 'This exercise is measured when both sides move together. Follow '
+        'the demonstration, then return to a comfortable resting position.';
   }
   if (reasons.contains('no_complete_reps')) {
-    return 'No complete arm raises were detected. Begin with both arms at rest, '
-        'raise them comfortably, then return to rest.';
+    return 'No complete movements were detected. Start from rest, move '
+        'through a comfortable range, then return to rest.';
   }
   return 'Keep your face, shoulders, wrists, and hips visible in steady light, '
       'then try the movement again.';

@@ -335,6 +335,11 @@ class OfflineSyncEngine {
 
   Future<void> clear() async {
     _pendingByEntity.clear();
+    // Dead letters are the previous account's health data; leaving them
+    // behind would offer to upload one person's failed records into the
+    // next person's account on a shared device.
+    deadLetteredMutations.clear();
+    _rejectionCounts.clear();
     _nextSequence = 1;
     await _schedulePersist(null);
   }

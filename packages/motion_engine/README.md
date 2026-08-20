@@ -29,7 +29,7 @@ vendored copy carries only the fixture-free unit tests. Re-vendor with the
 engine repo's sync procedure rather than editing files here.
 
 This copy is synchronized with the motion-coach-cv reference implementation at
-commit `7d992d1`. Keeping it in this repository makes ParkiWell builds
+commit `20459a6`. Keeping it in this repository makes ParkiWell builds
 self-contained while preserving the independently verified Dart/Python parity
 boundary (live-engine and routine behavior are pinned there by cross-language
 parity fixtures).

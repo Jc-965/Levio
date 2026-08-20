@@ -239,7 +239,7 @@ class MotionAnalysisResult {
     }
     if (rangeDegrees != null && rangePercentOfReference != null) {
       observations.add(
-        'the median observed arm range was ${rangeDegrees!.round()}° '
+        'the median observed movement range was ${rangeDegrees!.round()}° '
         '(${rangePercentOfReference!.round()}% of this exercise reference)',
       );
     }

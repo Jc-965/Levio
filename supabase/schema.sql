@@ -160,6 +160,7 @@ create table if not exists public.motion_sessions (
   llm_summary text,
   llm_summary_model text,
   llm_summary_generated_at timestamptz,
+  llm_summary_attempts integer not null default 0,
   client_updated_at timestamptz not null default timezone('utc', now()),
   last_mutation_id text not null default '',
   created_at timestamptz not null default timezone('utc', now()),
@@ -179,8 +180,87 @@ alter table public.motion_sessions
     and (llm_summary is null or length(llm_summary) <= 2000)
   );
 
+alter table public.motion_sessions
+  add column if not exists llm_summary_attempts integer not null default 0;
+
 create index if not exists idx_motion_sessions_user_completed
   on public.motion_sessions(user_id, completed_at desc);
+
+-- Bulk deletion for "delete my movement history": removes every motion
+-- session the caller owns and tombstones each id so other devices' pending
+-- upserts cannot resurrect them. The per-id mutation path only covers the
+-- sessions a device still holds locally (capped), so a server-side sweep is
+-- required for the deletion promise to hold for long histories.
+create or replace function public.delete_my_motion_sessions()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id text;
+  v_deleted integer;
+begin
+  v_user_id := public.current_uid();
+  if v_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+  if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
+    raise exception 'Anonymous sessions may not modify health data';
+  end if;
+
+  insert into public.sync_tombstones (
+    entity_type, entity_id, user_id, deleted_at, mutation_id
+  )
+  select 'motionSession', id, v_user_id, timezone('utc', now()),
+         gen_random_uuid()::text
+  from public.motion_sessions
+  where user_id = v_user_id
+  on conflict (entity_type, entity_id, user_id) do update
+    set deleted_at = excluded.deleted_at,
+        mutation_id = excluded.mutation_id;
+
+  delete from public.motion_sessions where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$$;
+
+revoke all on function public.delete_my_motion_sessions() from public;
+grant execute on function public.delete_my_motion_sessions() to authenticated;
+
+-- Atomic attempt accounting for the AI summary edge function. Increments
+-- and checks in one statement so concurrent requests cannot overrun the
+-- per-session budget. Service-role only: the edge function has already
+-- verified the caller owns the session.
+create or replace function public.claim_motion_summary_attempt(
+  p_session_id text,
+  p_user_id text,
+  p_max_attempts integer
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_claimed boolean := false;
+begin
+  update public.motion_sessions
+    set llm_summary_attempts = llm_summary_attempts + 1,
+        llm_summary_generated_at = timezone('utc', now())
+  where id = p_session_id
+    and user_id = p_user_id
+    and llm_summary_attempts < p_max_attempts;
+  v_claimed := found;
+  return v_claimed;
+end;
+$$;
+
+revoke all on function public.claim_motion_summary_attempt(text, text, integer)
+  from public;
+grant execute on function public.claim_motion_summary_attempt(text, text, integer)
+  to service_role;
 
 alter table public.logs
   add column if not exists client_updated_at timestamptz not null
@@ -670,6 +750,12 @@ begin
       nullif(v_mutation ->> 'client_updated_at', '')::timestamptz,
       timezone('utc', now())
     );
+    -- A device clock running ahead would otherwise mint timestamps that
+    -- out-rank every later legitimate write, including deletions.
+    v_client_updated_at := least(
+      v_client_updated_at,
+      timezone('utc', now()) + interval '5 minutes'
+    );
 
     if v_mutation_id = '' or v_entity_id = '' then
       raise exception 'Mutation and entity ids are required';
@@ -935,7 +1021,13 @@ begin
               completed_at = excluded.completed_at,
               overall_score = excluded.overall_score,
               record = excluded.record,
-              evaluation = excluded.evaluation,
+              -- Backup restores replay records without their evidence
+              -- documents; an empty evaluation must never erase a stored one.
+              evaluation = case
+                when excluded.evaluation = '{}'::jsonb
+                  then public.motion_sessions.evaluation
+                else excluded.evaluation
+              end,
               client_updated_at = excluded.client_updated_at,
               last_mutation_id = excluded.last_mutation_id
         where public.motion_sessions.user_id = v_user_id

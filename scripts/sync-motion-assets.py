@@ -26,10 +26,9 @@ import json
 import os
 import sys
 
-DEFAULT_ENGINE_REPO = os.path.expanduser(
-    "~/Downloads/Coding/motion-coach-cv"
-)
 APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Sibling checkout by convention; pass an explicit path otherwise.
+DEFAULT_ENGINE_REPO = os.path.join(os.path.dirname(APP_ROOT), "motion-coach-cv")
 TARGET_FPS = 12.0
 COORDINATE_DECIMALS = 3
 

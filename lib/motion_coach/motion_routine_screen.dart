@@ -363,6 +363,15 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       );
     }
     if (!mounted) return;
+    // The routine keeps running behind the skip/exit dialogs, so completion
+    // can arrive while one is open. pushReplacement swaps the TOPMOST
+    // route; replacing the dialog instead of this screen would strand a
+    // dead session screen with a disposed camera underneath the results.
+    final ModalRoute<Object?>? ownRoute = ModalRoute.of(context);
+    if (ownRoute != null && !ownRoute.isCurrent) {
+      Navigator.of(context).popUntil((Route<Object?> route) => route == ownRoute);
+    }
+    if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => MotionRoutineResultsScreen(

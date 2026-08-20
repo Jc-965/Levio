@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_settings/app_settings.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:parkiwell/utils/session_wakelock.dart';
@@ -84,6 +85,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
   int _generation = 0;
   String _errorTitle = 'The guided routine is unavailable';
   String _errorBody = 'Please try again.';
+  bool _cameraDenied = false;
 
   @override
   void initState() {
@@ -239,12 +241,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
           error.code == 'CameraAccessRestricted';
       setState(() {
         _phase = _RoutineScreenPhase.error;
+        _cameraDenied = denied;
         _errorTitle = denied
             ? 'Camera access is needed'
             : 'Camera could not start';
         _errorBody = denied
-            ? 'Open your phone settings and allow Camera access for '
-                  'ParkiWell, then return and try again.'
+            ? 'Allow Camera access for ParkiWell in your phone settings, '
+                  'then return and try again.'
             : 'Close other apps using the camera, then try again.';
       });
     } catch (_) {
@@ -252,6 +255,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
       if (!mounted || generation != _generation) return;
       setState(() {
         _phase = _RoutineScreenPhase.error;
+        _cameraDenied = false;
         _errorTitle = 'The guided routine could not start';
         _errorBody =
             'The on-device motion model could not be prepared. Restart '
@@ -269,6 +273,7 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     _controller.reset();
     setState(() {
       _phase = _RoutineScreenPhase.error;
+      _cameraDenied = false;
       _errorTitle = 'Movement tracking stopped working';
       _errorBody =
           'The on-device motion model kept failing. Restart ParkiWell and '
@@ -431,6 +436,10 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
                 body: _errorBody,
                 actionLabel: 'Try again',
                 onAction: () => unawaited(_initialize()),
+                secondaryActionLabel: _cameraDenied ? 'Open Settings' : null,
+                onSecondaryAction: _cameraDenied
+                    ? () => unawaited(AppSettings.openAppSettings())
+                    : null,
               ),
               _RoutineScreenPhase.suspended => _buildMessage(
                 context,
@@ -924,6 +933,8 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
     required String body,
     required String actionLabel,
     required VoidCallback onAction,
+    String? secondaryActionLabel,
+    VoidCallback? onSecondaryAction,
   }) {
     final colors = context.colors;
     return Center(
@@ -952,6 +963,13 @@ class _MotionRoutineScreenState extends State<MotionRoutineScreen>
             ),
             const SizedBox(height: 22),
             FilledButton(onPressed: onAction, child: Text(actionLabel)),
+            if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: onSecondaryAction,
+                child: Text(secondaryActionLabel),
+              ),
+            ],
           ],
         ),
       ),

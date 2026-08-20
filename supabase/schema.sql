@@ -116,6 +116,28 @@ create table if not exists public.sync_tombstones (
   primary key (entity_type, entity_id, user_id)
 );
 
+-- Remote feature availability. Read-only from clients: rows are flipped from
+-- the dashboard (service role) so a misbehaving feature can be disabled
+-- without a store release. Clients cache the last fetched value and treat
+-- fetch failure as "keep the cached value", so this table being unreachable
+-- can never turn features off on its own.
+create table if not exists public.app_flags (
+  key text primary key,
+  enabled boolean not null default true,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.app_flags enable row level security;
+
+drop policy if exists app_flags_read_all on public.app_flags;
+create policy app_flags_read_all on public.app_flags
+  for select to authenticated, anon using (true);
+-- No insert/update/delete policies: client roles cannot write flags.
+
+insert into public.app_flags (key, enabled)
+  values ('motion_coach', true)
+  on conflict (key) do nothing;
+
 alter table public.logs
   add column if not exists client_updated_at timestamptz not null
     default timezone('utc', now());

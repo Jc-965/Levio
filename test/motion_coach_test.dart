@@ -373,8 +373,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Camera access is needed'), findsOneWidget);
-      expect(find.textContaining('allow Camera access'), findsOneWidget);
+      expect(find.textContaining('Allow Camera access'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
+      // Denied access offers a direct path to the system settings; asking a
+      // person with impaired fine motor control to navigate there by hand
+      // is a real barrier.
+      expect(find.text('Open Settings'), findsOneWidget);
       expect(driver.disposeCalls, 1);
     });
 

@@ -823,6 +823,28 @@ class CloudBackendService {
     }
   }
 
+  /// Remote feature flags, readable by any session including anonymous
+  /// bootstrap ones. Returns null on any failure so callers keep their
+  /// cached values; a flag fetch must never be able to disable a feature
+  /// just because the network was down.
+  Future<Map<String, bool>?> fetchAppFlags() async {
+    final client = _client;
+    if (client == null) return null;
+    try {
+      final result = await client
+          .from('app_flags')
+          .select('key, enabled')
+          .timeout(const Duration(seconds: 4));
+      return <String, bool>{
+        for (final row in List<Map<String, dynamic>>.from(result))
+          if (row['key'] is String) row['key'] as String: row['enabled'] == true,
+      };
+    } catch (e, stackTrace) {
+      _logger.warning('App flags fetch failed', e, stackTrace);
+      return null;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getRecoverySessions(String userId) async {
     if (!isEnabled) return <Map<String, dynamic>>[];
 

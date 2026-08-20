@@ -35,6 +35,7 @@ migrate_working_dir/
 
 # Local benchmark notes (results vary by machine and are not release claims)
 docs/PERFORMANCE.md
+benchmark/
 
 # Symbolication related
 app.*.symbols

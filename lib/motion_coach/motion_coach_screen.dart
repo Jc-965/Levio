@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:app_settings/app_settings.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:parkiwell/utils/session_wakelock.dart';
@@ -81,6 +82,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
   bool _warnedNearCap = false;
   String _errorTitle = 'Motion check is unavailable';
   String _errorBody = 'Please try again.';
+  bool _cameraDenied = false;
   int _generation = 0;
   int _handledLiveRepSerial = 0;
   int _handledLiveCueSerial = 0;
@@ -208,6 +210,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
       if (!mounted || generation != _generation) return;
       setState(() {
         _phase = _CapturePhase.error;
+        _cameraDenied = false;
         _errorTitle = 'Motion check could not start';
         _errorBody =
             'The on-device motion model could not be prepared. Restart '
@@ -231,6 +234,7 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
     _session.reset();
     setState(() {
       _phase = _CapturePhase.error;
+      _cameraDenied = false;
       _errorTitle = 'Movement tracking stopped working';
       _errorBody =
           'The on-device motion model kept failing. Restart ParkiWell and '
@@ -245,11 +249,12 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
         error.code == 'CameraAccessRestricted';
     setState(() {
       _phase = _CapturePhase.error;
+      _cameraDenied = denied;
       _errorTitle = denied
           ? 'Camera access is needed'
           : 'Camera could not start';
       _errorBody = denied
-          ? 'Open your phone settings and allow Camera access for ParkiWell, '
+          ? 'Allow Camera access for ParkiWell in your phone settings, '
                 'then return and try again.'
           : 'Close other apps using the camera, then try again.';
     });
@@ -732,6 +737,13 @@ class _MotionCoachScreenState extends State<MotionCoachScreen>
                   height: 1.4,
                 ),
               ),
+              if (_phase == _CapturePhase.error && _cameraDenied) ...[
+                const SizedBox(height: 22),
+                FilledButton(
+                  onPressed: () => unawaited(AppSettings.openAppSettings()),
+                  child: const Text('Open Settings'),
+                ),
+              ],
             ],
           ),
         ),

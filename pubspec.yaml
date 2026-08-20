@@ -76,6 +76,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   timezone: ^0.10.0
   flutter_timezone: ^4.0.0
+  app_settings: ^9.0.0
 
 dev_dependencies:
   flutter_test:

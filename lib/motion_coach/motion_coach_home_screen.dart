@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/modern_card.dart';
+import 'motion_coach_consent.dart';
 import 'motion_coach_preferences.dart';
 import 'motion_demonstration_view.dart';
 import 'motion_exercise_catalog.dart';
@@ -105,6 +106,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     HapticUtils.mediumImpact();
     setState(() => _opening = true);
     try {
+      if (!await ensureMotionCoachConsent(context) || !mounted) return;
       final RoutineDefinition routine = await _library.loadRoutine(
         description.routineAssetId,
       );
@@ -151,6 +153,7 @@ class _MotionCoachHomeScreenState extends State<MotionCoachHomeScreen> {
     HapticUtils.mediumImpact();
     setState(() => _opening = true);
     try {
+      if (!await ensureMotionCoachConsent(context) || !mounted) return;
       await _library.templateFor(exercise.exerciseId);
       if (!mounted) return;
       final bool begin = await showMotionSessionIntro(
@@ -535,6 +538,27 @@ class _ExerciseTile extends StatelessWidget {
                     context,
                   ).textTheme.bodySmall?.copyWith(color: colors.textSecondary),
                 ),
+                if (exercise.clinicalStatus ==
+                    MotionExerciseClinicalStatus.development) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.secondary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Wellness measurement · in development',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

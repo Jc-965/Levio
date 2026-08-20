@@ -37,7 +37,7 @@ class ExerciseScreen extends StatelessWidget {
       recordSession: (videoId, completedAt) => singleton
           .recordPhysicalExerciseSession(videoId, completedAt: completedAt),
       badgeLabelForVideo: (videoId) =>
-          motionCoachEnabled && motionExerciseForVideo(videoId) != null
+          motionCoachAvailable && motionExerciseForVideo(videoId) != null
           ? 'Motion check'
           : null,
       firstCardKey: TutorialTargets.firstExerciseCardKey,

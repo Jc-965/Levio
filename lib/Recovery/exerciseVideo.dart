@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:parkiwell/utils/session_wakelock.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:parkiwell/motion_coach/motion_analysis.dart';
+import 'package:parkiwell/motion_coach/motion_coach_consent.dart';
 import 'package:parkiwell/motion_coach/motion_coach_screen.dart';
 import 'package:parkiwell/motion_coach/motion_exercise_catalog.dart';
 import 'package:parkiwell/motion_coach/motion_reference_library.dart';
 import 'package:parkiwell/singleton.dart';
 import 'package:parkiwell/utils/webview_policy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -33,9 +33,6 @@ class ExerciseVideo extends StatefulWidget {
 }
 
 class _ExerciseVideoState extends State<ExerciseVideo> {
-  static const String _motionCoachConsentKey =
-      'motion_coach_mediapipe_consent_v1';
-
   final singleton = Singleton();
   final ImagePicker _picker = ImagePicker();
 
@@ -338,39 +335,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
     }
   }
 
-  Future<bool> _ensureMotionCoachConsent() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    if (preferences.getBool(_motionCoachConsentKey) == true) return true;
-    if (!mounted) return false;
-
-    final bool? accepted = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Motion check privacy'),
-        content: const Text(
-          'Your camera images, recording, and pose landmarks are processed '
-          'on this device. Google MediaPipe may receive performance and usage '
-          'metrics about its on-device API, but not your images, video, or '
-          'pose landmarks.\n\n'
-          'Motion check offers general movement observations. It is not a '
-          'diagnosis or medical assessment.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-    if (accepted != true) return false;
-    await preferences.setBool(_motionCoachConsentKey, true);
-    return true;
-  }
+  Future<bool> _ensureMotionCoachConsent() => ensureMotionCoachConsent(context);
 
   Future<int> _recordSession(DateTime completedAt) async {
     final videoId = _videoId ?? singleton.currentURL;
@@ -724,7 +689,7 @@ class _ExerciseVideoState extends State<ExerciseVideo> {
                 ],
                 if (!kIsWeb) ...[
                   const SizedBox(height: 24),
-                  if (motionCoachEnabled &&
+                  if (motionCoachAvailable &&
                       motionExercise != null &&
                       motionSegment != null) ...[
                     SectionHeading(

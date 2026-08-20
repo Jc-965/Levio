@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:motion_engine/motion_engine.dart';
 
+import '../services/feature_flags.dart';
 import 'motion_exercise_catalog.dart';
 import 'motion_pose_bridge.dart';
 
@@ -11,6 +12,14 @@ const bool motionCoachEnabled = bool.fromEnvironment(
   'PARKIWELL_MOTION_COACH',
   defaultValue: true,
 );
+
+/// Whether the motion coach should be offered right now: the compile-time
+/// switch AND the remote kill switch's last cached value. Offline devices
+/// keep whichever value they last fetched, so availability never depends on
+/// connectivity.
+bool get motionCoachAvailable =>
+    motionCoachEnabled &&
+    FeatureFlags.shared.isEnabled(FeatureFlags.motionCoachKey);
 
 String get motionPoseRuntime {
   if (Platform.isAndroid) {

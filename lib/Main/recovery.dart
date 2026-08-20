@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../Recovery/exercise.dart';
 import '../Recovery/speech.dart';
-import '../motion_coach/motion_analysis.dart' show motionCoachEnabled;
+import '../motion_coach/motion_analysis.dart' show motionCoachAvailable;
 import '../motion_coach/motion_coach_home_screen.dart';
 import '../singleton.dart';
 import '../theme/app_theme.dart';
@@ -487,8 +487,9 @@ class _PlanView extends StatelessWidget {
                     ),
                     // The camera-coached routines need a platform camera and
                     // the on-device pose model, so they are not offered on
-                    // web or when the feature is compiled out.
-                    if (motionCoachEnabled && !kIsWeb) ...[
+                    // web, when the feature is compiled out, or when the
+                    // remote kill switch has disabled it.
+                    if (motionCoachAvailable && !kIsWeb) ...[
                       Divider(
                         height: 1,
                         indent: 18,

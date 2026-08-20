@@ -10,8 +10,10 @@ import 'package:parkiwell/services/cloud_backend_service.dart';
 import 'package:parkiwell/services/content_filter.dart';
 import 'package:parkiwell/services/encrypted_cache_store.dart';
 import 'package:parkiwell/services/encrypted_mutation_journal_store.dart';
+import 'package:parkiwell/services/feature_flags.dart';
 import 'package:parkiwell/services/health_sync_coordinator.dart';
 import 'package:parkiwell/services/longitudinal_analytics.dart';
+import 'package:parkiwell/motion_coach/motion_session_history.dart';
 import 'package:parkiwell/services/medication_reminder_service.dart';
 import 'package:parkiwell/services/offline_sync_engine.dart';
 import 'package:parkiwell/services/secure_session_storage.dart';
@@ -277,6 +279,10 @@ class Singleton extends ChangeNotifier {
     }
     await _initializeConnectivityMonitoring();
     await _cloud.initialize();
+    // Kill-switch flags: hydrate the cache now, refresh in the background.
+    // Neither step may block startup or require connectivity.
+    await FeatureFlags.shared.load();
+    unawaited(FeatureFlags.shared.refresh(_cloud));
     if (_cloud.isEnabled) {
       await _replayPendingMutations();
       if (_offlineSyncEngine.pendingCount == 0) {
@@ -2734,6 +2740,9 @@ class Singleton extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await _offlineSyncEngine.clear();
       await prefs.clear();
+      // prefs.clear() removed the stored motion history, but the shared
+      // in-memory instance still holds the decoded entries.
+      await MotionSessionHistory.shared.clear();
       // Rotate away the encryption key so any surviving ciphertext copies
       // are permanently unreadable, and drop the keystore-held auth session
       // for the deleted identity.
@@ -2803,7 +2812,10 @@ class Singleton extends ChangeNotifier {
       _lastCommunitySupportMessage = null;
       // Health traces beyond the cache: pending reminders would name the
       // signed-out user's medications to the next device user, and the
-      // avatar file lives outside prefs entirely.
+      // avatar file lives outside prefs entirely. Motion coach scores are
+      // motor-progression health data under their own storage key, so they
+      // must not survive into the next sign-in either.
+      await MotionSessionHistory.shared.clear();
       await MedicationReminderService().cancelAll();
       await _deleteStoredAvatarFiles();
       _lastSyncAt = null;
